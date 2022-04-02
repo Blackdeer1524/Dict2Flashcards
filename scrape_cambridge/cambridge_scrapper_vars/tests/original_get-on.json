@@ -1,0 +1,187 @@
+{
+    "get on": {
+        "phrasal verb": {
+            "definitions": [
+                "to have a good relationship",
+                "to manage or deal with a situation, especially successfully",
+                "to continue doing something, especially work"
+            ],
+            "alt_terms": [
+                [
+                    "(US also UK get along)"
+                ],
+                [
+                    "(US also UK get along)"
+                ],
+                []
+            ],
+            "examples": [
+                [
+                    "We're getting on much better now that we don't live together.",
+                    "He doesn't get on with his daughter."
+                ],
+                [
+                    "How are you getting on in your new home?",
+                    "We're getting on quite well with the decorating."
+                ],
+                [
+                    "I'll leave you to get on then, shall I?"
+                ]
+            ],
+            "level": [
+                [
+                    "B1"
+                ],
+                [
+                    "B1"
+                ],
+                [
+                    "B2"
+                ]
+            ],
+            "labels_and_codes": [
+                [],
+                [],
+                []
+            ],
+            "region": [
+                [
+                    "UK"
+                ],
+                [
+                    "UK"
+                ],
+                [
+                    "UK"
+                ]
+            ],
+            "usage": [
+                [],
+                [],
+                []
+            ],
+            "domain": [
+                [],
+                [],
+                []
+            ],
+            "image_links": [
+                "",
+                "",
+                ""
+            ],
+            "UK_IPA": [
+                "/\u0261et/"
+            ],
+            "US_IPA": [
+                "/\u0261et/"
+            ],
+            "UK_audio_link": "https://dictionary.cambridge.org//media/english/uk_pron/u/ukg/ukger/ukgerma022.mp3",
+            "US_audio_link": "https://dictionary.cambridge.org//media/english/us_pron/g/get/get__/get.mp3"
+        }
+    },
+    "be getting on": {
+        "phrasal verb": {
+            "definitions": [
+                "to be getting old",
+                "If you say it's getting on, or time is getting on, you mean it is becoming late"
+            ],
+            "alt_terms": [
+                [],
+                []
+            ],
+            "examples": [
+                [
+                    "He's getting on (a bit) - he'll be 76 next birthday."
+                ],
+                [
+                    "It's getting on - we'd better be going."
+                ]
+            ],
+            "level": [
+                [],
+                []
+            ],
+            "labels_and_codes": [
+                [],
+                []
+            ],
+            "region": [
+                [],
+                [
+                    "UK"
+                ]
+            ],
+            "usage": [
+                [
+                    "informal"
+                ],
+                [
+                    "informal"
+                ]
+            ],
+            "domain": [
+                [],
+                []
+            ],
+            "image_links": [
+                "",
+                ""
+            ],
+            "UK_IPA": [
+                "/\u0261et/"
+            ],
+            "US_IPA": [
+                "/\u0261et/"
+            ],
+            "UK_audio_link": "https://dictionary.cambridge.org//media/english/uk_pron/u/ukg/ukger/ukgerma022.mp3",
+            "US_audio_link": "https://dictionary.cambridge.org//media/english/us_pron/g/get/get__/get.mp3"
+        }
+    },
+    "getting on for": {
+        "phrasal verb": {
+            "definitions": [
+                "almost"
+            ],
+            "alt_terms": [
+                [
+                    "(US going on)"
+                ]
+            ],
+            "examples": [
+                [
+                    "He must be getting on for 80 now.",
+                    "It was getting on for midnight."
+                ]
+            ],
+            "level": [
+                []
+            ],
+            "labels_and_codes": [
+                []
+            ],
+            "region": [
+                [
+                    "UK"
+                ]
+            ],
+            "usage": [
+                []
+            ],
+            "domain": [
+                []
+            ],
+            "image_links": [
+                ""
+            ],
+            "UK_IPA": [
+                "/\u0261et/"
+            ],
+            "US_IPA": [
+                "/\u0261et/"
+            ],
+            "UK_audio_link": "https://dictionary.cambridge.org//media/english/uk_pron/u/ukg/ukger/ukgerma022.mp3",
+            "US_audio_link": "https://dictionary.cambridge.org//media/english/us_pron/g/get/get__/get.mp3"
+        }
+    }
+}

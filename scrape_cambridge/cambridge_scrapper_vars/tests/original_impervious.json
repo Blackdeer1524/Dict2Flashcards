@@ -1,0 +1,59 @@
+{
+    "impervious": {
+        "adjective": {
+            "definitions": [
+                "not allowing liquid to go through",
+                "If someone is impervious to something,they are not influenced or affected by something"
+            ],
+            "alt_terms": [
+                [],
+                []
+            ],
+            "examples": [
+                [
+                    "How does glue bond with impervious substances like glass and metal?"
+                ],
+                [
+                    "He is impervious to criticism and rational argument."
+                ]
+            ],
+            "level": [
+                [],
+                []
+            ],
+            "labels_and_codes": [
+                [],
+                []
+            ],
+            "region": [
+                [],
+                []
+            ],
+            "usage": [
+                [
+                    "specialized"
+                ],
+                []
+            ],
+            "domain": [
+                [
+                    "geology",
+                    "engineering"
+                ],
+                []
+            ],
+            "image_links": [
+                "",
+                ""
+            ],
+            "UK_IPA": [
+                "/\u026am\u02c8p\u025c\u02d0.vi.\u0259s/"
+            ],
+            "US_IPA": [
+                "/\u026am\u02c8p\u025d\u02d0.vi.\u0259s/"
+            ],
+            "UK_audio_link": "https://dictionary.cambridge.org//media/english/uk_pron/u/uki/ukimp/ukimper026.mp3",
+            "US_audio_link": "https://dictionary.cambridge.org//media/english/us_pron/i/imp/imper/impervious.mp3"
+        }
+    }
+}

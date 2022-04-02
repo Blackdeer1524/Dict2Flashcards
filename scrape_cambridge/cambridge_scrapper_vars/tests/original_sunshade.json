@@ -1,0 +1,69 @@
+{
+    "sunshade": {
+        "noun": {
+            "definitions": [
+                "an object similar to an umbrella that you carry to protect yourself from light from the sun",
+                "a larger folding frame of this type that you put into the ground to form an area that is sheltered from the light of the sun",
+                "an \nawning"
+            ],
+            "alt_terms": [
+                [],
+                [
+                    "(US also umbrella)"
+                ],
+                []
+            ],
+            "examples": [
+                [],
+                [],
+                []
+            ],
+            "level": [
+                [],
+                [],
+                []
+            ],
+            "labels_and_codes": [
+                [
+                    "[ C ]"
+                ],
+                [
+                    "[ C ]"
+                ],
+                [
+                    "[ C ]"
+                ]
+            ],
+            "region": [
+                [],
+                [],
+                [
+                    "US"
+                ]
+            ],
+            "usage": [
+                [],
+                [],
+                []
+            ],
+            "domain": [
+                [],
+                [],
+                []
+            ],
+            "image_links": [
+                "https://dictionary.cambridge.org/images/thumb/paraso_noun_002_26494_2.jpg?version=5.0.204",
+                "https://dictionary.cambridge.org/images/thumb/sunsha_noun_002_36661.jpg?version=5.0.204",
+                "https://dictionary.cambridge.org/images/thumb/awning_noun_002_02118.jpg?version=5.0.204"
+            ],
+            "UK_IPA": [
+                "/\u02c8s\u028cn.\u0283e\u026ad/"
+            ],
+            "US_IPA": [
+                "/\u02c8s\u028cn.\u0283e\u026ad/"
+            ],
+            "UK_audio_link": "https://dictionary.cambridge.org//media/english/uk_pron/u/uks/uksun/uksunbu025.mp3",
+            "US_audio_link": "https://dictionary.cambridge.org//media/english/us_pron/u/uss/ussun/ussunbl021.mp3"
+        }
+    }
+}

@@ -1,0 +1,93 @@
+{
+    "sibilant": {
+        "adjective": {
+            "definitions": [
+                "making a \"s\" or \"sh\" sound"
+            ],
+            "alt_terms": [
+                []
+            ],
+            "examples": [
+                [
+                    "a sibilant whisper"
+                ]
+            ],
+            "level": [
+                []
+            ],
+            "labels_and_codes": [
+                []
+            ],
+            "region": [
+                []
+            ],
+            "usage": [
+                [
+                    "literary",
+                    "specialized"
+                ]
+            ],
+            "domain": [
+                [
+                    "phonetics"
+                ]
+            ],
+            "image_links": [
+                ""
+            ],
+            "UK_IPA": [
+                "/\u02c8s\u026ab.\u0259l.\u0259nt/"
+            ],
+            "US_IPA": [
+                "/\u02c8s\u026ab.\u0259l.\u0259nt/"
+            ],
+            "UK_audio_link": "https://dictionary.cambridge.org//media/english/uk_pron/c/cal/cald4/cald4uk1420.mp3",
+            "US_audio_link": "https://dictionary.cambridge.org//media/english/us_pron/c/cal/cald4/cald4us2091.mp3"
+        },
+        "noun": {
+            "definitions": [
+                "a \"s\" or \"sh\" sound"
+            ],
+            "alt_terms": [
+                []
+            ],
+            "examples": [
+                [
+                    "The microphone exaggerates every sibilant."
+                ]
+            ],
+            "level": [
+                []
+            ],
+            "labels_and_codes": [
+                [
+                    "[ C ]"
+                ]
+            ],
+            "region": [
+                []
+            ],
+            "usage": [
+                [
+                    "specialized"
+                ]
+            ],
+            "domain": [
+                [
+                    "phonetics"
+                ]
+            ],
+            "image_links": [
+                ""
+            ],
+            "UK_IPA": [
+                "/\u02c8s\u026ab.\u0259l.\u0259nt/"
+            ],
+            "US_IPA": [
+                "/\u02c8s\u026ab.\u0259l.\u0259nt/"
+            ],
+            "UK_audio_link": "https://dictionary.cambridge.org//media/english/uk_pron/c/cal/cald4/cald4uk1421.mp3",
+            "US_audio_link": "https://dictionary.cambridge.org//media/english/us_pron/c/cal/cald4/cald4us2092.mp3"
+        }
+    }
+}

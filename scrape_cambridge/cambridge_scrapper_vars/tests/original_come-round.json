@@ -1,0 +1,99 @@
+{
+    "come round": {
+        "phrasal verb": {
+            "definitions": [
+                "to visit someone in their home",
+                "to change your opinion of something, often influenced by another person's opinion",
+                "If an event that happens regularly comes round, it happens at its usual time",
+                "to become conscious again after an accident or operation"
+            ],
+            "alt_terms": [
+                [
+                    "(US come around)"
+                ],
+                [
+                    "(US come around)"
+                ],
+                [
+                    "(US come around)"
+                ],
+                [
+                    "(US come around)"
+                ]
+            ],
+            "examples": [
+                [
+                    "Come round tonight and we'll watch a video."
+                ],
+                [
+                    "He'll come round to my point of view, given a bit of time.",
+                    "Do you still dislike your office, or have you come round to thinking it's all right?"
+                ],
+                [
+                    "Christmas comes round so quickly!"
+                ],
+                [
+                    "She hasn't come round from the anaesthetic yet."
+                ]
+            ],
+            "level": [
+                [
+                    "A2"
+                ],
+                [
+                    "C2"
+                ],
+                [],
+                [
+                    "C1"
+                ]
+            ],
+            "labels_and_codes": [
+                [],
+                [],
+                [],
+                []
+            ],
+            "region": [
+                [
+                    "UK"
+                ],
+                [
+                    "UK"
+                ],
+                [
+                    "UK"
+                ],
+                [
+                    "UK"
+                ]
+            ],
+            "usage": [
+                [],
+                [],
+                [],
+                []
+            ],
+            "domain": [
+                [],
+                [],
+                [],
+                []
+            ],
+            "image_links": [
+                "",
+                "",
+                "",
+                ""
+            ],
+            "UK_IPA": [
+                "/k\u028cm/"
+            ],
+            "US_IPA": [
+                "/k\u028cm/"
+            ],
+            "UK_audio_link": "https://dictionary.cambridge.org//media/english/uk_pron/u/ukc/ukcom/ukcombi006.mp3",
+            "US_audio_link": "https://dictionary.cambridge.org//media/english/us_pron/c/com/come_/come.mp3"
+        }
+    }
+}

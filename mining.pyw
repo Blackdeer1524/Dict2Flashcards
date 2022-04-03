@@ -17,9 +17,9 @@ from tkinterdnd2 import Tk
 from tkinter.filedialog import askopenfilename, askdirectory
 from enum import IntEnum
 
+from global_hotkeys import start_checking_hotkeys, stop_checking_hotkeys, register_hotkeys
 import requests
 from playsound import playsound
-from bindglobal import BindGlobal
 
 from parsers import image_parsers, word_parsers, sentence_parsers
 from utils import ScrolledFrame, ImageSearch, AudioDownloader, TextWithPlaceholder, EntryWithPlaceholder
@@ -28,6 +28,7 @@ from utils import error_handler
 from utils import get_save_audio_name, get_local_audio_path
 from utils import SearchType, remove_special_chars, string_search
 from utils import AUDIO_NAME_SPEC_CHARS
+
 
 
 class App(Tk):
@@ -402,8 +403,10 @@ class App(Tk):
             self.new_order[widget_index].bind("<Tab>", focus_next_window)
             self.new_order[widget_index].bind("<Shift-Tab>", focus_prev_window)
 
-        self.bg = BindGlobal()
-        self.bg.gbind("<Control_L-c-space>", lambda _: self.parse_word(self.clipboard_get()))
+        bindings = [
+            [["control", "c", "space"], None, lambda: self.parse_word(self.clipboard_get())]]
+        register_hotkeys(bindings)
+        start_checking_hotkeys()
 
         self.resizable(0, 0)
         self.after(300_000, self.autosave)
@@ -627,7 +630,7 @@ class App(Tk):
         """
         if messagebox.askokcancel("Выход", "Вы точно хотите выйти?"):
             self.save_files()
-            self.bg.stop()
+            stop_checking_hotkeys()
             if self.AUDIO_INFO:
                 self.download_audio(closing=True)
             else:

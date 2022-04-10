@@ -1,0 +1,10 @@
+/*
+!/.gitignore
+!/requirements.txt
+!/mining.pyw
+!/str_utils_tests.py
+!/utils.py
+!/parsers
+/parsers/media*
+/.idea/*
+

@@ -30,7 +30,6 @@ from utils import SearchType, remove_special_chars, string_search
 from utils import AUDIO_NAME_SPEC_CHARS
 
 
-
 class App(Tk):
     class CardStatus(IntEnum):
         skip = 0
@@ -692,25 +691,26 @@ class App(Tk):
         if not (len(self.MEDIA_DIR) != 0 and os.path.isdir(media_dir_path)) and not self.change_media_dir(False):
             if is_start:
                 quit()
-            return
+            return 1
 
         if is_start and os.path.isfile(last_open_file_path) and os.path.isdir(last_save_dir_path):
             self.WORD_JSON_PATH = self.JSON_CONF_FILE["directories"]["last_open_file"]
             self.SAVE_DIR = self.JSON_CONF_FILE["directories"]["last_save_dir"]
         else:
-            self.WORD_JSON_PATH = askopenfilename(title="Выберете JSON файл со словами", filetypes=(("JSON", ".json"),),
+            current_word_path = askopenfilename(title="Выберете JSON файл со словами", filetypes=(("JSON", ".json"),),
                                              initialdir="./")
-            if len(self.WORD_JSON_PATH) == 0:
+            if not len(current_word_path):
                 if is_start:
                     quit()
-                return None
-
+                return 1
+            
+            self.WORD_JSON_PATH = current_word_path
             # Получение директории сохранения
             self.SAVE_DIR = askdirectory(title="Выберете директорию сохранения", initialdir="./")
-            if len(self.SAVE_DIR) == 0:
+            if not len(self.SAVE_DIR):
                 if is_start:
                     quit()
-                return None
+                return 1
 
             self.JSON_CONF_FILE["directories"]["last_open_file"] = self.WORD_JSON_PATH
             self.JSON_CONF_FILE["directories"]["last_save_dir"] = self.SAVE_DIR
@@ -745,6 +745,7 @@ class App(Tk):
             self.START_INDEX = min(len(self.WORDS), self.JSON_HISTORY_FILE[self.WORD_JSON_PATH])
 
         self.CARDS_LEFT = len(self.WORDS) - self.START_INDEX + 1
+        return 0
 
     @error_handler(error_processing=show_errors)
     def get_word_block(self, index):
@@ -777,7 +778,7 @@ class App(Tk):
             for batch in sent_gen:
                 if word != self.word_text.get(1.0, "end").strip():
                     break
-                if len(batch) == 0:
+                if not len(batch):
                     raise AttributeError
                 for current_sentence_index in range(5):
                     self.sent_text_list[current_sentence_index].delete(1.0, "end")
@@ -990,7 +991,7 @@ class App(Tk):
         with open(self.CARDS_PATH, 'a', encoding="UTF-8", newline='') as f:
             cards_writer = csv.writer(f, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             cards_writer.writerow([sentence_example, saving_word, meaning, images_path_str, save_audio_path, tags])
-        if self.CARDS_LEFT == 0:
+        if not self.CARDS_LEFT:
             user_created_word_block = {
                 "word": saving_word,
                 "meaning": meaning,
@@ -1032,7 +1033,8 @@ class App(Tk):
         Открывает новый файл слов
         """
         self.save_files()
-        self.get_needed(is_start)
+        if self.get_needed(is_start):
+            return
         self.NEXT_ITEM_INDEX = self.START_INDEX
         self.refresh()
 
@@ -1073,7 +1075,7 @@ class App(Tk):
                     json.dump([], new_file)
 
             new_save_dir = askdirectory(title="Выберете директорию сохранения", initialdir="./")
-            if len(new_save_dir) == 0:
+            if not len(new_save_dir):
                 return
 
             self.JSON_CONF_FILE["directories"]["last_save_dir"] = new_save_dir
@@ -1081,7 +1083,7 @@ class App(Tk):
             self.open_new_file(True)
 
         new_file_dir = askdirectory(title="Выберете директорию для файла со словами", initialdir="./")
-        if len(new_file_dir) == 0:
+        if not len(new_file_dir):
             return
         create_file_win = self.Toplevel()
         create_file_win.withdraw()

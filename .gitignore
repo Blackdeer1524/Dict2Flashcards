@@ -1,10 +1,7 @@
-Words/
-venv/
-temp/
-parsers/media/
-dictionaries/
-Cards/
-.idea/
-config.json
-history.json
-/__pycache__/
+*
+!parsers
+/parsers/media/*
+!.gitignore
+!mining.pyw
+!utils.py
+!requirements.txt

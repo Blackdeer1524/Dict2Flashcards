@@ -679,7 +679,7 @@ class App(Tk):
             return 1
         return 0
 
-    def get_needed(self, is_start=False):
+    def get_needed(self, is_start=False) -> bool:
         # Получение JSON файла со словами
         self.START_TIME = int(time.time())  # Получение времени начала работы программы. Нужно для имени файла с карточками
         last_open_file_path = self.JSON_CONF_FILE["directories"]["last_open_file"]
@@ -691,25 +691,26 @@ class App(Tk):
         if not (len(self.MEDIA_DIR) != 0 and os.path.isdir(media_dir_path)) and not self.change_media_dir(False):
             if is_start:
                 quit()
-            return
+            return True
 
         if is_start and os.path.isfile(last_open_file_path) and os.path.isdir(last_save_dir_path):
             self.WORD_JSON_PATH = self.JSON_CONF_FILE["directories"]["last_open_file"]
             self.SAVE_DIR = self.JSON_CONF_FILE["directories"]["last_save_dir"]
         else:
-            self.WORD_JSON_PATH = askopenfilename(title="Выберете JSON файл со словами", filetypes=(("JSON", ".json"),),
-                                             initialdir="./")
-            if len(self.WORD_JSON_PATH) == 0:
+            picked_word_file = askopenfilename(title="Выберете JSON файл со словами", filetypes=(("JSON", ".json"),),
+                                                  initialdir="./")
+            if len(picked_word_file) == 0:
                 if is_start:
                     quit()
-                return None
+                return True
+            self.WORD_JSON_PATH = picked_word_file
 
             # Получение директории сохранения
             self.SAVE_DIR = askdirectory(title="Выберете директорию сохранения", initialdir="./")
             if len(self.SAVE_DIR) == 0:
                 if is_start:
                     quit()
-                return None
+                return True
 
             self.JSON_CONF_FILE["directories"]["last_open_file"] = self.WORD_JSON_PATH
             self.JSON_CONF_FILE["directories"]["last_save_dir"] = self.SAVE_DIR
@@ -744,6 +745,7 @@ class App(Tk):
             self.START_INDEX = min(len(self.WORDS), self.JSON_HISTORY_FILE[self.WORD_JSON_PATH])
 
         self.CARDS_LEFT = len(self.WORDS) - self.START_INDEX + 1
+        return False
 
     @error_handler(error_processing=show_errors)
     def get_word_block(self, index):
@@ -1031,7 +1033,8 @@ class App(Tk):
         Открывает новый файл слов
         """
         self.save_files()
-        self.get_needed(is_start)
+        if self.get_needed(is_start):
+            return
         self.NEXT_ITEM_INDEX = self.START_INDEX
         self.refresh()
 
@@ -1093,7 +1096,7 @@ class App(Tk):
         name_entry.focus()
         create_file_win.bind("<Escape>", lambda event: create_file_win.destroy())
         create_file_win.bind("<Return>", lambda event: create_file())
-
+    
     @error_handler(error_processing=show_errors)
     def anki_browser_command(self):
         def invoke(action, **params):
@@ -1185,7 +1188,6 @@ class App(Tk):
             self.refresh()
 
     @staticmethod
-    @error_handler(error_processing=show_errors)
     def help_command():
         mes = "Программа для Sentence mining'a\n\n * Каждое поле полностью редактируемо!" + \
               "\n * Для выбора подходящего примера с предложением просто нажмите на кнопку, стоящую рядом с ним\n\n" + \

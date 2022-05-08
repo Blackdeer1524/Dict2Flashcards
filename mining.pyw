@@ -1094,6 +1094,7 @@ class App(Tk):
         create_file_win.bind("<Escape>", lambda event: create_file_win.destroy())
         create_file_win.bind("<Return>", lambda event: create_file())
 
+    @error_handler(error_processing=show_errors)
     def anki_browser_command(self):
         def invoke(action, **params):
             def request_anki(action, **params):

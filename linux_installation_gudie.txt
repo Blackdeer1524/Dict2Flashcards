@@ -1,0 +1,15 @@
+* sudo apt install python3-tk
+* sudo apt install python3-gi
+
+============
+virtual envs:
+   * cd to your venv
+   cd ~/.virtualenvs/cv/lib/python3.9/
+
+   !!you may also have to find tkitner and gi location yourself!! 
+   * ln -s /usr/lib/python3.9/tkinter tkinter
+
+   * cd to the main folder where mining.pyw is located
+   ln -s /usr/lib/python3/dist-packages/gi gi
+
+   * pip install -r requirements.txt

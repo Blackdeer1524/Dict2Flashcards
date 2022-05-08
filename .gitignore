@@ -7,4 +7,4 @@
 !/parsers
 /parsers/media*
 /.idea/*
-
+**/__pycache__/

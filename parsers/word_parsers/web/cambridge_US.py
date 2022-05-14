@@ -358,9 +358,8 @@ def define(word, dictionary_index=0, headers=headers):
                              usage=current_word_usage, domain=current_word_domain, image_link=image_link,
                              uk_ipa=uk_ipa, us_ipa=us_ipa, uk_audio_link=uk_audio_link, us_audio_link=us_audio_link)
 
-    return list(word_info.items()) if word_info is not None else []
-    # return translate_word(word_info) if word_info is not None else []
-
+    # return list(word_info.items()) if word_info is not None else []
+    return translate_word(word_info) if word_info is not None else []
 
 
 if __name__ == "__main__":

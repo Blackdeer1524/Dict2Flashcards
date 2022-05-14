@@ -23,7 +23,11 @@ from playsound import playsound
 from bindglobal import BindGlobal
 from typing import Callable
 
-from parsers import image_parsers, word_parsers, sentence_parsers
+import parsers.image_parsers
+import parsers.word_parsers.local
+import parsers.word_parsers.web
+import parsers.sentence_parsers
+
 from utils import ScrolledFrame, ImageSearch, AudioDownloader, TextWithPlaceholder, EntryWithPlaceholder
 from utils import spawn_toplevel_in_center, get_option_menu
 from utils import error_handler
@@ -82,7 +86,7 @@ class Deck:
         if os.path.isfile(json_deck_path):
             with open(json_deck_path, "r", encoding="UTF-8") as f:
                 self._deck = json.load(f)
-                self._next_item_index = min(current_deck_pointer, max(len(self._deck) - 1, 0))
+            self._cur_item_index = min(max(len(self._deck) - 1, 0), current_deck_pointer)
         else:
             raise Exception("Invalid deck path!")
         self._card_generator: CardGenerator = card_generator
@@ -111,27 +115,36 @@ class Deck:
         """
 
         res: list[dict] = self._card_generator.get(query, **kwargs)
-        self._deck = self[:self._next_item_index] + res + self[self._next_item_index:]
+        self._deck = self[:self._cur_item_index] + res + self[self._cur_item_index:]
 
     def get_card(self) -> dict:
-        cur_card = self[self._next_item_index]
+        cur_card = self[self._cur_item_index]
         if cur_card:
-            self._next_item_index += 1
+            self._cur_item_index += 1
         return cur_card
 
-    def move(self, n) -> None:
-        self._next_item_index = min(max(self._next_item_index + n, 0), len(self) - 1)
+    def move(self, n: int) -> None:
+        self._cur_item_index = min(max(self._cur_item_index + n, 0), len(self) - 1)
 
 
 class App(Tk):
     def __init__(self, *args, **kwargs):
         super(App, self).__init__(*args, **kwargs)
-        self.HISTORY = App.load_history_file()
         self.CONFIG, error_code = App.load_conf_file()
+        self.HISTORY = App.load_history_file()
+        if not self.HISTORY.get(self.CONFIG["directories"]["last_open_file"]):
+            self.HISTORY[self.CONFIG["directories"]["last_open_file"]] = 0
+
         if error_code:
             self.destroy()
 
-        
+        # self.discovered_web_word_parsers, self.discovered_local_word_parsers = App.get_word_parsers()
+        #
+        # cd = CardGenerator()
+        # self.deck = Deck(json_deck_path=self.CONFIG["directories"]["last_open_file"],
+        #                  current_deck_pointer=self.HISTORY[self.CONFIG["directories"]["last_open_file"]],
+        #                  )
+
     @staticmethod
     def load_history_file() -> dict:
         if not os.path.exists(HISTORY_FILE_PATH):
@@ -201,6 +214,43 @@ class App(Tk):
                 return conf_file, 1
         return conf_file, 0
 
+    @staticmethod
+    def iter_namespace(ns_pkg):
+        # Specifying the second argument (prefix) to iter_modules makes the
+        # returned name an absolute name instead of a relative one. This allows
+        # import_module to work without having to do additional modification to
+        # the name.
+        return pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + ".")
+
+    @staticmethod
+    def get_word_parsers() -> (dict, dict):
+        discovered_web_word_parsers = {}
+        discovered_local_word_parsers = {}
+        for finder, name, ispkg in App.iter_namespace(parsers.word_parsers):
+            parser_trunc_name = name.split(sep=".")[-1]
+            if name.startswith('parsers.word_parsers.web'):
+                discovered_web_word_parsers[parser_trunc_name] = importlib.import_module(name)
+            elif name.startswith('parsers.word_parsers.local'):
+                discovered_local_word_parsers[parser_trunc_name] = importlib.import_module(name)
+        return discovered_web_word_parsers, discovered_local_word_parsers
+
+    @staticmethod
+    def get_sentence_parsers() -> dict:
+        discovered_web_sent_parsers = {}
+        for finder, name, ispkg in App.iter_namespace(parsers.sentence_parsers):
+            parser_trunc_name = name.split(sep=".")[-1]
+            if name.startswith('parsers.sentence_parsers.web'):
+                discovered_web_sent_parsers[parser_trunc_name] = importlib.import_module(name)
+        return discovered_web_sent_parsers
+
+    @staticmethod
+    def get_image_parsers() -> dict:
+        discovered_image_parsers = {}
+        for finder, name, ispkg in App.iter_namespace(parsers.image_parsers):
+            parser_trunc_name = name.split(sep=".")[-1]
+            discovered_image_parsers[parser_trunc_name] = importlib.import_module(name)
+        return discovered_image_parsers
+
 
 if __name__ == "__main__":
     from pprint import pprint
@@ -248,7 +298,7 @@ if __name__ == "__main__":
     # cd = CardGenerator(parsing_function=define, item_converter=translate)
     # pprint(cd.get("do", word_filter=everywhere, additional_filter=find_with_alts))
 
-    # d = Deck(json_deck_path="Words/custom.json", card_generator=cd, current_deck_pointer=0)
-    # d.add_card_to_deck("do")
+    d = Deck(json_deck_path="Words/custom.json", card_generator=cd, current_deck_pointer=0)
+    d.add_card_to_deck("do")
 
     input()

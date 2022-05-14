@@ -8,3 +8,4 @@
 /parsers/media*
 /.idea/*
 **/__pycache__/
+!/utils

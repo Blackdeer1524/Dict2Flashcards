@@ -886,35 +886,10 @@ class App(Tk):
         self.add_sentences_button["command"] = lambda x=sentence_generator: next(x)
 
     @error_handler(error_processing=show_errors)
-    def prepare_tags(self, tag_name, tag, list_tag=True, include_prefix=True):
-        self.JSON_CONF_FILE["tags"]["hierarchical_pref"] = remove_special_chars(self.tag_prefix_field.get().strip(), "-")
-        start_tag_pattern = self.JSON_CONF_FILE["tags"]["hierarchical_pref"] + "::" if\
-                            include_prefix and self.JSON_CONF_FILE["tags"]["hierarchical_pref"] else ""
-        if list_tag:
-            if tag[0] == "":
-                return ""
-            result = ""
-            for item in tag:
-                item = item.replace(' ', '_')
-                result += f"{start_tag_pattern}{tag_name}::{item} "
-            return result
-        else:
-            if tag == "":
-                return ""
-            tag = tag.replace(' ', '_')
-            return f"{start_tag_pattern}{tag_name}::{tag} "
+
 
     @error_handler(error_processing=show_errors)
-    def get_dict_tags(self, include_prefix=True):
-        str_dict_tags = ""
-        for tag_tame in self.DICT_TAGS:
-            tag, add_tag_flag = self.DICT_TAGS[tag_tame]
-            if add_tag_flag.get():
-                if tag_tame == "pos":
-                    str_dict_tags += self.prepare_tags(tag_tame, tag, list_tag=False, include_prefix=include_prefix)
-                else:
-                    str_dict_tags += self.prepare_tags(tag_tame, tag, include_prefix=include_prefix)
-        return str_dict_tags.strip()
+
 
     @error_handler(error_processing=show_errors)
     def choose_sentence(self, button_index):

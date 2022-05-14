@@ -16,7 +16,7 @@ from requests.exceptions import ConnectionError, RequestException, ConnectTimeou
 from tkinterdnd2 import DND_FILES, DND_TEXT
 
 import gi
-from .widgets import ScrolledFrame
+from widgets import ScrolledFrame
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
@@ -126,7 +126,7 @@ class ImageSearch(Toplevel):
 
         self.saving_images = []
         self.saving_images_names = []
-        self.saving_indices = []
+        self.saving_indices = []  # indexes if picked buttons
 
         self.image_saving_name_pattern = kwargs.get("image_saving_name_pattern", "{}")
 
@@ -173,7 +173,7 @@ class ImageSearch(Toplevel):
 
         self.cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 
-        self.resizable(0, 0)
+        self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.bind("<Escape>", lambda event: self.destroy())
         self.bind("<Return>", lambda event: self.close_image_search())
@@ -196,9 +196,9 @@ class ImageSearch(Toplevel):
             messagebox.showerror(message="Check your internet connection")
             return
 
+        self.saving_indices = []
         self.saving_images = []
         self.saving_images_names = []
-        self.saving_indices = []
 
         self.last_button_row = 0
         self.last_button_column = 0

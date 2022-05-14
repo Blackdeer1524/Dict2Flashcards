@@ -28,13 +28,6 @@ import parsers.word_parsers.local
 import parsers.word_parsers.web
 import parsers.sentence_parsers
 
-from utils import ScrolledFrame, ImageSearch, AudioDownloader, TextWithPlaceholder, EntryWithPlaceholder
-from utils import spawn_toplevel_in_center, get_option_menu
-from utils import error_handler
-from utils import get_save_audio_name, get_local_audio_path
-from utils import SearchType, remove_special_chars, string_search
-from utils import AUDIO_NAME_SPEC_CHARS
-
 from CONSTS import *
 
 
@@ -59,7 +52,9 @@ class CardGenerator:
             self.parsing_function: Callable[[str], list[(str, dict)]] = parsing_function
             self.local_dictionary = []
         else:
-            raise Exception("Wrong parameters for CardGenerator class!")
+            raise Exception("Wrong parameters for CardGenerator class!"
+                            f"Check given parameters:",
+                            kwargs)
 
     def get(self, query: str, **kwargs) -> list[dict]:
         """
@@ -86,10 +81,14 @@ class Deck:
         if os.path.isfile(json_deck_path):
             with open(json_deck_path, "r", encoding="UTF-8") as f:
                 self._deck = json.load(f)
-            self._cur_item_index = min(max(len(self._deck) - 1, 0), current_deck_pointer)
+            self.__cur_item_index = min(max(len(self._deck) - 1, 0), current_deck_pointer)
         else:
             raise Exception("Invalid deck path!")
-        self._card_generator: CardGenerator = card_generator
+        self.__card_generator: CardGenerator = card_generator
+
+    def set_card_generator(self, value: CardGenerator):
+        assert (isinstance(value, CardGenerator))
+        self.__card_generator = value
 
     def __len__(self):
         return len(self._deck)
@@ -114,17 +113,17 @@ class Deck:
         additional_filter: Callable[[translated_word_data: dict], bool]
         """
 
-        res: list[dict] = self._card_generator.get(query, **kwargs)
-        self._deck = self[:self._cur_item_index] + res + self[self._cur_item_index:]
+        res: list[dict] = self.__card_generator.get(query, **kwargs)
+        self._deck = self[:self.__cur_item_index] + res + self[self.__cur_item_index:]
 
     def get_card(self) -> dict:
-        cur_card = self[self._cur_item_index]
+        cur_card = self[self.__cur_item_index]
         if cur_card:
-            self._cur_item_index += 1
+            self.__cur_item_index += 1
         return cur_card
 
     def move(self, n: int) -> None:
-        self._cur_item_index = min(max(self._cur_item_index + n, 0), len(self) - 1)
+        self.__cur_item_index = min(max(self.__cur_item_index + n, 0), len(self) - 1)
 
 
 class App(Tk):
@@ -138,12 +137,26 @@ class App(Tk):
         if error_code:
             self.destroy()
 
-        # self.discovered_web_word_parsers, self.discovered_local_word_parsers = App.get_word_parsers()
-        #
-        # cd = CardGenerator()
-        # self.deck = Deck(json_deck_path=self.CONFIG["directories"]["last_open_file"],
-        #                  current_deck_pointer=self.HISTORY[self.CONFIG["directories"]["last_open_file"]],
-        #                  )
+        self.web_word_parsers = App.get_web_word_parsers()
+        self.local_word_parsers = App.get_local_word_parsers()
+        self.web_sent_parsers = App.get_sentence_parsers()
+        self.image_parsers = App.get_image_parsers()
+
+        if self.CONFIG["scrappers"]["parser_type"] == "web":
+            cd = CardGenerator(
+                parsing_function=self.web_word_parsers[self.CONFIG["scrappers"]["parser_name"]].define,
+                item_converter=self.web_word_parsers[self.CONFIG["scrappers"]["parser_name"]].translate)
+        elif self.CONFIG["scrappers"]["parser_type"] == "local":
+            cd = CardGenerator(
+                local_dict_path="./media/{}.json".format(
+                    self.web_word_parsers[self.CONFIG["scrappers"]["parser_name"]].DICTIONARY_PATH),
+                item_converter=self.web_word_parsers[self.CONFIG["scrappers"]["parser_name"]].translate)
+        else:
+            raise NotImplemented("Unknown parser_type: {}!".format(self.CONFIG["scrappers"]["parser_type"]))
+
+        self.deck = Deck(json_deck_path=self.CONFIG["directories"]["last_open_file"],
+                         current_deck_pointer=self.HISTORY[self.CONFIG["directories"]["last_open_file"]],
+                         card_generator=cd)
 
     @staticmethod
     def load_history_file() -> dict:
@@ -160,7 +173,8 @@ class App(Tk):
                                       "main_window_position": "",
                                       "image_search_position": "+0+0"},
                               "scrappers": {"base_sentence_parser": "web_sentencedict",
-                                            "base_word_parser": "web_cambridge_UK",
+                                            "parser_type": "web",
+                                            "parser_name": "cambridge_US",
                                             "base_image_parser": "google",
                                             "local_search_type": 0,
                                             "local_audio": "",
@@ -223,33 +237,39 @@ class App(Tk):
         return pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + ".")
 
     @staticmethod
-    def get_word_parsers() -> (dict, dict):
-        discovered_web_word_parsers = {}
-        discovered_local_word_parsers = {}
-        for finder, name, ispkg in App.iter_namespace(parsers.word_parsers):
+    def get_web_word_parsers() -> dict:
+        web_word_parsers = {}
+        for finder, name, ispkg in App.iter_namespace(parsers.word_parsers.local):
             parser_trunc_name = name.split(sep=".")[-1]
             if name.startswith('parsers.word_parsers.web'):
-                discovered_web_word_parsers[parser_trunc_name] = importlib.import_module(name)
-            elif name.startswith('parsers.word_parsers.local'):
-                discovered_local_word_parsers[parser_trunc_name] = importlib.import_module(name)
-        return discovered_web_word_parsers, discovered_local_word_parsers
+                web_word_parsers[parser_trunc_name] = importlib.import_module(name)
+        return web_word_parsers
+
+    @staticmethod
+    def get_local_word_parsers() -> dict:
+        local_word_parsers = {}
+        for finder, name, ispkg in App.iter_namespace(parsers.word_parsers.local):
+            parser_trunc_name = name.split(sep=".")[-1]
+            if name.startswith('parsers.word_parsers.local'):
+                local_word_parsers[parser_trunc_name] = importlib.import_module(name)
+        return local_word_parsers
 
     @staticmethod
     def get_sentence_parsers() -> dict:
-        discovered_web_sent_parsers = {}
+        web_sent_parsers = {}
         for finder, name, ispkg in App.iter_namespace(parsers.sentence_parsers):
             parser_trunc_name = name.split(sep=".")[-1]
             if name.startswith('parsers.sentence_parsers.web'):
-                discovered_web_sent_parsers[parser_trunc_name] = importlib.import_module(name)
-        return discovered_web_sent_parsers
+                web_sent_parsers[parser_trunc_name] = importlib.import_module(name)
+        return web_sent_parsers
 
     @staticmethod
     def get_image_parsers() -> dict:
-        discovered_image_parsers = {}
+        image_parsers = {}
         for finder, name, ispkg in App.iter_namespace(parsers.image_parsers):
             parser_trunc_name = name.split(sep=".")[-1]
-            discovered_image_parsers[parser_trunc_name] = importlib.import_module(name)
-        return discovered_image_parsers
+            image_parsers[parser_trunc_name] = importlib.import_module(name)
+        return image_parsers
 
 
 if __name__ == "__main__":
@@ -291,7 +311,7 @@ if __name__ == "__main__":
     def everywhere(comparable, query):
         return True if query in comparable else False
 
-    cd = CardGenerator(local_dict_path="./parsers/media/cambridge.json", item_converter=translate)
+    cd = CardGenerator(local_dict_path="./media/cambridge.json", item_converter=translate)
     # pprint(cd.get("do", word_filter=everywhere, additional_filter=find_with_alts))
 
     # from parsers.word_parsers.web_cambridge_US import define

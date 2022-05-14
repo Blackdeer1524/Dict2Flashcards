@@ -3,7 +3,7 @@ import pkgutil
 from tkinter import Label, Button, Checkbutton, Toplevel, Menu, Frame, BooleanVar, IntVar, Entry
 from utils.widgets import TextWithPlaceholder as Text
 from utils.widgets import EntryWithPlaceholder as Entry
-
+from tkinter import messagebox
 
 from tkinterdnd2 import Tk
 from tkinter.filedialog import askopenfilename, askdirectory
@@ -24,13 +24,13 @@ class App(Tk):
     def __init__(self, *args, **kwargs):
         super(App, self).__init__(*args, **kwargs)
         self.CONFIG, error_code = App.load_conf_file()
+        if error_code:
+            self.destroy()
+        self.save_conf_file()
+
         self.HISTORY = App.load_history_file()
         if not self.HISTORY.get(self.CONFIG["directories"]["last_open_file"]):
             self.HISTORY[self.CONFIG["directories"]["last_open_file"]] = 0
-
-        if error_code:
-            self.destroy()
-
         self.web_word_parsers = App.get_web_word_parsers()
         self.local_word_parsers = App.get_local_word_parsers()
         self.web_sent_parsers = App.get_sentence_parsers()
@@ -97,17 +97,6 @@ class App(Tk):
         main_menu.add_command(label="Выход", command=App.func_placeholder)
         self.config(menu=main_menu)
 
-        # main_frame = Frame(self)
-        # main_frame.pack(fill="both", expand=1)
-        # main_canvas = Canvas(main_frame)
-        # main_canvas.pack(side="left", fill="both", expand=1)
-        # scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=main_canvas.yview)
-        # scrollbar.pack(side="right", fill="y")
-        # main_canvas.configure(yscrollcommand=scrollbar.set)
-        # main_canvas.bind("<Configure>", lambda event: main_canvas.configure(scrollregion=main_canvas.bbox("all")))
-        # widget_frame = Frame(main_canvas)
-        # main_canvas.create_window((0, 0), window=widget_frame, anchor="nw")
-
         self.browse_button = Button(self, text="Найти в браузере", command=App.func_placeholder)
         self.config_word_parser_button = Button(self, text="Настроить словарь", command=App.func_placeholder)
         self.find_image_button = Button(self, text="Добавить изображение", command=App.func_placeholder)
@@ -130,19 +119,19 @@ class App(Tk):
                                                            widget_configuration={},
                                                            option_submenu_params={})
 
-        self.word_text = Text(self, placeholder="Слово", height=3)
-        self.alt_terms_field = Text(self, relief="ridge", state="disabled", height=2)
+        self.word_text = Text(self, placeholder="Слово", height=2)
+        self.alt_terms_field = Text(self, relief="ridge", state="disabled", height=1)
         self.meaning_text = Text(self, placeholder="Значение")
 
         self.sent_text_list = []
         Buttons_list = []
-        button_width = 1
+        button_width = 3
         for i in range(5):
             self.sent_text_list.append(Text(self, placeholder=f"Предложение {i + 1}"))
             self.sent_text_list[-1].fill_placeholder()
             Buttons_list.append(Button(self, text=f"{i + 1}", command=App.func_placeholder, width=button_width))
 
-        self.delete_button = Button(self, text="Del", command=lambda: print(self.winfo_width()), width=button_width)
+        self.delete_button = Button(self, text="Del", command=lambda: App.func_placeholder, width=button_width)
         self.prev_button = Button(self, text="Prev", command=App.func_placeholder, state="disabled", width=button_width)
         self.sound_button = Button(self, text="Play", command=App.func_placeholder, width=button_width)
         self.anki_button = Button(self, text="Anki", command=App.func_placeholder, width=button_width)
@@ -151,53 +140,49 @@ class App(Tk):
         self.user_tags_field = Entry(self, placeholder="Тэги")
         self.user_tags_field.fill_placeholder()
 
-        self.tag_prefix_field = Entry(self, justify="center")
+        self.tag_prefix_field = Entry(self, justify="center", width=8)
         self.tag_prefix_field.insert(0, self.CONFIG["tags"]["hierarchical_pref"])
         self.dict_tags_field = Text(self, relief="ridge", state="disabled", height=2)
 
         Text_padx = 10
         Text_pady = 2
         # Расстановка виджетов
-        self.browse_button.grid(row=0, column=0, padx=(Text_padx, 0), pady=(Text_pady, 0), sticky="news", columnspan=2)
-        self.config_word_parser_button.grid(row=0, column=3, padx=(0, Text_padx), pady=(Text_pady, 0),
-                                            columnspan=2, sticky="news")
+        self.browse_button.grid(row=0, column=0, padx=(Text_padx, 0), pady=(Text_pady, 0), sticky="news", columnspan=4)
+        self.config_word_parser_button.grid(row=0, column=4, padx=(0, Text_padx), pady=(Text_pady, 0),
+                                            columnspan=4, sticky="news")
 
-        self.word_text.grid(row=1, column=0, padx=Text_padx, pady=Text_pady, columnspan=5, sticky="news")
+        self.word_text.grid(row=1, column=0, padx=Text_padx, pady=Text_pady, columnspan=8, sticky="news")
 
-        self.alt_terms_field.grid(row=2, column=0, padx=Text_padx, columnspan=5, sticky="news")
+        self.alt_terms_field.grid(row=2, column=0, padx=Text_padx, columnspan=8, sticky="news")
 
-        self.find_image_button.grid(row=3, column=0, padx=(Text_padx, 0), pady=Text_pady, sticky="news", columnspan=2)
-        self.image_parser_option_menu.grid(row=3, column=3, padx=(0, Text_padx), pady=Text_pady, columnspan=2,
+        self.find_image_button.grid(row=3, column=0, padx=(Text_padx, 0), pady=Text_pady, sticky="news", columnspan=4)
+        self.image_parser_option_menu.grid(row=3, column=4, padx=(0, Text_padx), pady=Text_pady, columnspan=4,
                                            sticky="news")
 
-        self.meaning_text.grid(row=4, column=0, padx=Text_padx, columnspan=5, sticky="news")
+        self.meaning_text.grid(row=4, column=0, padx=Text_padx, columnspan=8, sticky="news")
 
-        self.add_sentences_button.grid(row=5, column=0, padx=(Text_padx, 0), pady=Text_pady, sticky="news", columnspan=2)
-        self.sentence_parser_option_menu.grid(row=5, column=3, padx=(0, Text_padx), pady=Text_pady, columnspan=2,
+        self.add_sentences_button.grid(row=5, column=0, padx=(Text_padx, 0), pady=Text_pady, sticky="news", columnspan=4)
+        self.sentence_parser_option_menu.grid(row=5, column=4, padx=(0, Text_padx), pady=Text_pady, columnspan=4,
                                               sticky="news")
 
         for i in range(5):
             c_pady = Text_pady if i % 2 else 0
-            self.sent_text_list[i].grid(row=6 + i, column=0, columnspan=3, padx=Text_padx, pady=c_pady, sticky="news")
-            Buttons_list[i].grid(row=6 + i, column=3, padx=0, pady=c_pady, sticky="news")
+            self.sent_text_list[i].grid(row=6 + i, column=0, columnspan=6, padx=Text_padx, pady=c_pady, sticky="news")
+            Buttons_list[i].grid(row=6 + i, column=6, padx=0, pady=c_pady, sticky="ns")
 
-        self.delete_button.grid(row=6, column=4, padx=Text_padx, pady=0, sticky="news")
-        self.prev_button.grid(row=7, column=4, padx=Text_padx, pady=Text_pady, sticky="news")
-        self.sound_button.grid(row=8, column=4, padx=Text_padx, pady=0, sticky="news")
-        self.anki_button.grid(row=9, column=4, padx=Text_padx, pady=Text_pady, sticky="news")
-        self.skip_button.grid(row=10, column=4, padx=Text_padx, pady=0, sticky="news")
+        self.delete_button.grid(row=6, column=7, padx=Text_padx, pady=0, sticky="ns")
+        self.prev_button.grid(row=7, column=7, padx=Text_padx, pady=Text_pady, sticky="ns")
+        self.sound_button.grid(row=8, column=7, padx=Text_padx, pady=0, sticky="ns")
+        self.anki_button.grid(row=9, column=7, padx=Text_padx, pady=Text_pady, sticky="ns")
+        self.skip_button.grid(row=10, column=7, padx=Text_padx, pady=0, sticky="ns")
 
-        self.user_tags_field.grid(row=11, column=0, padx=Text_padx, pady=Text_pady, columnspan=3,
+        self.user_tags_field.grid(row=11, column=0, padx=Text_padx, pady=Text_pady, columnspan=6,
                                   sticky="news")
-        self.tag_prefix_field.grid(row=11, column=3, padx=(0, Text_padx), pady=Text_pady, columnspan=2,
+        self.tag_prefix_field.grid(row=11, column=6, padx=(0, Text_padx), pady=Text_pady, columnspan=2,
                                    sticky="news")
-        self.dict_tags_field.grid(row=12, column=0, padx=Text_padx, pady=(0, Text_pady), columnspan=5,
+        self.dict_tags_field.grid(row=12, column=0, padx=Text_padx, pady=(0, Text_padx), columnspan=8,
                                   sticky="news")
-
-        self.configure()
-        self.protocol("WM_DELETE_WINDOW", App.func_placeholder)
-
-        for i in range(3):
+        for i in range(6):
             self.grid_columnconfigure(i, weight=1)
         self.grid_rowconfigure(4, weight=1)
         self.grid_rowconfigure(6, weight=1)
@@ -205,9 +190,6 @@ class App(Tk):
         self.grid_rowconfigure(8, weight=1)
         self.grid_rowconfigure(9, weight=1)
         self.grid_rowconfigure(10, weight=1)
-
-        # Заставляет приложение вызваться поверх остальных окон
-        # self.call('wm', 'attributes', '.', '-topmost', True)
 
         def focus_next_window(event):
             event.widget.tk_focusNext().focus()
@@ -229,6 +211,9 @@ class App(Tk):
             self.new_order[widget_index].bind("<Shift-Tab>", focus_prev_window)
 
         self.minsize(500, 0)
+        self.geometry(self.CONFIG["app"]["main_window_geometry"])
+        self.configure()
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     @staticmethod
     def func_placeholder():
@@ -243,10 +228,14 @@ class App(Tk):
                 history_json = json.load(f)
         return history_json
 
+    def save_conf_file(self):
+        with open(CONFIG_FILE_PATH, "w") as f:
+            json.dump(self.CONFIG, f, indent=3)
+
     @staticmethod
     def load_conf_file() -> (dict, bool):
         standard_conf_file = {"app": {"theme": "dark",
-                                      "main_window_position": "",
+                                      "main_window_geometry": "500x800+0+0",
                                       "image_search_position": "+0+0"},
                               "scrappers": {"base_sentence_parser": "web_sentencedict",
                                             "parser_type": "web",
@@ -290,16 +279,16 @@ class App(Tk):
                 return conf_file, 1
                         
         if not conf_file["directories"]["last_open_file"]:
-            new_word_file = askopenfilename(title="Выберете JSON файл со словами", 
-                                               filetypes=(("JSON", ".json"),),
-                                               initialdir="./")
+            conf_file["directories"]["last_open_file"] = askopenfilename(title="Выберете JSON файл со словами",
+                                                                         filetypes=(("JSON", ".json"),),
+                                                                         initialdir="./")
             if not conf_file["directories"]["media_dir"]:
                 return conf_file, 1
             
         if not conf_file["directories"]["last_save_dir"]:
-            saving_location = askdirectory(title="Выберете директорию сохранения", 
-                                           mustexist=True,
-                                           initialdir="./")
+            conf_file["directories"]["last_save_dir"] = askdirectory(title="Выберете директорию сохранения",
+                                                                     mustexist=True,
+                                                                     initialdir="./")
             if not conf_file["directories"]["media_dir"]:
                 return conf_file, 1
         return conf_file, 0
@@ -346,6 +335,46 @@ class App(Tk):
             parser_trunc_name = name.split(sep=".")[-1]
             image_parsers[parser_trunc_name] = importlib.import_module(name)
         return image_parsers
+
+    def save_files(self):
+        """
+        Сохраняет файлы если они не пустые или есть изменения
+        """
+        # получение координат на экране через self.winfo_rootx(), self.winfo_rooty() даёт некоторое смещение
+        self.CONFIG["app"]["main_window_geometry"] = self.winfo_geometry()
+        self.CONFIG["tags"]["hierarchical_pref"] = self.tag_prefix_field.get()
+        self.CONFIG["tags"]["include_domain"] = self.domain_var.get()
+        self.CONFIG["tags"]["include_level"] = self.level_var.get()
+        self.CONFIG["tags"]["include_region"] = self.region_var.get()
+        self.CONFIG["tags"]["include_usage"] = self.usage_var.get()
+        self.CONFIG["tags"]["include_pos"] = self.pos_var.get()
+        self.save_conf_file()
+
+        self.HISTORY[self.CONFIG["directories"]["last_open_file"]] = self.deck.get_deck_pointer()
+
+        with open(self.CONFIG["directories"]["last_open_file"], "w", encoding="utf-8") as new_write_file:
+            json.dump(self.deck.get_deck(), new_write_file, indent=4)
+
+        # self.save_audio_file()
+
+        with open(HISTORY_FILE_PATH, "w") as saving_f:
+            json.dump(self.HISTORY, saving_f, indent=4)
+
+        # if self.SKIPPED_FILE:
+        #     self.save_skip_file()
+    
+    def on_closing(self):
+        """
+        Закрытие программы
+        """
+        if messagebox.askokcancel("Выход", "Вы точно хотите выйти?"):
+            self.save_files()
+            # self.bg.stop()
+            # if self.AUDIO_INFO:
+            #     self.download_audio(closing=True)
+            # else:
+            #     self.destroy()
+            self.destroy()
 
 
 if __name__ == "__main__":

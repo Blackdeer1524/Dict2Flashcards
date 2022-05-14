@@ -62,6 +62,12 @@ class Deck:
         assert (isinstance(value, CardGenerator))
         self.__card_generator = value
 
+    def get_deck_pointer(self) -> int:
+        return self.__cur_item_index
+
+    def get_deck(self) -> list[dict]:
+        return self.__deck
+
     def __len__(self):
         return len(self.__deck)
 

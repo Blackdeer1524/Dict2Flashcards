@@ -130,24 +130,23 @@ class App(Tk):
                                                            widget_configuration={},
                                                            option_submenu_params={})
 
-        self.word_text = Text(self, placeholder="Слово")
+        self.word_text = Text(self, placeholder="Слово", height=3)
         self.alt_terms_field = Text(self, relief="ridge", state="disabled", height=2)
         self.meaning_text = Text(self, placeholder="Значение")
 
         self.sent_text_list = []
         Buttons_list = []
-        
-
+        button_width = 1
         for i in range(5):
             self.sent_text_list.append(Text(self, placeholder=f"Предложение {i + 1}"))
             self.sent_text_list[-1].fill_placeholder()
-            Buttons_list.append(Button(self, text=f"{i + 1}", command=App.func_placeholder))
+            Buttons_list.append(Button(self, text=f"{i + 1}", command=App.func_placeholder, width=button_width))
 
-        self.delete_button = Button(self, text="Del", command=App.func_placeholder)
-        self.prev_button = Button(self, text="Prev", command=App.func_placeholder, state="disabled")
-        self.sound_button = Button(self, text="Play", command=App.func_placeholder)
-        self.anki_button = Button(self, text="Anki", command=App.func_placeholder)
-        self.skip_button = Button(self, text="Skip", command=App.func_placeholder)
+        self.delete_button = Button(self, text="Del", command=lambda: print(self.winfo_width()), width=button_width)
+        self.prev_button = Button(self, text="Prev", command=App.func_placeholder, state="disabled", width=button_width)
+        self.sound_button = Button(self, text="Play", command=App.func_placeholder, width=button_width)
+        self.anki_button = Button(self, text="Anki", command=App.func_placeholder, width=button_width)
+        self.skip_button = Button(self, text="Skip", command=App.func_placeholder, width=button_width)
 
         self.user_tags_field = Entry(self, placeholder="Тэги")
         self.user_tags_field.fill_placeholder()
@@ -167,21 +166,20 @@ class App(Tk):
 
         self.alt_terms_field.grid(row=2, column=0, padx=Text_padx, columnspan=5, sticky="news")
 
-        self.find_image_button.grid(row=3, column=0, padx=Text_padx, pady=Text_pady, sticky="news", columnspan=2)
-        self.image_parser_option_menu.grid(row=3, column=3, padx=Text_padx, pady=Text_pady, columnspan=2,
+        self.find_image_button.grid(row=3, column=0, padx=(Text_padx, 0), pady=Text_pady, sticky="news", columnspan=2)
+        self.image_parser_option_menu.grid(row=3, column=3, padx=(0, Text_padx), pady=Text_pady, columnspan=2,
                                            sticky="news")
 
         self.meaning_text.grid(row=4, column=0, padx=Text_padx, columnspan=5, sticky="news")
 
-        self.add_sentences_button.grid(row=5, column=0, padx=Text_padx, pady=Text_pady, sticky="news", columnspan=2)
-        self.sentence_parser_option_menu.grid(row=5, column=3, padx=Text_padx, pady=Text_pady, columnspan=2,
+        self.add_sentences_button.grid(row=5, column=0, padx=(Text_padx, 0), pady=Text_pady, sticky="news", columnspan=2)
+        self.sentence_parser_option_menu.grid(row=5, column=3, padx=(0, Text_padx), pady=Text_pady, columnspan=2,
                                               sticky="news")
 
         for i in range(5):
             c_pady = Text_pady if i % 2 else 0
-            self.sent_text_list[i].grid(row=5 + i + 1, column=0, columnspan=3, padx=Text_padx, pady=c_pady,
-                                        sticky="news")
-            Buttons_list[i].grid(row=5 + i + 1, column=3, padx=0, pady=c_pady, sticky="news")
+            self.sent_text_list[i].grid(row=6 + i, column=0, columnspan=3, padx=Text_padx, pady=c_pady, sticky="news")
+            Buttons_list[i].grid(row=6 + i, column=3, padx=0, pady=c_pady, sticky="news")
 
         self.delete_button.grid(row=6, column=4, padx=Text_padx, pady=0, sticky="news")
         self.prev_button.grid(row=7, column=4, padx=Text_padx, pady=Text_pady, sticky="news")
@@ -199,9 +197,8 @@ class App(Tk):
         self.configure()
         self.protocol("WM_DELETE_WINDOW", App.func_placeholder)
 
-        for i in range(5):
+        for i in range(3):
             self.grid_columnconfigure(i, weight=1)
-        self.grid_rowconfigure(1, weight=1)
         self.grid_rowconfigure(4, weight=1)
         self.grid_rowconfigure(6, weight=1)
         self.grid_rowconfigure(7, weight=1)
@@ -230,7 +227,8 @@ class App(Tk):
             self.new_order[widget_index].lift()
             self.new_order[widget_index].bind("<Tab>", focus_next_window)
             self.new_order[widget_index].bind("<Shift-Tab>", focus_prev_window)
-        
+
+        self.minsize(500, 0)
 
     @staticmethod
     def func_placeholder():

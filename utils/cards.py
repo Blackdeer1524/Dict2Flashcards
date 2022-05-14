@@ -53,17 +53,24 @@ class Deck:
         if os.path.isfile(json_deck_path):
             with open(json_deck_path, "r", encoding="UTF-8") as f:
                 self.__deck = json.load(f)
-            self.__cur_item_index = min(max(len(self.__deck) - 1, 0), current_deck_pointer)
+            self.__pointer_position = self.__starting_position = min(max(len(self.__deck) - 1, 0), current_deck_pointer)
         else:
             raise Exception("Invalid deck path!")
+        self.__cards_left = len(self) - self.__pointer_position
         self.__card_generator: CardGenerator = card_generator
 
     def set_card_generator(self, value: CardGenerator):
         assert (isinstance(value, CardGenerator))
         self.__card_generator = value
 
-    def get_deck_pointer(self) -> int:
-        return self.__cur_item_index
+    def get_pointer_position(self) -> int:
+        return self.__pointer_position
+    
+    def get_starting_position(self):
+        return self.__starting_position
+    
+    def get_n_cards_left(self) -> int:
+        return self.__cards_left
 
     def get_deck(self) -> list[dict]:
         return self.__deck
@@ -73,7 +80,7 @@ class Deck:
 
     def __getitem__(self, item):
         if isinstance(item, int):
-            return self.__deck[item] if 0 <= item < len(self) else {}
+            return self.__deck[item] if self.__starting_position <= item < len(self) else {}
         elif isinstance(item, slice):
             return self.__deck[item]
 
@@ -86,11 +93,17 @@ class Deck:
             raise Exception(f"Undefined addition for Deck class and {type(other)}!")
 
     def __repr__(self):
-        res = f"Deck\nLength: {len(self)}\nPointer position: {self.__cur_item_index}\n"
+        res = f"Deck\nLength: {len(self)}\nPointer position: {self.__pointer_position}\nCards left: {self.__cards_left}\n"
         for index, item in enumerate(self, 0):
             if not item:
                 break
-            res += "--> " if index == self.__cur_item_index else " " * 4
+            if index == self.__pointer_position or index == self.__starting_position:
+                res += "C" if index == self.__pointer_position else " "
+                res += "S" if index == self.__starting_position else " "
+
+                res += " --> "
+            else:
+                res += " " * 7
             res += f"{index}: {item}\n"
         return res
 
@@ -101,20 +114,23 @@ class Deck:
         """
 
         res: list[dict] = self.__card_generator.get(query, **kwargs)
-        self.__deck = self[:self.__cur_item_index] + res + self[self.__cur_item_index:]
+        self.__deck = self[:self.__pointer_position] + res + self[self.__pointer_position:]
+        self.__cards_left += len(res)
 
     def get_card(self) -> dict:
-        cur_card = self[self.__cur_item_index]
+        cur_card = self[self.__pointer_position]
         if cur_card:
-            self.__cur_item_index += 1
+            self.__pointer_position += 1
+            self.__cards_left -= 1
         return cur_card
 
     def move(self, n: int) -> None:
-        self.__cur_item_index = min(max(self.__cur_item_index + n, 0), len(self) - 1)
+        self.__pointer_position = min(max(self.__pointer_position + n, 0), len(self))
+        self.__cards_left = len(self) - self.__pointer_position
 
 
 if __name__ == "__main__":
-    from pprint import pprint
+    from tkinter.filedialog import askopenfilename
 
     def translate(word_dict: (str, dict)) -> list[dict]:
         """
@@ -152,14 +168,20 @@ if __name__ == "__main__":
     def everywhere(comparable, query):
         return True if query in comparable else False
 
-    cd = CardGenerator(local_dict_path="./media/cambridge.json", item_converter=translate)
+    local_dict_path = askopenfilename(title="Словарь",
+                                      filetypes=(("JSON", ".json"),),
+                                      initialdir="./")
+    cd = CardGenerator(local_dict_path=local_dict_path, item_converter=translate)
     # pprint(cd.get("do", word_filter=everywhere, additional_filter=find_with_alts))
 
     # from parsers.word_parsers.web_cambridge_US import define
     # cd = CardGenerator(parsing_function=define, item_converter=translate)
     # pprint(cd.get("do", word_filter=everywhere, additional_filter=find_with_alts))
 
-    d = Deck(json_deck_path="Words/custom.json", card_generator=cd, current_deck_pointer=0)
+    deck_path = askopenfilename(title="Колода",
+                                      filetypes=(("JSON", ".json"),),
+                                      initialdir="./")
+    d = Deck(json_deck_path=deck_path, card_generator=cd, current_deck_pointer=0)
 
     while True:
         option = input("1: add_card\n2: display_deck\n3: next\n4: prev\n5: move (n)\n6: exit\n")

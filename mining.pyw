@@ -94,7 +94,7 @@ class App(Tk):
                                             "anki_field": ""}
                                     }
             self.save_conf_file()
-        
+
         if not self.JSON_CONF_FILE["app"]["main_window_position"]:
             self.JSON_CONF_FILE["app"]["main_window_position"] = "+0+0"
 
@@ -416,31 +416,7 @@ class App(Tk):
         self.JSON_CONF_FILE["app"]["theme"] = self.index2theme_map[self.theme_index_var.get()]
         messagebox.showinfo(message="Изменения вступят в силу\nтолько после перезапуска программы")
 
-    def show_errors(self, exception, *args, **kwargs):
-        # Для работы функций, которые вызывают StopIteration
-        if type(exception) != StopIteration:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
-            error_log = ''.join(lines)
 
-            error_handler_toplevel = self.Toplevel(self)
-            error_handler_toplevel.title("Ошибка")
-            sf = ScrolledFrame(error_handler_toplevel, scrollbars="both")
-            sf.pack(side="top", expand=1, fill="both")
-            sf.bind_scroll_wheel(error_handler_toplevel)
-            inner_frame = sf.display_widget(partial(Frame, bg=self.main_bg))
-            label = self.Label(inner_frame, text=error_log, justify="left")
-            label.pack()
-            label.update()
-            sf.config(width=min(1000, label.winfo_width()), height=min(500, label.winfo_height()))
-            error_handler_toplevel.resizable(0, 0)
-            error_handler_toplevel.bind("<Escape>", lambda event: error_handler_toplevel.destroy())
-            error_handler_toplevel.grab_set()
-
-            self.clipboard_clear()
-            self.clipboard_append(error_log)
-        else:
-            raise StopIteration
 
     # Скраперы данных
     @error_handler(error_processing=show_errors)

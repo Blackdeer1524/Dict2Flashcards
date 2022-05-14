@@ -4,11 +4,9 @@ from tkinter import Label, Button, Checkbutton, Toplevel, Menu, Frame, BooleanVa
 from utils.widgets import TextWithPlaceholder as Text
 from utils.widgets import EntryWithPlaceholder as Entry
 from tkinter import messagebox
-
+from requests import ConnectionError
 from tkinterdnd2 import Tk
 from tkinter.filedialog import askopenfilename, askdirectory
-from tkinter import Canvas
-from tkinter import ttk
 
 import parsers.image_parsers
 import parsers.word_parsers.local
@@ -36,21 +34,22 @@ class App(Tk):
         self.web_sent_parsers = App.get_sentence_parsers()
         self.image_parsers = App.get_image_parsers()
 
-        if self.CONFIG["scrappers"]["parser_type"] == "web":
+        if self.CONFIG["scrappers"]["word_parser_type"] == "web":
             cd = CardGenerator(
-                parsing_function=self.web_word_parsers[self.CONFIG["scrappers"]["parser_name"]].define,
-                item_converter=self.web_word_parsers[self.CONFIG["scrappers"]["parser_name"]].translate)
-        elif self.CONFIG["scrappers"]["parser_type"] == "local":
+                parsing_function=self.web_word_parsers[self.CONFIG["scrappers"]["word_parser_name"]].define,
+                item_converter=self.web_word_parsers[self.CONFIG["scrappers"]["word_parser_name"]].translate)
+        elif self.CONFIG["scrappers"]["word_parser_type"] == "local":
             cd = CardGenerator(
                 local_dict_path="./media/{}.json".format(
-                    self.web_word_parsers[self.CONFIG["scrappers"]["parser_name"]].DICTIONARY_PATH),
-                item_converter=self.web_word_parsers[self.CONFIG["scrappers"]["parser_name"]].translate)
+                    self.web_word_parsers[self.CONFIG["scrappers"]["word_parser_name"]].DICTIONARY_PATH),
+                item_converter=self.web_word_parsers[self.CONFIG["scrappers"]["word_parser_name"]].translate)
         else:
-            raise NotImplemented("Unknown parser_type: {}!".format(self.CONFIG["scrappers"]["parser_type"]))
+            raise NotImplemented("Unknown word_parser_type: {}!".format(self.CONFIG["scrappers"]["word_parser_type"]))
 
         self.deck = Deck(json_deck_path=self.CONFIG["directories"]["last_open_file"],
                          current_deck_pointer=self.HISTORY[self.CONFIG["directories"]["last_open_file"]],
                          card_generator=cd)
+        self.sentence_parser = self.web_sent_parsers[self.CONFIG["scrappers"]["base_sentence_parser"]]
 
         main_menu = Menu(self)
         filemenu = Menu(main_menu, tearoff=0)
@@ -71,6 +70,12 @@ class App(Tk):
         self.region_var = BooleanVar(name="region")
         self.usage_var = BooleanVar(name="usage")
         self.pos_var = BooleanVar(name="pos")
+
+        self.DICT_TAGS = {"domain": [[""], self.domain_var],
+                          "level": [[""], self.level_var],
+                          "region": [[""], self.region_var],
+                          "usage": [[""], self.usage_var],
+                          "pos": ["", self.pos_var]}
 
         tag_menu.add_checkbutton(label='domain', variable=self.domain_var)
         tag_menu.add_checkbutton(label='level', variable=self.level_var)
@@ -102,18 +107,18 @@ class App(Tk):
         self.find_image_button = Button(self, text="Добавить изображение", command=App.func_placeholder)
         self.image_word_parsers_names = list(self.image_parsers)
         
-        self.image_parser_name = self.CONFIG["scrappers"]["base_image_parser"]
+        self.image_word_parser_name = self.CONFIG["scrappers"]["base_image_parser"]
         self.image_parser_option_menu = get_option_menu(self,
-                                                        init_text=self.image_parser_name,
+                                                        init_text=self.image_word_parser_name,
                                                         values=self.image_word_parsers_names,
                                                         command=App.func_placeholder,
                                                         widget_configuration={},
                                                         option_submenu_params={})
 
         self.add_sentences_button = Button(self, text="Добавить предложения")
-        self.sentence_parser_name = self.CONFIG["scrappers"]["base_sentence_parser"]
+        self.sentence_word_parser_name = self.CONFIG["scrappers"]["base_sentence_parser"]
         self.sentence_parser_option_menu = get_option_menu(self,
-                                                           init_text=self.sentence_parser_name,
+                                                           init_text=self.sentence_word_parser_name,
                                                            values=list(self.web_sent_parsers),
                                                            command=App.func_placeholder,
                                                            widget_configuration={},
@@ -210,6 +215,21 @@ class App(Tk):
             self.new_order[widget_index].bind("<Tab>", focus_next_window)
             self.new_order[widget_index].bind("<Shift-Tab>", focus_prev_window)
 
+        self.bind("<Escape>", lambda event: self.on_closing())
+        self.bind("<Control-Key-0>", lambda event: self.geometry("+0+0"))
+        self.bind("<Control-d>", lambda event: self.func_placeholder())
+        self.bind("<Control-q>", lambda event: self.func_placeholder())
+        self.bind("<Control-s>", lambda event: self.save_button())
+        self.bind("<Control-f>", lambda event: self.func_placeholder())
+        self.bind("<Control-e>", lambda event: self.func_placeholder())
+        self.bind("<Control-Shift_L><A>", lambda event: self.func_placeholder())
+        self.bind("<Control-z>", lambda event: self.func_placeholder())
+        self.bind("<Control-Key-1>", lambda event: self.func_placeholder())
+        self.bind("<Control-Key-2>", lambda event: self.func_placeholder())
+        self.bind("<Control-Key-3>", lambda event: self.func_placeholder())
+        self.bind("<Control-Key-4>", lambda event: self.func_placeholder())
+        self.bind("<Control-Key-5>", lambda event: self.func_placeholder())
+
         self.minsize(500, 0)
         self.geometry(self.CONFIG["app"]["main_window_geometry"])
         self.configure()
@@ -238,8 +258,8 @@ class App(Tk):
                                       "main_window_geometry": "500x800+0+0",
                                       "image_search_position": "+0+0"},
                               "scrappers": {"base_sentence_parser": "web_sentencedict",
-                                            "parser_type": "web",
-                                            "parser_name": "cambridge_US",
+                                            "word_parser_type": "web",
+                                            "word_parser_name": "cambridge_US",
                                             "base_image_parser": "google",
                                             "local_search_type": 0,
                                             "local_audio": "",
@@ -350,7 +370,7 @@ class App(Tk):
         self.CONFIG["tags"]["include_pos"] = self.pos_var.get()
         self.save_conf_file()
 
-        self.HISTORY[self.CONFIG["directories"]["last_open_file"]] = self.deck.get_deck_pointer()
+        self.HISTORY[self.CONFIG["directories"]["last_open_file"]] = self.deck.get_pointer_position()
 
         with open(self.CONFIG["directories"]["last_open_file"], "w", encoding="utf-8") as new_write_file:
             json.dump(self.deck.get_deck(), new_write_file, indent=4)

@@ -1,4 +1,5 @@
-from typing import Callable
+import copy
+from typing import Callable, Iterator
 import os
 import json
 
@@ -65,10 +66,10 @@ class Deck:
 
     def get_pointer_position(self) -> int:
         return self.__pointer_position
-    
+
     def get_starting_position(self):
         return self.__starting_position
-    
+
     def get_n_cards_left(self) -> int:
         return self.__cards_left
 
@@ -129,75 +130,42 @@ class Deck:
         self.__cards_left = len(self) - self.__pointer_position
 
 
-if __name__ == "__main__":
-    from tkinter.filedialog import askopenfilename
+class CardWrapper:
+    def __init__(self, sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = lambda *_: [[], True]):
+        self.__card = {}
+        self.__sentence_fetcher = sent_fetcher
+        self.__local_sentences_flag = True
+        self.__sentence_pointer = 0
 
-    def translate(word_dict: (str, dict)) -> list[dict]:
+    def __call__(self, card: dict):
+        self.__local_sentences_flag = True
+        self.__sentence_pointer = 0
+        self.__card = copy.deepcopy(card)
+        for str_key in ("word", "meaning"):
+            if self.__card.get(str_key) is None:
+                self.__card[str_key] = ""
+        for list_key in ("Sen_Ex",):
+            if self.__card.get(list_key) is None:
+                self.__card[list_key] = ""
+
+    def update_word(self, new_word: str):
+        self.__card["word"] = new_word
+        self.__local_sentences_flag = True
+
+    def get_sentence_batch(self, batch_size: int = 5) -> Iterator[tuple[list[str], bool]]:
         """
-        Adapt new parser to legacy code
+        Yields: Sentence_batch, error_status
         """
-        word_list = []
-        word, data = word_dict
-        for pos in data:
-            audio = data[pos].get("US_audio_link", "")
-            for definition, examples, domain, labels_and_codes, level, \
-                region, usage, image, alt_terms in zip(data[pos]["definitions"],
-                                                       data[pos]["examples"],
-                                                       data[pos]["domain"],
-                                                       data[pos]["labels_and_codes"],
-                                                       data[pos]["level"],
-                                                       data[pos]["region"],
-                                                       data[pos]["usage"],
-                                                       data[pos]["image_links"],
-                                                       data[pos]["alt_terms"]):
-                # {"word": слово_n, "meaning": значение_n, "Sen_Ex": [пример_1, ..., пример_n]}
-                current_word_dict = {"word": word.strip(), "meaning": definition,
-                                     "Sen_Ex": examples, "domain": domain, "level": level, "region": region,
-                                     "usage": usage, "pos": pos, "audio_link": audio, "image_link": image,
-                                     "alt_terms": alt_terms}
-                current_word_dict = {key: value for key, value in current_word_dict.items() if
-                                     value not in ("", [])}
-                word_list.append(current_word_dict)
-        return word_list
+        while True:
+            if self.__local_sentences_flag:
+                while self.__sentence_pointer < len(self.__card["Sen_Ex"]):
+                    yield self.__card["Sen_Ex"][self.__sentence_pointer:self.__sentence_pointer + batch_size], False
+                    self.__sentence_pointer += batch_size
 
-    def find_with_alts(translated_card: dict) -> bool:
-        if translated_card.get("pos") == "verb":
-            return True
-        return False
-
-    def everywhere(comparable, query):
-        return True if query in comparable else False
-
-    local_dict_path = askopenfilename(title="Словарь",
-                                      filetypes=(("JSON", ".json"),),
-                                      initialdir="./")
-    cd = CardGenerator(local_dict_path=local_dict_path, item_converter=translate)
-    # pprint(cd.get("do", word_filter=everywhere, additional_filter=find_with_alts))
-
-    # from parsers.word_parsers.web_cambridge_US import define
-    # cd = CardGenerator(parsing_function=define, item_converter=translate)
-    # pprint(cd.get("do", word_filter=everywhere, additional_filter=find_with_alts))
-
-    deck_path = askopenfilename(title="Колода",
-                                      filetypes=(("JSON", ".json"),),
-                                      initialdir="./")
-    d = Deck(json_deck_path=deck_path, card_generator=cd, current_deck_pointer=0)
-
-    while True:
-        option = input("1: add_card\n2: display_deck\n3: next\n4: prev\n5: move (n)\n6: exit\n")
-        if option == "1":
-            word_query = input("Введите слово: ")
-            d.add_card_to_deck(word_query)
-        elif option == "2":
-            print(d)
-        elif option == "3":
-            d.get_card()
-        elif option == "4":
-            d.move(-1)
-        elif option == "5":
-            n = int(input("На сколько сдвинуть: "))
-            d.move(n)
-        elif option == "6":
-            break
-        else:
-            print("Error!")
+            self.__local_sentences_flag = False
+            for sentence_batch, error_status in self.__sentence_fetcher(self.__card["word"], batch_size):
+                yield sentence_batch, error_status
+                if self.__local_sentences_flag:  # can be changed by update_word method
+                    break
+            else:
+                self.__local_sentences_flag = True

@@ -50,10 +50,10 @@ class App(Tk):
         self.deck = Deck(json_deck_path=self.CONFIG["directories"]["last_open_file"],
                          current_deck_pointer=self.HISTORY[self.CONFIG["directories"]["last_open_file"]],
                          card_generator=cd)
-        self.CARDS_STATUSES = []
         self.sentence_parser = self.web_sent_parsers[
             self.CONFIG["scrappers"]["base_sentence_parser"]].get_sentence_batch
 
+        self.CARDS_STATUSES = []
         main_menu = Menu(self)
         filemenu = Menu(main_menu, tearoff=0)
         filemenu.add_command(label="Создать", command=App.func_placeholder)

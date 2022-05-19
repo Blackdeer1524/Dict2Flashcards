@@ -2,6 +2,8 @@ import copy
 from typing import Callable, Iterator
 import os
 import json
+from PIL import Image
+from utils.image_utils import ImageSearch
 
 
 class CardGenerator:
@@ -85,14 +87,6 @@ class Deck:
         elif isinstance(item, slice):
             return self.__deck[item]
 
-    def __add__(self, other):
-        if isinstance(other, list):
-            return self.__deck + other
-        elif isinstance(other, Deck):
-            return self.__deck + other.__deck
-        else:
-            raise Exception(f"Undefined addition for Deck class and {type(other)}!")
-
     def __repr__(self):
         res = f"Deck\nLength: {len(self)}\nPointer position: {self.__pointer_position}\nCards left: {self.__cards_left}\n"
         for index, item in enumerate(self, 0):
@@ -131,13 +125,21 @@ class Deck:
 
 
 class CardWrapper:
-    def __init__(self, sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = lambda *_: [[], True]):
-        self.__card = {}
-        self.__sentence_fetcher = sent_fetcher
-        self.__local_sentences_flag = True
-        self.__sentence_pointer = 0
+    def __init__(self, saving_file_path: str,
+                 sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = lambda *_: [[], True],
+                 sentence_batch_size=5):
+        self.__card: dict[str, str] = {}
+        self.__saving_file_path: str = saving_file_path
+        self.__sentence_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = sent_fetcher
+        self.__sentence_pointer: int = 0
+        self.__batch_size: int = sentence_batch_size
+        self.__batch_generator: Iterator[tuple[list[str], bool]] = self.__get_batch_generator()
+        self.__local_sentences_flag: bool = True
+        self.__images: list[Image] = []
+        self.__update_status: bool = False
 
     def __call__(self, card: dict):
+        self.__images.clear()
         self.__local_sentences_flag = True
         self.__sentence_pointer = 0
         self.__card = copy.deepcopy(card)
@@ -149,23 +151,38 @@ class CardWrapper:
                 self.__card[list_key] = ""
 
     def update_word(self, new_word: str):
-        self.__card["word"] = new_word
-        self.__local_sentences_flag = True
+        if self.__card["word"] != new_word:
+            self.__card["word"] = new_word
+            self.__update_status = True
 
-    def get_sentence_batch(self, batch_size: int = 5) -> Iterator[tuple[list[str], bool]]:
+    def __get_batch_generator(self) -> Iterator[tuple[list[str], bool]]:
         """
         Yields: Sentence_batch, error_status
         """
         while True:
             if self.__local_sentences_flag:
                 while self.__sentence_pointer < len(self.__card["Sen_Ex"]):
-                    yield self.__card["Sen_Ex"][self.__sentence_pointer:self.__sentence_pointer + batch_size], False
-                    self.__sentence_pointer += batch_size
+                    # checks for update even before the first iteration
+                    if self.__update_status:
+                        break
+                    yield self.__card["Sen_Ex"][self.__sentence_pointer:self.__sentence_pointer + self.__batch_size], False
+                    self.__sentence_pointer += self.__batch_size
+                self.__sentence_pointer = 0
+                self.__local_sentences_flag = False
+                # __sentence_fetcher doesn't need update before it's first iteration
+                # because of its first argument
+                self.__update_status = False
 
-            self.__local_sentences_flag = False
-            for sentence_batch, error_status in self.__sentence_fetcher(self.__card["word"], batch_size):
+            for sentence_batch, error_status in self.__sentence_fetcher(self.__card["word"], self.__batch_size):
                 yield sentence_batch, error_status
-                if self.__local_sentences_flag:  # can be changed by update_word method
+                if self.__update_status:
+                    self.__update_status = False
+                    break
+                if self.__local_sentences_flag or error_status:
                     break
             else:
                 self.__local_sentences_flag = True
+
+    def get_sentence_batch(self, word: str) -> tuple[list[str], bool]:
+        self.update_word(word)
+        return next(self.__batch_generator)

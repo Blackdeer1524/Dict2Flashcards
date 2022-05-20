@@ -217,6 +217,7 @@ class CardWrapper:
         image_finder = ImageSearch(master=self.__image_search_master,
                                    search_term=self.__card["word"],
                                    url_scrapper=self.__img_url_fetcher,
+                                   init_images=self.__images,
                                    init_urls=init_urls,
                                    headers=headers,
                                    on_closing_action=record_images,

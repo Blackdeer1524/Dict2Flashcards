@@ -76,6 +76,7 @@ class ImageSearch(Toplevel):
         url_scrapper: function that returns image urls by given query\n
         max_request_tries: how many retries allowed per one image-showing cycle\n
         init_urls: custom urls to be displayed\n
+        init_images: custom images to be displayed\n
         headers: request headers\n
         timeout: request timeout\n
         show_image_width: maximum image display width\n
@@ -96,6 +97,7 @@ class ImageSearch(Toplevel):
         """
         self.search_term: str = search_term
         self.__img_urls: Deque = Deque(kwargs.get("init_urls", []))
+        self.__init_images = kwargs.get("init_images", [])
         self.__url_scrapper: Callable[[str], list[str]] = kwargs.get("url_scrapper")
 
         if self.search_term and self.__url_scrapper is not None:
@@ -175,9 +177,18 @@ class ImageSearch(Toplevel):
         self.drop_target_register(DND_FILES, DND_TEXT)
         self.dnd_bind('<<Drop>>', self.drop)
 
+        self.command_widget_total_height = self.__save_button.winfo_height() + self.__search_field.winfo_height() + \
+                                           2 * self.__button_pady
+
     def start(self):
         if CURRENT_SYSTEM == "Linux":
             self.__cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+
+        for custom_image in self.__init_images:
+            self.process_single_image(custom_image)
+            self.working_state[-1] = True
+            self.button_list[-1]["bg"] = self.__choose_color
+            
         next(self.__show_more_gen)
         self.resize()
 
@@ -235,8 +246,8 @@ class ImageSearch(Toplevel):
         current_frame_width = self.__inner_frame.winfo_width()
         current_frame_height = self.__inner_frame.winfo_height()
         self.__sf.config(width=min(self.window_width_limit, current_frame_width),
-                       height=min(self.window_height_limit - self.command_widget_total_height,
-                                  current_frame_height))
+                         height=min(self.window_height_limit - self.command_widget_total_height,
+                                     current_frame_height))
 
     @staticmethod
     def preprocess_image(img, width: int = None, height: int = None):
@@ -336,9 +347,6 @@ class ImageSearch(Toplevel):
 
     def show_more(self):
         self.update()
-        self.command_widget_total_height = self.__save_button.winfo_height() + self.__search_field.winfo_height() + \
-                                           2 * self.__button_pady
-
         while self.__img_urls:
             self.process_url_batch(self.__n_images_per_cycle - len(self.working_state) % self.__n_images_in_row)
             if not self.__img_urls:

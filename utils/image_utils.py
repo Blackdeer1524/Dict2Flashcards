@@ -109,30 +109,22 @@ class ImageSearch(Toplevel):
         self.button_pady = kwargs.get("button_pady", 10)
         Toplevel.__init__(self, master, bg=self.window_bg)
 
-        self.saving_dir = saving_dir
-
         self.headers = kwargs.get("headers")
         self.timeout = kwargs.get("timeout", 1)
         self.max_request_tries = kwargs.get("max_request_tries", 5)
 
-        self.last_button_row = 0
-        self.last_button_column = 0
-        self.last_button_index = 0
         self.n_images_in_row = kwargs.get("n_images_in_row", 3)
         self.n_rows = kwargs.get("n_rows", 2)
         self.n_images_per_cycle = self.n_rows * self.n_images_in_row
 
         self.pool: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=self.n_images_per_cycle)
 
-        self.saving_images = []
-        self.saving_images_names = []
-        self.saving_indices = []  # indexes if picked buttons
-
-        self.image_saving_name_pattern = kwargs.get("image_saving_name_pattern", "{}")
+        self.saving_images: list[Image] = []
+        self.working_state: list[bool] = []  # indices of picked buttons
+        self.button_list: list[Button] = []
 
         self.optimal_visual_width = kwargs.get("show_image_width")
         self.optimal_visual_height = kwargs.get("show_image_height")
-
         self.optimal_result_width = kwargs.get("saving_image_width")
         self.optimal_result_height = kwargs.get("saving_image_height")
 
@@ -164,10 +156,10 @@ class ImageSearch(Toplevel):
 
         self.show_more_button = Button(master=self, text="Show more",
                                        command=lambda x=self.show_more_gen: next(x), **self.command_button_params)
-        self.download_button = Button(master=self, text="Download",
-                                      command=lambda: self.close_image_search(), **self.command_button_params)
+        self.save_button = Button(master=self, text="Save",
+                                  command=lambda: self.destroy(), **self.command_button_params)
         self.show_more_button.grid(row=3, column=0, sticky="news")
-        self.download_button.grid(row=3, column=1, sticky="news")
+        self.save_button.grid(row=3, column=1, sticky="news")
 
         self.on_closing_action = kwargs.get("on_close_action")
 
@@ -175,7 +167,7 @@ class ImageSearch(Toplevel):
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.bind("<Escape>", lambda event: self.destroy())
-        self.bind("<Return>", lambda event: self.close_image_search())
+        self.bind("<Return>", lambda event: self.destroy())
         self.bind("<Control-v>", lambda event: self.paste_image())
         self.drop_target_register(DND_FILES, DND_TEXT)
         self.dnd_bind('<<Drop>>', self.drop)
@@ -194,19 +186,35 @@ class ImageSearch(Toplevel):
         except ConnectionError:
             messagebox.showerror(message="Check your internet connection")
             return
+        self.inner_frame = self.sf.display_widget(partial(Frame, bg=self.window_bg))
 
-        self.saving_indices = []
-        self.saving_images = []
-        self.saving_images_names = []
+        left_indent = 0
+        for i in range(len(self.working_state)):
+            if self.working_state[i]:
+                self.working_state[left_indent] = True
+                self.saving_images[left_indent] = copy.deepcopy(self.saving_images[i])
 
-        self.last_button_row = 0
-        self.last_button_column = 0
-        self.last_button_index = 0
+                self.button_list[left_indent].grid_remove()
+                self.button_list[left_indent].destroy()
+                b = Button(master=self.inner_frame,
+                           image=self.button_list[i].image,
+                           bg=self.button_bg,
+                           activebackground=self.activebackground,
+                           command=lambda button_index=left_indent:
+                           self.choose_pic(button_index))
+                b.grid(row=left_indent // self.n_images_in_row,
+                       column=left_indent % self.n_images_in_row,
+                       padx=self.button_padx, pady=self.button_pady, sticky="news")
+                self.button_list[left_indent] = b
+                
+                left_indent += 1
+        del self.button_list[left_indent:]
+        del self.working_state[left_indent:]
+        del self.saving_images[left_indent:]
 
         self.show_more_gen = self.show_more()
         self.show_more_button.configure(command=lambda x=self.show_more_gen: next(x))
 
-        self.inner_frame = self.sf.display_widget(partial(Frame, bg=self.window_bg))
         if self.img_urls:
             self.show_more_button["state"] = "normal"
             next(self.show_more_gen)
@@ -225,14 +233,6 @@ class ImageSearch(Toplevel):
         self.sf.config(width=min(self.window_width_limit, current_frame_width),
                        height=min(self.window_height_limit - self.command_widget_total_height,
                                   current_frame_height))
-
-    def close_image_search(self):
-        for saving_index in self.saving_indices:
-            saving_image = self.preprocess_image(self.saving_images[saving_index],
-                                                 width=self.optimal_result_width,
-                                                 height=self.optimal_result_height)
-            saving_image.save(f"{self.saving_dir}/{self.saving_images_names[saving_index]}.png")
-        self.destroy()
 
     @staticmethod
     def preprocess_image(img, width: int = None, height: int = None):
@@ -279,29 +279,22 @@ class ImageSearch(Toplevel):
         except (IOError, UnicodeError):
             return ImageSearch.StatusCodes.IMAGE_PROCESSING_ERROR, None, None
 
-    def choose_pic(self, button):
-        if not button.is_picked:
-            button["bg"] = "#FF0000"
-            self.saving_indices.append(button.image_index)
-        else:
-            button["bg"] = self.button_bg
-            self.saving_indices.remove(button.image_index)
-        button.is_picked = not button.is_picked
+    def choose_pic(self, button_index):
+        self.working_state[button_index] = not self.working_state[button_index]
+        self.button_list[button_index]["bg"] = "#FF0000" if self.working_state[button_index] else self.button_bg
 
     def place_buttons(self, button_image_batch):
         for j in range(len(button_image_batch)):
             b = Button(master=self.inner_frame, image=button_image_batch[j],
-                       bg=self.button_bg, activebackground=self.activebackground)
+                       bg=self.button_bg, activebackground=self.activebackground,
+                       command=lambda button_index=len(self.working_state): self.choose_pic(button_index))
             b.image = button_image_batch[j]
-            b.image_index = self.last_button_index
-            b.is_picked = False
-            b["command"] = lambda current_button=b: self.choose_pic(current_button)
-            b.grid(row=self.last_button_index // self.n_images_in_row,
-                   column=self.last_button_index % self.n_images_in_row,
+            b.grid(row=len(self.working_state) // self.n_images_in_row,
+                   column=len(self.working_state) % self.n_images_in_row,
                    padx=self.button_padx, pady=self.button_pady, sticky="news")
-            self.last_button_index += 1
-        self.last_button_row = self.last_button_index // self.n_images_in_row
-        self.last_button_column = self.last_button_index % self.n_images_in_row
+            self.working_state.append(False)
+            self.button_list.append(b)
+
         self.inner_frame.update()
         self.resize()
 
@@ -311,7 +304,6 @@ class ImageSearch(Toplevel):
         :param n_retries: (if some error occurred) replace "bad" image with the new one and tries to fetch it.
         :return:
         """
-
         def add_fetching_to_queue():
             nonlocal n_retries
             if self.img_urls and n_retries < self.max_request_tries:
@@ -327,10 +319,8 @@ class ImageSearch(Toplevel):
             if fetching_status == ImageSearch.StatusCodes.NORMAL:
                 processing_status, button_img, img = self.process_bin_data(content)
                 if processing_status == ImageSearch.StatusCodes.NORMAL:
-                    hash_url = hash(url)
                     button_images_batch.append(button_img)
                     self.saving_images.append(img)
-                    self.saving_images_names.append(self.image_saving_name_pattern.format(hash_url))
                 else:
                     add_fetching_to_queue()
             elif fetching_status == ImageSearch.StatusCodes.RETRIABLE_FETCHING_ERROR:
@@ -342,11 +332,11 @@ class ImageSearch(Toplevel):
 
     def show_more(self):
         self.update()
-        self.command_widget_total_height = self.download_button.winfo_height() + self.search_field.winfo_height() + \
+        self.command_widget_total_height = self.save_button.winfo_height() + self.search_field.winfo_height() + \
                                            2 * self.button_pady
 
         while self.img_urls:
-            self.process_url_batch(self.n_images_per_cycle - self.last_button_column)
+            self.process_url_batch(self.n_images_per_cycle - len(self.working_state) % self.n_images_in_row)
             if not self.img_urls:
                 break
             yield
@@ -357,7 +347,6 @@ class ImageSearch(Toplevel):
         button_img_batch = [ImageTk.PhotoImage(
             self.preprocess_image(img, width=self.optimal_visual_width, height=self.optimal_visual_height))]
         self.saving_images.append(img)
-        self.saving_images_names.append(self.image_saving_name_pattern.format(hash(random.random())))
         self.place_buttons(button_img_batch)
 
     def drop(self, event):
@@ -391,6 +380,7 @@ class ImageSearch(Toplevel):
 
 if __name__ == "__main__":
     from tkinterdnd2 import Tk
+    from parsers.image_parsers.google import get_image_links
 
     def start_image_search(word, master, saving_dir, **kwargs):
         image_finder = ImageSearch(search_term=word, master=master, saving_dir=saving_dir,
@@ -399,11 +389,11 @@ if __name__ == "__main__":
 
     test_urls = ["https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png"]
 
-    def get_image_links(search_term: None) -> list:
-        return ["https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png"]
+    # def get_image_links(search_term: None) -> list:
+    #     return ["https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png"]
 
     root = Tk()
-    root.withdraw()
+    # root.withdraw()
 
     root.after(0, start_image_search("test", root, "./", init_urls=test_urls, show_image_width=300))
     root.after(0, start_image_search("test", root, "./", url_scrapper=get_image_links, show_image_width=300))

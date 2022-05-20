@@ -65,11 +65,10 @@ class ImageSearch(Toplevel):
         NON_RETRIABLE_FETCHING_ERROR = 2
         IMAGE_PROCESSING_ERROR = 3
 
-    def __init__(self, master, search_term, saving_dir, **kwargs):
+    def __init__(self, master, search_term, **kwargs):
         """
         master: \n
         search_term: \n
-        saving_dir: \n
         url_scrapper: function that returns image urls by given query\n
         max_request_tries: how many retries allowed per one image-showing cycle\n
         init_urls: custom urls to be displayed\n
@@ -102,6 +101,7 @@ class ImageSearch(Toplevel):
                 messagebox.showerror(message="Check your internet connection")
 
         self.button_bg = self.activebackground = "#FFFFFF"
+        self.choose_color = "#FF0000"
         self.window_bg = kwargs.get("window_bg", "#F0F0F0")
         self.command_button_params = kwargs.get("command_button_params", {})
         self.entry_params = kwargs.get("entry_params", {})
@@ -161,7 +161,7 @@ class ImageSearch(Toplevel):
         self.show_more_button.grid(row=3, column=0, sticky="news")
         self.save_button.grid(row=3, column=1, sticky="news")
 
-        self.on_closing_action = kwargs.get("on_close_action")
+        self.on_closing_action = kwargs.get("on_closing_action")
 
         self.cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
         self.resizable(False, False)
@@ -195,13 +195,13 @@ class ImageSearch(Toplevel):
                 self.saving_images[left_indent] = copy.deepcopy(self.saving_images[i])
 
                 self.button_list[left_indent].grid_remove()
-                self.button_list[left_indent].destroy()
                 b = Button(master=self.inner_frame,
                            image=self.button_list[i].image,
-                           bg=self.button_bg,
+                           bg=self.choose_color,
                            activebackground=self.activebackground,
                            command=lambda button_index=left_indent:
                            self.choose_pic(button_index))
+                b.image = self.button_list[i].image
                 b.grid(row=left_indent // self.n_images_in_row,
                        column=left_indent % self.n_images_in_row,
                        padx=self.button_padx, pady=self.button_pady, sticky="news")
@@ -281,7 +281,7 @@ class ImageSearch(Toplevel):
 
     def choose_pic(self, button_index):
         self.working_state[button_index] = not self.working_state[button_index]
-        self.button_list[button_index]["bg"] = "#FF0000" if self.working_state[button_index] else self.button_bg
+        self.button_list[button_index]["bg"] = self.choose_color if self.working_state[button_index] else self.button_bg
 
     def place_buttons(self, button_image_batch):
         for j in range(len(button_image_batch)):
@@ -382,9 +382,8 @@ if __name__ == "__main__":
     from tkinterdnd2 import Tk
     from parsers.image_parsers.google import get_image_links
 
-    def start_image_search(word, master, saving_dir, **kwargs):
-        image_finder = ImageSearch(search_term=word, master=master, saving_dir=saving_dir,
-                                   **kwargs)
+    def start_image_search(word, master, **kwargs):
+        image_finder = ImageSearch(search_term=word, master=master, **kwargs)
         image_finder.start()
 
     test_urls = ["https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png"]
@@ -395,6 +394,13 @@ if __name__ == "__main__":
     root = Tk()
     # root.withdraw()
 
-    root.after(0, start_image_search("test", root, "./", init_urls=test_urls, show_image_width=300))
-    root.after(0, start_image_search("test", root, "./", url_scrapper=get_image_links, show_image_width=300))
+    def on_closing(instance: ImageSearch):
+        res = []
+        for i in range(len(instance.working_state)):
+            if instance.working_state[i]:
+                instance.saving_images[i].save(f"./{i}.png")
+
+
+    root.after(0, start_image_search("test", root, "./", url_scrapper=get_image_links, show_image_width=300,
+                                     on_closing_action=on_closing))
     root.mainloop()

@@ -186,3 +186,10 @@ class CardWrapper:
     def get_sentence_batch(self, word: str) -> tuple[list[str], str]:
         self.update_word(word)
         return next(self.__batch_generator)
+
+    def get_images(self):
+        """
+        saves images inside self.__images
+        """
+
+

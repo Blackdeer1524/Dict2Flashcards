@@ -8,8 +8,6 @@ def get_image_links(word):
     link = f"https://www.google.com/search?tbm=isch&q={word}&safe=active"
     user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.67 Safari/537.36"
     headers = {'User-Agent': user_agent}
-    # results = []
-    # try:
     r = requests.get(link, headers=headers, timeout=5)
     r.raise_for_status()
     html = r.text

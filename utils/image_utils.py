@@ -1,6 +1,5 @@
 import copy
 import os
-import random
 from concurrent.futures import ThreadPoolExecutor
 from enum import IntEnum
 from functools import partial
@@ -10,16 +9,21 @@ from tkinter import Frame
 from tkinter import Toplevel
 from tkinter import messagebox
 from typing import Callable
+
 import requests
 from PIL import Image, ImageTk
 from requests.exceptions import ConnectionError, RequestException, ConnectTimeout
 from tkinterdnd2 import DND_FILES, DND_TEXT
 
-import gi
+from CONSTS import CURRENT_SYSTEM
 from widgets import ScrolledFrame
 
-gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Gdk
+if CURRENT_SYSTEM == "Linux":
+    import gi
+    gi.require_version('Gtk', '3.0')
+    from gi.repository import Gtk, Gdk
+else:
+    from PIL import ImageGrab
 
 
 class Deque:
@@ -91,33 +95,33 @@ class ImageSearch(Toplevel):
         on_close_action(**kwargs): additional action performed on closing.
         """
         self.search_term: str = search_term
-        self.img_urls: Deque = Deque(kwargs.get("init_urls", []))
-        self.url_scrapper: Callable[[str], list[str]] = kwargs.get("url_scrapper")
+        self.__img_urls: Deque = Deque(kwargs.get("init_urls", []))
+        self.__url_scrapper: Callable[[str], list[str]] = kwargs.get("url_scrapper")
 
-        if self.search_term and self.url_scrapper is not None:
+        if self.search_term and self.__url_scrapper is not None:
             try:
-                self.img_urls.extend(self.url_scrapper(self.search_term))
+                self.__img_urls.extend(self.__url_scrapper(self.search_term))
             except ConnectionError:
                 messagebox.showerror(message="Check your internet connection")
 
-        self.button_bg = self.activebackground = "#FFFFFF"
-        self.choose_color = "#FF0000"
-        self.window_bg = kwargs.get("window_bg", "#F0F0F0")
-        self.command_button_params = kwargs.get("command_button_params", {})
-        self.entry_params = kwargs.get("entry_params", {})
-        self.button_padx = kwargs.get("button_padx", 10)
-        self.button_pady = kwargs.get("button_pady", 10)
-        Toplevel.__init__(self, master, bg=self.window_bg)
+        self.__button_bg = self.activebackground = "#FFFFFF"
+        self.__choose_color = "#FF0000"
+        self.__window_bg = kwargs.get("window_bg", "#F0F0F0")
+        self.__command_button_params = kwargs.get("command_button_params", {})
+        self.__entry_params = kwargs.get("entry_params", {})
+        self.__button_padx = kwargs.get("button_padx", 10)
+        self.__button_pady = kwargs.get("button_pady", 10)
+        Toplevel.__init__(self, master, bg=self.__window_bg)
 
-        self.headers = kwargs.get("headers")
-        self.timeout = kwargs.get("timeout", 1)
-        self.max_request_tries = kwargs.get("max_request_tries", 5)
+        self.__headers = kwargs.get("headers")
+        self.__timeout = kwargs.get("timeout", 1)
+        self.__max_request_tries = kwargs.get("max_request_tries", 5)
 
-        self.n_images_in_row = kwargs.get("n_images_in_row", 3)
-        self.n_rows = kwargs.get("n_rows", 2)
-        self.n_images_per_cycle = self.n_rows * self.n_images_in_row
+        self.__n_images_in_row = kwargs.get("n_images_in_row", 3)
+        self.__n_rows = kwargs.get("n_rows", 2)
+        self.__n_images_per_cycle = self.__n_rows * self.__n_images_in_row
 
-        self.pool: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=self.n_images_per_cycle)
+        self.__pool: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=self.__n_images_per_cycle)
 
         self.saving_images: list[Image] = []
         self.working_state: list[bool] = []  # indices of picked buttons
@@ -129,21 +133,21 @@ class ImageSearch(Toplevel):
         self.optimal_result_height = kwargs.get("saving_image_height")
 
         self.title("Image search")
-        self.search_field = Entry(self, justify="center", **self.entry_params)
-        self.search_field.insert(0, self.search_term)
-        self.start_search_button = Button(self, text="Search", command=self.restart_search,
-                                          **self.command_button_params)
+        self.__search_field = Entry(self, justify="center", **self.__entry_params)
+        self.__search_field.insert(0, self.search_term)
+        self.__start_search_button = Button(self, text="Search", command=self.restart_search,
+                                          **self.__command_button_params)
 
-        self.search_field.grid(row=0, column=0, sticky="news",
-                               padx=(self.button_padx, 0), pady=self.button_pady)
-        self.start_search_button.grid(row=0, column=1, sticky="news",
-                                      padx=(0, self.button_padx), pady=self.button_pady)
-        self.start_search_button["state"] = "normal" if self.url_scrapper else "disabled"
+        self.__search_field.grid(row=0, column=0, sticky="news",
+                               padx=(self.__button_padx, 0), pady=self.__button_pady)
+        self.__start_search_button.grid(row=0, column=1, sticky="news",
+                                      padx=(0, self.__button_padx), pady=self.__button_pady)
+        self.__start_search_button["state"] = "normal" if self.__url_scrapper else "disabled"
 
-        self.sf = ScrolledFrame(self, scrollbars="both")
-        self.sf.grid(row=1, column=0, columnspan=2)
-        self.sf.bind_scroll_wheel(self)
-        self.inner_frame = self.sf.display_widget(partial(Frame, bg=self.window_bg))
+        self.__sf = ScrolledFrame(self, scrollbars="both")
+        self.__sf.grid(row=1, column=0, columnspan=2)
+        self.__sf.bind_scroll_wheel(self)
+        self.__inner_frame = self.__sf.display_widget(partial(Frame, bg=self.__window_bg))
 
         window_width_limit = kwargs.get("window_width_limit")
         window_height_limit = kwargs.get("window_height_limit")
@@ -152,18 +156,17 @@ class ImageSearch(Toplevel):
         self.window_height_limit = window_height_limit if window_height_limit is not None else \
             master.winfo_screenheight() * 2 // 3
 
-        self.show_more_gen = self.show_more()
+        self.__show_more_gen = self.show_more()
+        self.__show_more_button = Button(master=self, text="Show more",
+                                       command=lambda x=self.__show_more_gen: next(x), **self.__command_button_params)
+        self.__save_button = Button(master=self, text="Save",
+                                  command=lambda: self.destroy(), **self.__command_button_params)
+        self.__show_more_button.grid(row=3, column=0, sticky="news")
+        self.__save_button.grid(row=3, column=1, sticky="news")
 
-        self.show_more_button = Button(master=self, text="Show more",
-                                       command=lambda x=self.show_more_gen: next(x), **self.command_button_params)
-        self.save_button = Button(master=self, text="Save",
-                                  command=lambda: self.destroy(), **self.command_button_params)
-        self.show_more_button.grid(row=3, column=0, sticky="news")
-        self.save_button.grid(row=3, column=1, sticky="news")
+        self.__on_closing_action = kwargs.get("on_closing_action")
 
-        self.on_closing_action = kwargs.get("on_closing_action")
-
-        self.cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+        self.__cb = None
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.bind("<Escape>", lambda event: self.destroy())
@@ -173,20 +176,22 @@ class ImageSearch(Toplevel):
         self.dnd_bind('<<Drop>>', self.drop)
 
     def start(self):
-        next(self.show_more_gen)
+        if CURRENT_SYSTEM == "Linux":
+            self.__cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+        next(self.__show_more_gen)
         self.resize()
 
     def restart_search(self):
-        self.search_term = self.search_field.get()
+        self.search_term = self.__search_field.get()
         if not self.search_term:
             messagebox.showerror(message="Empty search query")
             return
         try:
-            self.img_urls = Deque(self.url_scrapper(self.search_term))
+            self.__img_urls = Deque(self.__url_scrapper(self.search_term))
         except ConnectionError:
             messagebox.showerror(message="Check your internet connection")
             return
-        self.inner_frame = self.sf.display_widget(partial(Frame, bg=self.window_bg))
+        self.__inner_frame = self.__sf.display_widget(partial(Frame, bg=self.__window_bg))
 
         left_indent = 0
         for i in range(len(self.working_state)):
@@ -195,16 +200,16 @@ class ImageSearch(Toplevel):
                 self.saving_images[left_indent] = copy.deepcopy(self.saving_images[i])
 
                 self.button_list[left_indent].grid_remove()
-                b = Button(master=self.inner_frame,
+                b = Button(master=self.__inner_frame,
                            image=self.button_list[i].image,
-                           bg=self.choose_color,
+                           bg=self.__choose_color,
                            activebackground=self.activebackground,
                            command=lambda button_index=left_indent:
                            self.choose_pic(button_index))
                 b.image = self.button_list[i].image
-                b.grid(row=left_indent // self.n_images_in_row,
-                       column=left_indent % self.n_images_in_row,
-                       padx=self.button_padx, pady=self.button_pady, sticky="news")
+                b.grid(row=left_indent // self.__n_images_in_row,
+                       column=left_indent % self.__n_images_in_row,
+                       padx=self.__button_padx, pady=self.__button_pady, sticky="news")
                 self.button_list[left_indent] = b
                 
                 left_indent += 1
@@ -212,25 +217,24 @@ class ImageSearch(Toplevel):
         del self.working_state[left_indent:]
         del self.saving_images[left_indent:]
 
-        self.show_more_gen = self.show_more()
-        self.show_more_button.configure(command=lambda x=self.show_more_gen: next(x))
+        self.__show_more_gen = self.show_more()
+        self.__show_more_button.configure(command=lambda x=self.__show_more_gen: next(x))
 
-        if self.img_urls:
-            self.show_more_button["state"] = "normal"
-            next(self.show_more_gen)
+        if self.__img_urls:
+            self.__show_more_button["state"] = "normal"
+            next(self.__show_more_gen)
         else:
-            self.show_more_button["state"] = "disabled"
+            self.__show_more_button["state"] = "disabled"
 
     def destroy(self):
-        if self.on_closing_action is not None:
-            self.on_closing_action(self)
+        if self.__on_closing_action is not None:
+            self.__on_closing_action(self)
         super(ImageSearch, self).destroy()
 
     def resize(self):
-        current_frame_width = self.inner_frame.winfo_width()
-        current_frame_height = self.inner_frame.winfo_height()
-
-        self.sf.config(width=min(self.window_width_limit, current_frame_width),
+        current_frame_width = self.__inner_frame.winfo_width()
+        current_frame_height = self.__inner_frame.winfo_height()
+        self.__sf.config(width=min(self.window_width_limit, current_frame_width),
                        height=min(self.window_height_limit - self.command_widget_total_height,
                                   current_frame_height))
 
@@ -255,7 +259,7 @@ class ImageSearch(Toplevel):
         :return: status, button_img, img
         """
         try:
-            response = requests.get(url, headers=self.headers, timeout=self.timeout)
+            response = requests.get(url, headers=self.__headers, timeout=self.__timeout)
             response.raise_for_status()
             content = response.content
             return ImageSearch.StatusCodes.NORMAL, content, url
@@ -267,7 +271,7 @@ class ImageSearch(Toplevel):
     def schedule_batch_fetching(self, url_batch: list):
         image_fetch_tasks = []
         for url in url_batch:
-            image_fetch_tasks.append(self.pool.submit(self.fetch_image, url))
+            image_fetch_tasks.append(self.__pool.submit(self.fetch_image, url))
         return image_fetch_tasks
 
     def process_bin_data(self, content=None):
@@ -281,21 +285,21 @@ class ImageSearch(Toplevel):
 
     def choose_pic(self, button_index):
         self.working_state[button_index] = not self.working_state[button_index]
-        self.button_list[button_index]["bg"] = self.choose_color if self.working_state[button_index] else self.button_bg
+        self.button_list[button_index]["bg"] = self.__choose_color if self.working_state[button_index] else self.__button_bg
 
     def place_buttons(self, button_image_batch):
         for j in range(len(button_image_batch)):
-            b = Button(master=self.inner_frame, image=button_image_batch[j],
-                       bg=self.button_bg, activebackground=self.activebackground,
+            b = Button(master=self.__inner_frame, image=button_image_batch[j],
+                       bg=self.__button_bg, activebackground=self.activebackground,
                        command=lambda button_index=len(self.working_state): self.choose_pic(button_index))
             b.image = button_image_batch[j]
-            b.grid(row=len(self.working_state) // self.n_images_in_row,
-                   column=len(self.working_state) % self.n_images_in_row,
-                   padx=self.button_padx, pady=self.button_pady, sticky="news")
+            b.grid(row=len(self.working_state) // self.__n_images_in_row,
+                   column=len(self.working_state) % self.__n_images_in_row,
+                   padx=self.__button_padx, pady=self.__button_pady, sticky="news")
             self.working_state.append(False)
             self.button_list.append(b)
 
-        self.inner_frame.update()
+        self.__inner_frame.update()
         self.resize()
 
     def process_url_batch(self, batch_size, n_retries=0):
@@ -306,12 +310,12 @@ class ImageSearch(Toplevel):
         """
         def add_fetching_to_queue():
             nonlocal n_retries
-            if self.img_urls and n_retries < self.max_request_tries:
-                image_fetching_futures.append(self.pool.submit(self.fetch_image, self.img_urls.popleft()[0]))
+            if self.__img_urls and n_retries < self.__max_request_tries:
+                image_fetching_futures.append(self.__pool.submit(self.fetch_image, self.__img_urls.popleft()[0]))
                 n_retries += 1
 
         button_images_batch = []
-        url_batch = self.img_urls.popleft(batch_size)
+        url_batch = self.__img_urls.popleft(batch_size)
         image_fetching_futures = self.schedule_batch_fetching(url_batch)
 
         while image_fetching_futures:
@@ -324,7 +328,7 @@ class ImageSearch(Toplevel):
                 else:
                     add_fetching_to_queue()
             elif fetching_status == ImageSearch.StatusCodes.RETRIABLE_FETCHING_ERROR:
-                self.img_urls.append(url)
+                self.__img_urls.append(url)
                 add_fetching_to_queue()
             else:
                 add_fetching_to_queue()
@@ -332,15 +336,15 @@ class ImageSearch(Toplevel):
 
     def show_more(self):
         self.update()
-        self.command_widget_total_height = self.save_button.winfo_height() + self.search_field.winfo_height() + \
-                                           2 * self.button_pady
+        self.command_widget_total_height = self.__save_button.winfo_height() + self.__search_field.winfo_height() + \
+                                           2 * self.__button_pady
 
-        while self.img_urls:
-            self.process_url_batch(self.n_images_per_cycle - len(self.working_state) % self.n_images_in_row)
-            if not self.img_urls:
+        while self.__img_urls:
+            self.process_url_batch(self.__n_images_per_cycle - len(self.working_state) % self.__n_images_in_row)
+            if not self.__img_urls:
                 break
             yield
-        self.show_more_button["state"] = "disabled"
+        self.__show_more_button["state"] = "disabled"
         yield
 
     def process_single_image(self, img: Image.Image):
@@ -356,26 +360,29 @@ class ImageSearch(Toplevel):
                 img = Image.open(data_path)
                 self.process_single_image(img)
             elif data_path.startswith("http"):
-                self.img_urls.appendleft(data_path)
-                self.process_url_batch(batch_size=1, n_retries=self.max_request_tries)
+                self.__img_urls.appendleft(data_path)
+                self.process_url_batch(batch_size=1, n_retries=self.__max_request_tries)
         return event.action
 
     def paste_image(self):
-        def pixbuf2image(pix):
-            """Convert gdkpixbuf to PIL image"""
-            data = pix.get_pixels()
-            w = pix.props.width
-            h = pix.props.height
-            stride = pix.props.rowstride
-            mode = "RGB"
-            if pix.props.has_alpha == True:
-                mode = "RGBA"
-            im = Image.frombytes(mode, (w, h), data, "raw", mode, stride)
-            return im
+        if CURRENT_SYSTEM == "Linux":
+            def pixbuf2image(pix):
+                """Convert gdkpixbuf to PIL image"""
+                data = pix.get_pixels()
+                w = pix.props.width
+                h = pix.props.height
+                stride = pix.props.rowstride
+                mode = "RGB"
+                if pix.props.has_alpha == True:
+                    mode = "RGBA"
+                im = Image.frombytes(mode, (w, h), data, "raw", mode, stride)
+                return im
 
-        if self.cb.wait_is_image_available():
-            pixbuf = self.cb.wait_for_image()
-            self.process_single_image(pixbuf2image(pixbuf))
+            if self.__cb.wait_is_image_available():
+                pixbuf = self.__cb.wait_for_image()
+                self.process_single_image(pixbuf2image(pixbuf))
+        else:
+            self.process_single_image(ImageGrab.grabclipboard())
 
 
 if __name__ == "__main__":
@@ -401,6 +408,6 @@ if __name__ == "__main__":
                 instance.saving_images[i].save(f"./{i}.png")
 
 
-    root.after(0, start_image_search("test", root, "./", url_scrapper=get_image_links, show_image_width=300,
+    root.after(0, start_image_search("test", root, url_scrapper=get_image_links, show_image_width=300,
                                      on_closing_action=on_closing))
     root.mainloop()

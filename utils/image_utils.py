@@ -9,7 +9,7 @@ from tkinter import Entry, Button
 from tkinter import Frame
 from tkinter import Toplevel
 from tkinter import messagebox
-
+from typing import Callable
 import requests
 from PIL import Image, ImageTk
 from requests.exceptions import ConnectionError, RequestException, ConnectTimeout
@@ -91,9 +91,9 @@ class ImageSearch(Toplevel):
         command_button_params(**kwargs): "Show more" and "Download" buttons params\n
         on_close_action(**kwargs): additional action performed on closing.
         """
-        self.search_term = search_term
-        self.img_urls = Deque(kwargs.get("init_urls", []))
-        self.url_scrapper = kwargs.get("url_scrapper")
+        self.search_term: str = search_term
+        self.img_urls: Deque = Deque(kwargs.get("init_urls", []))
+        self.url_scrapper: Callable[[str], list[str]] = kwargs.get("url_scrapper")
 
         if self.search_term and self.url_scrapper is not None:
             try:
@@ -122,7 +122,7 @@ class ImageSearch(Toplevel):
         self.n_rows = kwargs.get("n_rows", 2)
         self.n_images_per_cycle = self.n_rows * self.n_images_in_row
 
-        self.pool = ThreadPoolExecutor(max_workers=self.n_images_per_cycle)
+        self.pool: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=self.n_images_per_cycle)
 
         self.saving_images = []
         self.saving_images_names = []
@@ -172,7 +172,6 @@ class ImageSearch(Toplevel):
         self.on_closing_action = kwargs.get("on_close_action")
 
         self.cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
-
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.bind("<Escape>", lambda event: self.destroy())

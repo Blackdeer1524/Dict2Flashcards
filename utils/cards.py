@@ -126,14 +126,14 @@ class Deck:
 
 class CardWrapper:
     def __init__(self, saving_file_path: str,
-                 sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = lambda *_: [[], True],
+                 sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], str]]] = lambda *_: [[], True],
                  sentence_batch_size=5):
         self.__card: dict[str, str] = {}
         self.__saving_file_path: str = saving_file_path
-        self.__sentence_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = sent_fetcher
+        self.__sentence_fetcher: Callable[[str, int], Iterator[tuple[list[str], str]]] = sent_fetcher
         self.__sentence_pointer: int = 0
         self.__batch_size: int = sentence_batch_size
-        self.__batch_generator: Iterator[tuple[list[str], bool]] = self.__get_batch_generator()
+        self.__batch_generator: Iterator[tuple[list[str], str]] = self.__get_batch_generator()
         self.__local_sentences_flag: bool = True
         self.__images: list[Image] = []
         self.__update_status: bool = False
@@ -155,9 +155,9 @@ class CardWrapper:
             self.__card["word"] = new_word
             self.__update_status = True
 
-    def __get_batch_generator(self) -> Iterator[tuple[list[str], bool]]:
+    def __get_batch_generator(self) -> Iterator[tuple[list[str], str]]:
         """
-        Yields: Sentence_batch, error_status
+        Yields: Sentence_batch, error_message
         """
         while True:
             if self.__local_sentences_flag:
@@ -165,7 +165,7 @@ class CardWrapper:
                     # checks for update even before the first iteration
                     if self.__update_status:
                         break
-                    yield self.__card["Sen_Ex"][self.__sentence_pointer:self.__sentence_pointer + self.__batch_size], False
+                    yield self.__card["Sen_Ex"][self.__sentence_pointer:self.__sentence_pointer + self.__batch_size], ""
                     self.__sentence_pointer += self.__batch_size
                 self.__sentence_pointer = 0
                 self.__local_sentences_flag = False
@@ -173,16 +173,16 @@ class CardWrapper:
                 # because of its first argument
                 self.__update_status = False
 
-            for sentence_batch, error_status in self.__sentence_fetcher(self.__card["word"], self.__batch_size):
-                yield sentence_batch, error_status
+            for sentence_batch, error_message in self.__sentence_fetcher(self.__card["word"], self.__batch_size):
+                yield sentence_batch, error_message
                 if self.__update_status:
                     self.__update_status = False
                     break
-                if self.__local_sentences_flag or error_status:
+                if self.__local_sentences_flag or error_message:
                     break
             else:
                 self.__local_sentences_flag = True
 
-    def get_sentence_batch(self, word: str) -> tuple[list[str], bool]:
+    def get_sentence_batch(self, word: str) -> tuple[list[str], str]:
         self.update_word(word)
         return next(self.__batch_generator)

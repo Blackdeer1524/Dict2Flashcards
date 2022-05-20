@@ -2,8 +2,11 @@ import copy
 from typing import Callable, Iterator
 import os
 import json
+
+import tkinterdnd2
 from PIL import Image
 from utils.image_utils import ImageSearch
+from time import time
 
 
 class CardGenerator:
@@ -125,18 +128,29 @@ class Deck:
 
 
 class CardWrapper:
-    def __init__(self, saving_file_path: str,
-                 sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], str]]] = lambda *_: [[], True],
-                 sentence_batch_size=5):
-        self.__card: dict[str, str] = {}
+    def __init__(self,
+                 master: tkinterdnd2.Tk,
+                 confing: dict,
+                 saving_file_path: str,
+                 sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = lambda *_: [[], True],
+                 sentence_batch_size=5,
+                 img_saving_dir: str = "./",
+                 img_url_fetcher: Callable[[str], list[str]] = lambda x: [],
+                 ):
+        self.CONFIG = confing
         self.__saving_file_path: str = saving_file_path
-        self.__sentence_fetcher: Callable[[str, int], Iterator[tuple[list[str], str]]] = sent_fetcher
-        self.__sentence_pointer: int = 0
+        self.__card: dict[str, str] = {}
+        self.__sentence_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = sent_fetcher
         self.__batch_size: int = sentence_batch_size
-        self.__batch_generator: Iterator[tuple[list[str], str]] = self.__get_batch_generator()
+        self.__sentence_pointer: int = 0
+        self.__sent_batch_generator: Iterator[tuple[list[str], str]] = self.__get_sent_batch_generator()
         self.__local_sentences_flag: bool = True
-        self.__images: list[Image] = []
         self.__update_status: bool = False
+
+        self.__images: list[Image] = []
+        self.__image_search_master = master
+        self.__img_saving_dir = img_saving_dir
+        self.__img_url_fetcher = img_url_fetcher
 
     def __call__(self, card: dict):
         self.__images.clear()
@@ -155,7 +169,7 @@ class CardWrapper:
             self.__card["word"] = new_word
             self.__update_status = True
 
-    def __get_batch_generator(self) -> Iterator[tuple[list[str], str]]:
+    def __get_sent_batch_generator(self) -> Iterator[tuple[list[str], str]]:
         """
         Yields: Sentence_batch, error_message
         """
@@ -185,11 +199,35 @@ class CardWrapper:
 
     def get_sentence_batch(self, word: str) -> tuple[list[str], str]:
         self.update_word(word)
-        return next(self.__batch_generator)
+        return next(self.__sent_batch_generator)
 
-    def get_images(self):
+    def get_images(self, **kwargs):
         """
         saves images inside self.__images
         """
+        def record_images(instance: ImageSearch):
+            for i in range(len(instance.working_state)):
+                if instance.working_state[i]:
+                    self.__images.append(instance.saving_images[i])
+            image_search_x, image_search_y = instance.geometry().split("+")[1:]
+            self.CONFIG["app"]["image_search_position"] = f"+{image_search_x}+{image_search_y}"
 
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'}
+        init_urls = [self.__card.get("image_link")] if self.__card.get("image_link") is not None else []
+        image_finder = ImageSearch(master=self.__image_search_master,
+                                   search_term=self.__card["word"],
+                                   url_scrapper=self.__img_url_fetcher,
+                                   init_urls=init_urls,
+                                   headers=headers,
+                                   on_closing_action=record_images,
+                                   show_image_width=250,
+                                   saving_image_width=300)
+                                   # ,
+                                   # window_bg=self.main_bg,
+                                   # command_button_params=self.button_cfg,
+                                   # entry_params=self.entry_cfg)
+        image_finder.focus()
+        image_finder.grab_set()
+        image_finder.geometry(self.CONFIG["app"]["image_search_position"])
+        image_finder.start()
 

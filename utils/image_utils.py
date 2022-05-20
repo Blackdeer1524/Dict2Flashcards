@@ -16,7 +16,7 @@ from requests.exceptions import ConnectionError, RequestException, ConnectTimeou
 from tkinterdnd2 import DND_FILES, DND_TEXT
 
 from CONSTS import CURRENT_SYSTEM
-from widgets import ScrolledFrame
+from utils.widgets import ScrolledFrame
 
 if CURRENT_SYSTEM == "Linux":
     import gi

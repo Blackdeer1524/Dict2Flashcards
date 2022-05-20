@@ -4,7 +4,7 @@ import re
 from typing import Iterator
 
 
-def get_sentence_batch(word, step=5) -> Iterator[tuple[list, bool]]:
+def get_sentence_batch(word: str, step: int = 5) -> Iterator[tuple[list, bool]]:
     re_pattern = re.compile("^(.?\d+.? )")
     try:
         page = requests.get(f"https://sentencedict.com/{word}.html")

@@ -231,3 +231,15 @@ class CardWrapper:
         image_finder.grab_set()
         image_finder.geometry(self.CONFIG["app"]["image_search_position"])
         image_finder.start()
+
+    def __save_images(self) -> list[str]:
+        img_names = []
+        for img in self.__images:
+            name = f"{self.__img_saving_dir}/mined-{self.__card['word']}-{hash(time())}"
+            img_names.append(name)
+            img.save(name)
+        return img_names
+
+    def write_to_file(self):
+        img_names = self.__save_images()
+

@@ -1,20 +1,32 @@
 import requests
 import bs4
+from typing import Generator
+import os
 
 
-def get_image_links(word):
+FILE_PATH = os.path.dirname(__file__)
+
+
+def get_image_links(word) -> Generator[tuple[list[str], str], int, tuple[list[str], str]]:
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'
     headers = {'User-Agent': user_agent}
     link = "https://www.gettyimages.com/photos/{}".format(word)
-    page = requests.get(link, headers=headers, timeout=5)
-    soup = bs4.BeautifulSoup(page.content, "html.parser")
-    
+    try:
+        r = requests.get(link, headers=headers, timeout=5)
+        r.raise_for_status()
+    except Exception:
+        return [], f"{FILE_PATH} couldn't get web page!"
+
+    soup = bs4.BeautifulSoup(r.content, "html.parser")
     gallery = soup.find("div", {"class": "GalleryItems-module__searchContent___3eEaB"})
-    
+    if gallery is None:
+        return [], f"{FILE_PATH} couldn't parse web page!"
+
     images = [] if gallery is None else gallery.find_all("div",
                                                          {"class": "MosaicAsset-module__galleryMosaicAsset___3lcaf"})
+    batch_size = yield
     results = []
-    for image_block in images:
+    for ind, image_block in enumerate(images):
         found = image_block.find("a", {"class": "MosaicAsset-module__link___15w9c"})
         if found is not None:
             preview_image_link = found.get("href")
@@ -23,12 +35,20 @@ def get_image_links(word):
                 image_name, image_id = split_preview_image_link[-2], split_preview_image_link[-1]
                 image_link = f"https://media.gettyimages.com/photos/{image_name}-id{image_id}"
                 results.append(image_link)
-    return results
+        if not ind % batch_size:
+            batch_size = yield results, ""
+            results = []
+    return results, ""
 
 
 if __name__ == "__main__":
-    from time import time
+    from pprint import pprint
 
-    start = time()
-    get_image_links("test")
-    print((time() - start))
+    image_url_gen = get_image_links("test")
+    try:
+        next(image_url_gen)
+        while True:
+            urls, error_message = image_url_gen.send(1)
+            pprint(urls)
+    except StopIteration as exception:
+        pprint(exception.value)

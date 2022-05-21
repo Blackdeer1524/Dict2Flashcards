@@ -52,8 +52,8 @@ if __name__ == "__main__":
     from pprint import pprint
 
     image_url_gen = get_image_links("test")
-    next(image_url_gen)
     try:
+        next(image_url_gen)
         while True:
             urls, error_message = image_url_gen.send(1)
             pprint(urls)

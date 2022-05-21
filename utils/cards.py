@@ -9,8 +9,8 @@ from utils.error_handling import create_exception_message
 class CardGenerator:
     def __init__(self, **kwargs):
         """
-        parsing_function: Callainsertionsble[[str], list[(str, dict)]],
-        local_dict_path: str = kwargs.get("local_dict_path", "")
+        parsing_function: Callable[[str], list[(str, dict)]]
+        local_dict_path: str
         item_converter: Callable[[(str, dict)], dict]
         """
         parsing_function: Callable[[str], list[(str, dict)]] = kwargs.get("parsing_function")
@@ -67,7 +67,7 @@ class Deck(CardStorage):
             with open(json_deck_path, "r", encoding="UTF-8") as f:
                 self._deck = json.load(f)
             self._pointer_position = self._starting_position = min(max(len(self._deck) - 1, 0),
-                                                                     max(0, current_deck_pointer))
+                                                                   max(0, current_deck_pointer))
         else:
             raise Exception("Invalid _deck path!")
         self._cards_left = len(self) - self._pointer_position
@@ -131,6 +131,7 @@ class CardStatus(Enum):
     SKIP = 1
     BURY = 2
 
+
 class SavedDeck(CardStorage):
     def __init__(self):
         super().__init__()
@@ -139,11 +140,9 @@ class SavedDeck(CardStorage):
         res = {"status": status}
         if status != CardStatus.SKIP:
             try:
-                saving_card = {
-                    WORD_FIELD: kwargs[WORD_FIELD],
-                    DEFINITION_FIELD: kwargs[DEFINITION_FIELD],
-                }
-                saving_card[SENTENCES_FIELD] = kwargs[SENTENCES_FIELD]
+                saving_card = {WORD_FIELD: kwargs[WORD_FIELD],
+                               DEFINITION_FIELD: kwargs[DEFINITION_FIELD],
+                               SENTENCES_FIELD: kwargs[SENTENCES_FIELD]}
             except KeyError:
                 return create_exception_message()
 
@@ -173,6 +172,7 @@ class SavedDeck(CardStorage):
             res += f"{index}: {item}\n"
         return res
 
+
 class SentenceFetcher:
     def __init__(self,
                  sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = lambda *_: [[], True],
@@ -198,7 +198,7 @@ class SentenceFetcher:
             self._word = new_word
             self._update_status = True
 
-    def __get_sent_batch_generator(self) -> Iterator[tuple[list[str], str]]:
+    def _get_sent_batch_generator(self) -> Iterator[tuple[list[str], str]]:
         """
         Yields: Sentence_batch, error_message
         """

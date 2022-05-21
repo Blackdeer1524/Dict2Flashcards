@@ -1,13 +1,13 @@
 import requests
 import bs4
-from typing import Generator
+from typing import Generator, Any
 import os
 
 
 FILE_PATH = os.path.dirname(__file__)
 
 
-def get_image_links(word) -> Generator[tuple[list[str], str], int, tuple[list[str], str]]:
+def get_image_links(word: Any) -> Generator[tuple[list[str], str], int, tuple[list[str], str]]:
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'
     headers = {'User-Agent': user_agent}
     link = "https://www.gettyimages.com/photos/{}".format(word)
@@ -15,12 +15,12 @@ def get_image_links(word) -> Generator[tuple[list[str], str], int, tuple[list[st
         r = requests.get(link, headers=headers, timeout=5)
         r.raise_for_status()
     except Exception:
-        return [], f"{FILE_PATH} couldn't get web page!"
+        return [], f"{FILE_PATH} couldn't get a web page!"
 
     soup = bs4.BeautifulSoup(r.content, "html.parser")
     gallery = soup.find("div", {"class": "GalleryItems-module__searchContent___3eEaB"})
     if gallery is None:
-        return [], f"{FILE_PATH} couldn't parse web page!"
+        return [], f"{FILE_PATH} couldn't parse a web page!"
 
     images = [] if gallery is None else gallery.find_all("div",
                                                          {"class": "MosaicAsset-module__galleryMosaicAsset___3lcaf"})
@@ -44,7 +44,7 @@ def get_image_links(word) -> Generator[tuple[list[str], str], int, tuple[list[st
 if __name__ == "__main__":
     from pprint import pprint
 
-    image_url_gen = get_image_links("test")
+    image_url_gen = get_image_links("do")
     try:
         next(image_url_gen)
         while True:

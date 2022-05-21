@@ -8,11 +8,11 @@ from tkinter import Entry, Button
 from tkinter import Frame
 from tkinter import Toplevel
 from tkinter import messagebox
-from typing import Callable
+from typing import Callable, Generator, Any
 
 import requests
 from PIL import Image, ImageTk
-from requests.exceptions import ConnectionError, RequestException, ConnectTimeout
+from requests.exceptions import RequestException, ConnectTimeout
 from tkinterdnd2 import DND_FILES, DND_TEXT
 
 from CONSTS import CURRENT_SYSTEM
@@ -58,6 +58,9 @@ class Deque:
         for i in range(len(collection)-1, -1, -1):
             self.appendleft(collection[i])
 
+    def clear(self):
+        self.deque.clear()
+
     def __repr__(self):
         return f"Deque {self.deque}"
 
@@ -73,7 +76,7 @@ class ImageSearch(Toplevel):
         """
         master: \n
         search_term: \n
-        url_scrapper: function that returns image urls by given query\n
+        self.__url_scrapper: function that returns image urls by given query\n
         max_request_tries: how many retries allowed per one image-showing cycle\n
         init_urls: custom urls to be displayed\n
         init_images: custom images to be displayed\n
@@ -98,13 +101,11 @@ class ImageSearch(Toplevel):
         self.search_term: str = search_term
         self.__img_urls: Deque = Deque(kwargs.get("init_urls", []))
         self.__init_images = kwargs.get("init_images", [])
-        self.__url_scrapper: Callable[[str], list[str]] = kwargs.get("url_scrapper")
+        self.__url_scrapper: Callable[[Any], Generator[tuple[list[str], str], int, tuple[list[str], str]]] = \
+            kwargs.get("url_scrapper")
 
-        if self.search_term and self.__url_scrapper is not None:
-            try:
-                self.__img_urls.extend(self.__url_scrapper(self.search_term))
-            except ConnectionError:
-                messagebox.showerror(message="Check your internet connection")
+        self.__image_url_gen = self.__url_scrapper(search_term) if self.__url_scrapper is not None else None
+        self.__scrapper_stop_flag = False
 
         self.__button_bg = self.activebackground = "#FFFFFF"
         self.__choose_color = "#FF0000"
@@ -180,6 +181,26 @@ class ImageSearch(Toplevel):
         self.command_widget_total_height = self.__save_button.winfo_height() + self.__search_field.winfo_height() + \
                                            2 * self.__button_pady
 
+    def start_url_generator(self) -> None:
+        if self.__image_url_gen is not None:
+            try:
+                next(self.__image_url_gen)
+            except StopIteration as exception:
+                messagebox.showerror(exception.value[1])
+                self.__scrapper_stop_flag = True
+        self.__scrapper_stop_flag = False
+    
+    def generate_urls(self, batch_size):
+        if self.__image_url_gen is not None and not self.__scrapper_stop_flag:
+            try:
+                url_batch, error_message = self.__image_url_gen.send(batch_size)
+            except StopIteration as exception:
+                url_batch, error_message = exception.value
+                self.__scrapper_stop_flag = True
+            if error_message:
+                messagebox.showerror(error_message)
+            self.__img_urls.extendleft(url_batch)
+        
     def start(self):
         if CURRENT_SYSTEM == "Linux":
             self.__cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
@@ -189,20 +210,20 @@ class ImageSearch(Toplevel):
             self.working_state[-1] = True
             self.button_list[-1]["bg"] = self.__choose_color
 
+        self.__scrapper_stop_flag = self.start_url_generator()
         next(self.__show_more_gen)
         self.resize()
-
+    
     def restart_search(self):
         self.search_term = self.__search_field.get()
         if not self.search_term:
             messagebox.showerror(message="Empty search query")
             return
-        try:
-            self.__img_urls = Deque(self.__url_scrapper(self.search_term))
-        except ConnectionError:
-            messagebox.showerror(message="Check your internet connection")
-            return
+
+        self.__image_url_gen = self.__url_scrapper(self.search_term) if self.__url_scrapper is not None else None
+        self.start_url_generator()
         self.__inner_frame = self.__sf.display_widget(partial(Frame, bg=self.__window_bg))
+        self.__img_urls.clear()
 
         left_indent = 0
         for i in range(len(self.working_state)):
@@ -216,26 +237,21 @@ class ImageSearch(Toplevel):
                            bg=self.__choose_color,
                            activebackground=self.activebackground,
                            command=lambda button_index=left_indent:
-                           self.choose_pic(button_index))
+                           self.choose_picture(button_index))
                 b.image = self.button_list[i].image
                 b.grid(row=left_indent // self.__n_images_in_row,
                        column=left_indent % self.__n_images_in_row,
                        padx=self.__button_padx, pady=self.__button_pady, sticky="news")
                 self.button_list[left_indent] = b
-                
                 left_indent += 1
+        
         del self.button_list[left_indent:]
         del self.working_state[left_indent:]
         del self.saving_images[left_indent:]
 
         self.__show_more_gen = self.show_more()
         self.__show_more_button.configure(command=lambda x=self.__show_more_gen: next(x))
-
-        if self.__img_urls:
-            self.__show_more_button["state"] = "normal"
-            next(self.__show_more_gen)
-        else:
-            self.__show_more_button["state"] = "disabled"
+        next(self.__show_more_gen)
 
     def destroy(self):
         if self.__on_closing_action is not None:
@@ -279,7 +295,7 @@ class ImageSearch(Toplevel):
         except RequestException:
             return ImageSearch.StatusCodes.NON_RETRIABLE_FETCHING_ERROR, None, None
 
-    def schedule_batch_fetching(self, url_batch: list):
+    def schedule_batch_fetching(self, url_batch: list[str]):
         image_fetch_tasks = []
         for url in url_batch:
             image_fetch_tasks.append(self.__pool.submit(self.fetch_image, url))
@@ -294,7 +310,7 @@ class ImageSearch(Toplevel):
         except (IOError, UnicodeError):
             return ImageSearch.StatusCodes.IMAGE_PROCESSING_ERROR, None, None
 
-    def choose_pic(self, button_index):
+    def choose_picture(self, button_index):
         self.working_state[button_index] = not self.working_state[button_index]
         self.button_list[button_index]["bg"] = self.__choose_color if self.working_state[button_index] else self.__button_bg
 
@@ -302,7 +318,7 @@ class ImageSearch(Toplevel):
         for j in range(len(button_image_batch)):
             b = Button(master=self.__inner_frame, image=button_image_batch[j],
                        bg=self.__button_bg, activebackground=self.activebackground,
-                       command=lambda button_index=len(self.working_state): self.choose_pic(button_index))
+                       command=lambda button_index=len(self.working_state): self.choose_picture(button_index))
             b.image = button_image_batch[j]
             b.grid(row=len(self.working_state) // self.__n_images_in_row,
                    column=len(self.working_state) % self.__n_images_in_row,
@@ -313,22 +329,23 @@ class ImageSearch(Toplevel):
         self.__inner_frame.update()
         self.resize()
 
-    def process_url_batch(self, batch_size, n_retries=0):
+    def process_batch(self, batch_size, n_retries=0):
         """
-        :param batch_size: how many images to process
+        :param batch_size: how many images to place
         :param n_retries: (if some error occurred) replace "bad" image with the new one and tries to fetch it.
         :return:
         """
         def add_fetching_to_queue():
             nonlocal n_retries
+            self.generate_urls(1)
             if self.__img_urls and n_retries < self.__max_request_tries:
                 image_fetching_futures.append(self.__pool.submit(self.fetch_image, self.__img_urls.popleft()[0]))
                 n_retries += 1
 
-        button_images_batch = []
+        self.generate_urls(batch_size)
         url_batch = self.__img_urls.popleft(batch_size)
+        button_images_batch = []
         image_fetching_futures = self.schedule_batch_fetching(url_batch)
-
         while image_fetching_futures:
             fetching_status, content, url = image_fetching_futures.pop(0).result()
             if fetching_status == ImageSearch.StatusCodes.NORMAL:
@@ -347,9 +364,10 @@ class ImageSearch(Toplevel):
 
     def show_more(self):
         self.update()
-        while self.__img_urls:
-            self.process_url_batch(self.__n_images_per_cycle - len(self.working_state) % self.__n_images_in_row)
-            if not self.__img_urls:
+        self.__show_more_button["state"] = "normal"
+        while True:
+            self.process_batch(self.__n_images_per_cycle - len(self.working_state) % self.__n_images_in_row)
+            if self.__scrapper_stop_flag and not self.__img_urls:
                 break
             yield
         self.__show_more_button["state"] = "disabled"
@@ -369,7 +387,7 @@ class ImageSearch(Toplevel):
                 self.process_single_image(img)
             elif data_path.startswith("http"):
                 self.__img_urls.appendleft(data_path)
-                self.process_url_batch(batch_size=1, n_retries=self.__max_request_tries)
+                self.process_batch(batch_size=1, n_retries=self.__max_request_tries)
         return event.action
 
     def paste_image(self):

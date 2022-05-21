@@ -1,12 +1,15 @@
 from typing import Callable, Iterator, Union
 import os
 import json
+from consts.card_fields import *
+from enum import Enum
+from utils.error_handling import create_exception_message
 
 
 class CardGenerator:
     def __init__(self, **kwargs):
         """
-        parsing_function: Callable[[str], list[(str, dict)]],
+        parsing_function: Callainsertionsble[[str], list[(str, dict)]],
         local_dict_path: str = kwargs.get("local_dict_path", "")
         item_converter: Callable[[(str, dict)], dict]
         """
@@ -49,19 +52,12 @@ class CardGenerator:
 class CardStorage:
     def __init__(self):
         self._deck = []
-        self._pointer_position = 0
-
-    def get_pointer_position(self) -> int:
-        return self._pointer_position
 
     def get_deck(self) -> list[dict]:
         return self._deck
 
     def __len__(self):
         return len(self._deck)
-
-    def move(self, n: int) -> None:
-        self._pointer_position = min(max(self._pointer_position + n, 0), len(self))
 
 
 class Deck(CardStorage):
@@ -81,6 +77,9 @@ class Deck(CardStorage):
         assert (isinstance(value, CardGenerator))
         self._card_generator = value
 
+    def get_pointer_position(self) -> int:
+        return self._pointer_position
+
     def get_starting_position(self):
         return self._starting_position
 
@@ -94,7 +93,7 @@ class Deck(CardStorage):
             return self._deck[item]
 
     def move(self, n: int) -> None:
-        super().move(n)
+        self._pointer_position = min(max(self._pointer_position + n, 0), len(self))
         self._cards_left = len(self) - self._pointer_position
 
     def __repr__(self):
@@ -127,27 +126,51 @@ class Deck(CardStorage):
         return cur_card
 
 
+class CardStatus(Enum):
+    ADD = 0
+    SKIP = 1
+    BURY = 2
+
 class SavedDeck(CardStorage):
     def __init__(self):
         super().__init__()
 
-    def append(self, item: dict[str, Union[str, list[str]]]):
-        self._deck.append(item)
-        self._pointer_position += 1
+    def push_card(self, status: CardStatus, kwargs: dict[str, Union[str, list[str], int]]) -> str:
+        res = {"status": status}
+        if status != CardStatus.SKIP:
+            try:
+                saving_card = {
+                    WORD_FIELD: kwargs[WORD_FIELD],
+                    DEFINITION_FIELD: kwargs[DEFINITION_FIELD],
+                }
+                saving_card[SENTENCES_FIELD] = kwargs[SENTENCES_FIELD]
+            except KeyError:
+                return create_exception_message()
+
+            image_links = kwargs.get(IMG_LINKS_FIELD)
+            if image_links is not None:
+                saving_card[IMG_LINKS_FIELD] = image_links
+
+            audio_links = kwargs.get(AUDIO_LINKS_FIELD)
+            if audio_links is not None:
+                saving_card[AUDIO_LINKS_FIELD] = audio_links
+
+            tags = kwargs.get(TAGS_FIELD)
+            if tags is not None:
+                saving_card[TAGS_FIELD] = tags
+            res["card"] = saving_card
+        self._deck.append(res)
+        return ""
 
     def move(self, n: int) -> None:
-        super().move(n)
-        del self._deck[self._pointer_position:]
+        del self._deck[len(self)+n:]
 
     def __repr__(self):
-        res = f"Deck\nLength: {len(self)}\n" \
-              f"Pointer position: {self._pointer_position}\n"
+        res = f"Deck\nLength: {len(self)}\n"
         for index, item in enumerate(self._deck, 0):
             if not item:
                 break
-            res += "L --> " if index == self._pointer_position else " " * 6
             res += f"{index}: {item}\n"
-        res += "L --> " if len(self) == self._pointer_position else " " * 6
         return res
 
 class SentenceFetcher:

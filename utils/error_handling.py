@@ -2,6 +2,12 @@ import sys
 import traceback
 
 
+def create_exception_message():
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+    return ''.join(lines)
+
+
 def error_handler(error_processing=None):
     def error_decorator(func):
         def method_wrapper(self, *args, **kwargs):
@@ -9,9 +15,7 @@ def error_handler(error_processing=None):
                 return func(self, *args, **kwargs)
             except Exception as e:
                 if error_processing is None:
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
-                    error_log = ''.join(lines)
+                    error_log = create_exception_message()
                     print(error_log)
                 else:
                     error_processing(self, e, *args, **kwargs)

@@ -15,7 +15,7 @@ from PIL import Image, ImageTk
 from requests.exceptions import RequestException, ConnectTimeout
 from tkinterdnd2 import DND_FILES, DND_TEXT
 
-from CONSTS import CURRENT_SYSTEM
+from consts.paths import CURRENT_SYSTEM
 from utils.widgets import ScrolledFrame
 
 if CURRENT_SYSTEM == "Linux":

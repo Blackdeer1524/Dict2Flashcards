@@ -10,14 +10,15 @@ def create_exception_message():
 
 def error_handler(error_processing=None):
     def error_decorator(func):
-        def method_wrapper(self, *args, **kwargs):
+        def method_wrapper(*args, **kwargs):
             try:
-                return func(self, *args, **kwargs)
+                return func(*args, **kwargs)
             except Exception as e:
                 if error_processing is None:
                     error_log = create_exception_message()
                     print(error_log)
                 else:
-                    error_processing(self, e, *args, **kwargs)
+                    kwargs["__exception"] = e
+                    error_processing(*args, **kwargs)
         return method_wrapper
     return error_decorator

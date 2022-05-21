@@ -24,3 +24,11 @@ def get_image_links(word):
                 image_link = f"https://media.gettyimages.com/photos/{image_name}-id{image_id}"
                 results.append(image_link)
     return results
+
+
+if __name__ == "__main__":
+    from time import time
+
+    start = time()
+    get_image_links("test")
+    print((time() - start))

@@ -231,4 +231,3 @@ class CardWrapper:
         image_finder.grab_set()
         image_finder.geometry(self.CONFIG["app"]["image_search_position"])
         image_finder.start()
-

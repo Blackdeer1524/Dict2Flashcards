@@ -2,20 +2,31 @@ import requests
 import bs4
 import re
 import json
+from typing import Generator
+import os
 
 
-def get_image_links(word):
+FILE_PATH = os.path.dirname(__file__)
+
+
+def get_image_links(word) -> Generator[tuple[list[str], str], int, tuple[list[str], str]]:
     link = f"https://www.google.com/search?tbm=isch&q={word}&safe=active"
-    user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.67 Safari/537.36"
+    user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " \
+                 "Chrome/70.0.3538.67 Safari/537.36"
     headers = {'User-Agent': user_agent}
-    r = requests.get(link, headers=headers, timeout=5)
-    r.raise_for_status()
+    try:
+        r = requests.get(link, headers=headers, timeout=5)
+        r.raise_for_status()
+    except requests.RequestException:
+        return [], f"{FILE_PATH} couldn't get a web page!"
+
     html = r.text
     soup = bs4.BeautifulSoup(r.text, "html.parser")
     rg_meta = soup.find_all("div", {"class": "rg_meta"})
     metadata = [json.loads(e.text) for e in rg_meta]
     results = [d["ou"] for d in metadata]
 
+    batch_size = yield
     if not results:
         regex = re.escape("AF_initDataCallback({")
         regex += r'[^<]*?data:[^<]*?' + r'(\[[^<]+\])'
@@ -27,10 +38,24 @@ def get_image_links(word):
                 for d in data[31][0][12][2]:
                     try:
                         results.append(d[1][3][0])
-                    except Exception as e:
+                        if not len(results) % batch_size:
+                            batch_size = yield results, ""
+                            results = []
+                    except Exception as exception:
                         pass
-            except Exception as e:
+            except Exception as exception:
                 pass
-    # except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as e:
-    #     messagebox.showerror("Ошибка", "Ошибка получения web-страницы!\nПроверьте подключение к интернету.")
-    return [link for link in results if link.endswith("jpg") or link.endswith("png")]
+    return results, ""
+
+
+if __name__ == "__main__":
+    from pprint import pprint
+
+    image_url_gen = get_image_links("test")
+    next(image_url_gen)
+    try:
+        while True:
+            urls, error_message = image_url_gen.send(1)
+            pprint(urls)
+    except StopIteration as exception:
+        pprint(exception.value)

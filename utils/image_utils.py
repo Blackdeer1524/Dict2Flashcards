@@ -138,12 +138,12 @@ class ImageSearch(Toplevel):
         self.__search_field = Entry(self, justify="center", **self.__entry_params)
         self.__search_field.insert(0, self.search_term)
         self.__start_search_button = Button(self, text="Search", command=self.restart_search,
-                                          **self.__command_button_params)
+                                            **self.__command_button_params)
 
         self.__search_field.grid(row=0, column=0, sticky="news",
-                               padx=(self.__button_padx, 0), pady=self.__button_pady)
+                                 padx=(self.__button_padx, 0), pady=self.__button_pady)
         self.__start_search_button.grid(row=0, column=1, sticky="news",
-                                      padx=(0, self.__button_padx), pady=self.__button_pady)
+                                        padx=(0, self.__button_padx), pady=self.__button_pady)
         self.__start_search_button["state"] = "normal" if self.__url_scrapper else "disabled"
 
         self.__sf = ScrolledFrame(self, scrollbars="both")
@@ -160,9 +160,9 @@ class ImageSearch(Toplevel):
 
         self.__show_more_gen = self.show_more()
         self.__show_more_button = Button(master=self, text="Show more",
-                                       command=lambda x=self.__show_more_gen: next(x), **self.__command_button_params)
+                                         command=lambda x=self.__show_more_gen: next(x), **self.__command_button_params)
         self.__save_button = Button(master=self, text="Save",
-                                  command=lambda: self.destroy(), **self.__command_button_params)
+                                    command=lambda: self.destroy(), **self.__command_button_params)
         self.__show_more_button.grid(row=3, column=0, sticky="news")
         self.__save_button.grid(row=3, column=1, sticky="news")
 
@@ -188,7 +188,7 @@ class ImageSearch(Toplevel):
             self.process_single_image(custom_image)
             self.working_state[-1] = True
             self.button_list[-1]["bg"] = self.__choose_color
-            
+
         next(self.__show_more_gen)
         self.resize()
 

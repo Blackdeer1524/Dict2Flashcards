@@ -1,4 +1,4 @@
-from typing import Callable, Iterator
+from typing import Callable, Iterator, Union
 import os
 import json
 
@@ -46,52 +46,67 @@ class CardGenerator:
         return [item for item in res if additional_filter(item)]
 
 
-class Deck:
-    def __init__(self, json_deck_path: str, current_deck_pointer: int, card_generator: CardGenerator):
-        assert current_deck_pointer >= 0
+class CardStorage:
+    def __init__(self):
+        self._deck = []
+        self._pointer_position = 0
 
+    def get_pointer_position(self) -> int:
+        return self._pointer_position
+
+    def get_deck(self) -> list[dict]:
+        return self._deck
+
+    def __len__(self):
+        return len(self._deck)
+
+    def move(self, n: int) -> None:
+        self._pointer_position = min(max(self._pointer_position + n, 0), len(self))
+
+
+class Deck(CardStorage):
+    def __init__(self, json_deck_path: str, current_deck_pointer: int, card_generator: CardGenerator):
+        super().__init__()
         if os.path.isfile(json_deck_path):
             with open(json_deck_path, "r", encoding="UTF-8") as f:
-                self.__deck = json.load(f)
-            self.__pointer_position = self.__starting_position = min(max(len(self.__deck) - 1, 0), current_deck_pointer)
+                self._deck = json.load(f)
+            self._pointer_position = self._starting_position = min(max(len(self._deck) - 1, 0),
+                                                                     max(0, current_deck_pointer))
         else:
-            raise Exception("Invalid deck path!")
-        self.__cards_left = len(self) - self.__pointer_position
-        self.__card_generator: CardGenerator = card_generator
+            raise Exception("Invalid _deck path!")
+        self._cards_left = len(self) - self._pointer_position
+        self._card_generator: CardGenerator = card_generator
 
     def set_card_generator(self, value: CardGenerator):
         assert (isinstance(value, CardGenerator))
-        self.__card_generator = value
-
-    def get_pointer_position(self) -> int:
-        return self.__pointer_position
+        self._card_generator = value
 
     def get_starting_position(self):
-        return self.__starting_position
+        return self._starting_position
 
     def get_n_cards_left(self) -> int:
-        return self.__cards_left
-
-    def get_deck(self) -> list[dict]:
-        return self.__deck
-
-    def __len__(self):
-        return len(self.__deck)
+        return self._cards_left
 
     def __getitem__(self, item):
         if isinstance(item, int):
-            return self.__deck[item] if self.__starting_position <= item < len(self) else {}
+            return self._deck[item] if self._starting_position <= item < len(self) else {}
         elif isinstance(item, slice):
-            return self.__deck[item]
+            return self._deck[item]
+
+    def move(self, n: int) -> None:
+        super().move(n)
+        self._cards_left = len(self) - self._pointer_position
 
     def __repr__(self):
-        res = f"Deck\nLength: {len(self)}\nPointer position: {self.__pointer_position}\nCards left: {self.__cards_left}\n"
+        res = f"Deck\nLength: {len(self)}\n" \
+              f"Pointer position: {self._pointer_position}\n" \
+              f"Cards left: {self._cards_left}\n"
         for index, item in enumerate(self, 0):
             if not item:
                 break
-            if index == self.__pointer_position or index == self.__starting_position:
-                res += "C" if index == self.__pointer_position else " "
-                res += "S" if index == self.__starting_position else " "
+            if index == self._pointer_position or index == self._starting_position:
+                res += "C" if index == self._pointer_position else " "
+                res += "S" if index == self._starting_position else " "
 
                 res += " --> "
             else:
@@ -100,80 +115,83 @@ class Deck:
         return res
 
     def add_card_to_deck(self, query: str, **kwargs):
-        """
-        word_filter: Callable[[comparable: str, query_word: str], bool]
-        additional_filter: Callable[[translated_word_data: dict], bool]
-        """
-
-        res: list[dict] = self.__card_generator.get(query, **kwargs)
-        self.__deck = self[:self.__pointer_position] + res + self[self.__pointer_position:]
-        self.__cards_left += len(res)
+        res: list[dict] = self._card_generator.get(query, **kwargs)
+        self._deck = self[:self._pointer_position] + res + self[self._pointer_position:]
+        self._cards_left += len(res)
 
     def get_card(self) -> dict:
-        cur_card = self[self.__pointer_position]
+        cur_card = self[self._pointer_position]
         if cur_card:
-            self.__pointer_position += 1
-            self.__cards_left -= 1
+            self._pointer_position += 1
+            self._cards_left -= 1
         return cur_card
 
+
+class SavedDeck(CardStorage):
+    def __init__(self):
+        super().__init__()
+
+    def append(self, item: dict[str, Union[str, list[str]]]):
+        self._deck.append(item)
+
     def move(self, n: int) -> None:
-        self.__pointer_position = min(max(self.__pointer_position + n, 0), len(self))
-        self.__cards_left = len(self) - self.__pointer_position
+        super().move(n)
+        del self._deck[self._pointer_position + 1:]
 
 
 class SentenceFetcher:
     def __init__(self,
                  sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = lambda *_: [[], True],
                  sentence_batch_size=5):
-        self.__word: str
-        self.__sentences: list[str]
-        self.__sentence_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = sent_fetcher
-        self.__batch_size: int = sentence_batch_size
-        self.__sentence_pointer: int = 0
-        self.__sent_batch_generator: Iterator[tuple[list[str], str]] = self.__get_sent_batch_generator()
-        self.__local_sentences_flag: bool = True
-        self.__update_status: bool = False
+        self._word: str = ""
+        self._sentences: list[str] = []
+        self._sentence_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = sent_fetcher
+        self._batch_size: int = sentence_batch_size
+        self._sentence_pointer: int = 0
+        self._sent_batch_generator: Iterator[tuple[list[str], str]] = self._get_sent_batch_generator()
+        self._local_sentences_flag: bool = True
+        self._update_status: bool = False
 
     def __call__(self, base_word, base_sentences):
-        self.__word = base_word
+        self._word = base_word
         # REFERENCE!!!
-        self.__sentences = base_sentences
-        self.__local_sentences_flag = True
-        self.__sentence_pointer = 0
+        self._sentences = base_sentences
+        self._local_sentences_flag = True
+        self._sentence_pointer = 0
 
     def update_word(self, new_word: str):
-        if self.__word != new_word:
-            self.__word = new_word
-            self.__update_status = True
+        if self._word != new_word:
+            self._word = new_word
+            self._update_status = True
 
     def __get_sent_batch_generator(self) -> Iterator[tuple[list[str], str]]:
         """
         Yields: Sentence_batch, error_message
         """
         while True:
-            if self.__local_sentences_flag:
-                while self.__sentence_pointer < len(self.__sentences):
+            if self._local_sentences_flag:
+                while self._sentence_pointer < len(self._sentences):
                     # checks for update even before the first iteration
-                    if self.__update_status:
+                    if self._update_status:
                         break
-                    yield self.__sentences[self.__sentence_pointer:self.__sentence_pointer + self.__batch_size], ""
-                    self.__sentence_pointer += self.__batch_size
-                self.__sentence_pointer = 0
-                self.__local_sentences_flag = False
+                    yield self._sentences[self._sentence_pointer:self._sentence_pointer + self._batch_size], ""
+                    self._sentence_pointer += self._batch_size
+                self._sentence_pointer = 0
+                self._local_sentences_flag = False
                 # __sentence_fetcher doesn't need update before it's first iteration
                 # because of its first argument
-                self.__update_status = False
+                self._update_status = False
 
-            for sentence_batch, error_message in self.__sentence_fetcher(self.__word, self.__batch_size):
+            for sentence_batch, error_message in self._sentence_fetcher(self._word, self._batch_size):
                 yield sentence_batch, error_message
-                if self.__update_status:
-                    self.__update_status = False
+                if self._update_status:
+                    self._update_status = False
                     break
-                if self.__local_sentences_flag or error_message:
+                if self._local_sentences_flag or error_message:
                     break
             else:
-                self.__local_sentences_flag = True
+                self._local_sentences_flag = True
 
     def get_sentence_batch(self, word: str) -> tuple[list[str], str]:
         self.update_word(word)
-        return next(self.__sent_batch_generator)
+        return next(self._sent_batch_generator)

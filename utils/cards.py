@@ -133,11 +133,22 @@ class SavedDeck(CardStorage):
 
     def append(self, item: dict[str, Union[str, list[str]]]):
         self._deck.append(item)
+        self._pointer_position += 1
 
     def move(self, n: int) -> None:
         super().move(n)
-        del self._deck[self._pointer_position + 1:]
+        del self._deck[self._pointer_position:]
 
+    def __repr__(self):
+        res = f"Deck\nLength: {len(self)}\n" \
+              f"Pointer position: {self._pointer_position}\n"
+        for index, item in enumerate(self._deck, 0):
+            if not item:
+                break
+            res += "L --> " if index == self._pointer_position else " " * 6
+            res += f"{index}: {item}\n"
+        res += "L --> " if len(self) == self._pointer_position else " " * 6
+        return res
 
 class SentenceFetcher:
     def __init__(self,

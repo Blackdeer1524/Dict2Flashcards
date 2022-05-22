@@ -6,7 +6,7 @@ class PointerList:
     def __init__(self, data: list[_T] = None,
                  starting_position: int = 0,
                  default_return_value: Any = None):
-        self._data: list[Any] = data if data is not None else []
+        self._data: list[_T] = data if data is not None else []
         self._starting_position = min(max(len(self._data) - 1, 0),
                                       max(0, starting_position))
         self._starting_position: int = self._starting_position
@@ -15,6 +15,9 @@ class PointerList:
 
     def __len__(self):
         return len(self._data)
+
+    def __bool__(self):
+        return bool(self._data)
 
     def __getitem__(self, item):
         if isinstance(item, int):

@@ -31,7 +31,7 @@ def get_sentence_batch(word: str, step: int = 5) -> Iterator[tuple[list, str]]:
 
         sentences.sort(key=len)
         for i in range(0, len(sentences), step):
-            yield sentences[i:i + step], False
+            yield sentences[i:i + step], ""
     except Exception as e:
         yield [], create_exception_message()
         return

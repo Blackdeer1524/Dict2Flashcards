@@ -5,66 +5,77 @@ from tkinter import Text, Entry, Frame, Canvas, Scrollbar
 class TextWithPlaceholder(Text):
     def __init__(self, master, placeholder="", placeholder_fg_color="grey", *args, **kwargs):
         super(TextWithPlaceholder, self).__init__(master=master, *args, **kwargs)
-        self.placeholder = placeholder
-        self.placeholder_fg_color = placeholder_fg_color
-        self.default_fg_color = self["foreground"]
+        self._placeholder = placeholder
+        self._placeholder_fg_color = placeholder_fg_color
+        self._default_fg_color = self["foreground"]
         self.bind("<FocusIn>", self._foc_in)
         self.bind("<FocusOut>", self._foc_out)
         self["wrap"] = "word"
-        self.under_focus = False
+        self._is_under_focus = False
+        self._placeholder_set_status = False
 
     def get(self, index1, index2=None):
-        if self["foreground"] == self.placeholder_fg_color:
-            return ""
-        else:
-            return self.tk.call(self._w, 'get', index1, index2)
+        return "" if self._placeholder_set_status else self.tk.call(self._w, 'get', index1, index2)
 
     def _foc_in(self, *args):
-        self.under_focus = True
-        if self["foreground"] == self.placeholder_fg_color:
-            self.delete(1.0, 'end')
-            self['foreground'] = self.default_fg_color
+        self._is_under_focus = True
+        self.remove_placeholder()
 
     def fill_placeholder(self, *args):
-        self['foreground'] = self.placeholder_fg_color
-        self.insert(1.0, self.placeholder)
+        if not self.get(1.0).strip() and not self._is_under_focus:
+            self._placeholder_set_status = True
+            self.delete(1.0, "end")
+            self['foreground'] = self._placeholder_fg_color
+            self.insert(1.0, self._placeholder)
+        else:
+            self._placeholder_set_status = False
+
+    def remove_placeholder(self):
+        if self._placeholder_set_status:
+            self._placeholder_set_status = False
+            self.delete(1.0, 'end')
+            self['foreground'] = self._default_fg_color
 
     def _foc_out(self, *args):
-        self.under_focus = False
-        if not self.get(1.0).strip():
-            self.fill_placeholder()
+        self._is_under_focus = False
+        self.fill_placeholder()
 
 
 class EntryWithPlaceholder(Entry):
     def __init__(self, master, placeholder="", placeholder_fg_color='grey', *args, **kwargs):
         super().__init__(master=master, *args, **kwargs)
-        self.placeholder = placeholder
-        self.placeholder_fg_color = placeholder_fg_color
-        self.default_fg_color = self['foreground']
+        self._placeholder = placeholder
+        self._placeholder_fg_color = placeholder_fg_color
+        self._default_fg_color = self["foreground"]
         self.bind("<FocusIn>", self._foc_in)
         self.bind("<FocusOut>", self._foc_out)
-        self.under_focus = False
+        self._is_under_focus = False
 
     def get(self):
-        if self["foreground"] == self.placeholder_fg_color:
-            return ""
-        else:
-            return self.tk.call(self._w, 'get')
+        return "" if self["foreground"] == self._placeholder_fg_color else self.tk.call(self._w, 'get')
 
     def _foc_in(self, *args):
-        self.under_focus = True
-        if self["foreground"] == self.placeholder_fg_color:
-            self.delete(0, 'end')
-            self['foreground'] = self.default_fg_color
+        self._is_under_focus = True
+        self.remove_placeholder()
 
     def fill_placeholder(self, *args):
-        self['foreground'] = self.placeholder_fg_color
-        self.insert(0, self.placeholder)
+        if not self.get().strip() and not self._is_under_focus:
+            self._placeholder_set_status = True
+            self.delete(0, "end")
+            self['foreground'] = self._placeholder_fg_color
+            self.insert(0, self._placeholder)
+        else:
+            self._placeholder_set_status = False
+
+    def remove_placeholder(self):
+        if self._placeholder_set_status:
+            self._placeholder_set_status = False
+            self.delete(0, 'end')
+            self['foreground'] = self._default_fg_color
 
     def _foc_out(self, *args):
-        self.under_focus = False
-        if not self.get().strip():
-            self.fill_placeholder()
+        self._is_under_focus = False
+        self.fill_placeholder()
 
 
 class ScrolledFrame(Frame):

@@ -4,6 +4,7 @@ import json
 from consts.card_fields import *
 from enum import Enum
 from utils.error_handling import create_exception_message
+from utils.storages import PointerList
 
 
 class CardGenerator:
@@ -49,67 +50,33 @@ class CardGenerator:
         return [item for item in res if additional_filter(item)]
 
 
-class Deck:
+class Deck(PointerList):
     def __init__(self, json_deck_path: str, current_deck_pointer: int, card_generator: CardGenerator):
         if os.path.isfile(json_deck_path):
             with open(json_deck_path, "r", encoding="UTF-8") as f:
-                self._deck: list[dict[str, Union[str, dict]]] = json.load(f)
-            self._pointer_position = self._starting_position = min(max(len(self._deck) - 1, 0),
-                                                                   max(0, current_deck_pointer))
+                deck: list[dict[str, Union[str, dict]]] = json.load(f)
+            super(Deck, self).__init__(data=deck,
+                                       starting_position=current_deck_pointer,
+                                       default_return_value={})
         else:
             raise Exception("Invalid _deck path!")
         self._cards_left = len(self) - self._pointer_position
         self._card_generator: CardGenerator = card_generator
 
-    def __len__(self):
-        return len(self._deck)
-
-    def get_deck(self) -> list[dict]:
-        return self._deck
-
     def set_card_generator(self, value: CardGenerator):
         assert (isinstance(value, CardGenerator))
         self._card_generator = value
 
-    def get_pointer_position(self) -> int:
-        return self._pointer_position
-
-    def get_starting_position(self):
-        return self._starting_position
-
     def get_n_cards_left(self) -> int:
         return self._cards_left
 
-    def __getitem__(self, item):
-        if isinstance(item, int):
-            return self._deck[item] if self._starting_position <= item < len(self) else {}
-        elif isinstance(item, slice):
-            return self._deck[item]
-
     def move(self, n: int) -> None:
-        self._pointer_position = min(max(self._pointer_position + n, 0), len(self))
+        super(Deck, self).move(n)
         self._cards_left = len(self) - self._pointer_position
-
-    def __repr__(self):
-        res = f"Deck\nLength: {len(self)}\n" \
-              f"Pointer position: {self._pointer_position}\n" \
-              f"Cards left: {self._cards_left}\n"
-        for index, item in enumerate(self, 0):
-            if not item:
-                break
-            if index == self._pointer_position or index == self._starting_position:
-                res += "C" if index == self._pointer_position else " "
-                res += "S" if index == self._starting_position else " "
-
-                res += " --> "
-            else:
-                res += " " * 7
-            res += f"{index}: {item}\n"
-        return res
 
     def add_card_to_deck(self, query: str, **kwargs):
         res: list[dict] = self._card_generator.get(query, **kwargs)
-        self._deck = self[:self._pointer_position] + res + self[self._pointer_position:]
+        self._data = self[:self._pointer_position] + res + self[self._pointer_position:]
         self._cards_left += len(res)
 
     def get_card(self) -> dict:
@@ -126,11 +93,11 @@ class CardStatus(Enum):
     BURY = 2
 
 
-class SavedDeck:
+class SavedDeck(PointerList):
     def __init__(self):
-        self._deck: list[dict[str, Union[str, dict]]] = []
+        super(SavedDeck, self).__init__()
 
-    def push_card(self, status: CardStatus, kwargs: dict[str, Union[str, list[str]]]) -> str:
+    def append(self, status: CardStatus, kwargs: dict[str, Union[str, list[str]]]) -> str:
         res = {"status": status}
         if status != CardStatus.SKIP:
             try:
@@ -152,31 +119,22 @@ class SavedDeck:
             if tags is not None:
                 saving_card[TAGS_FIELD] = tags
             res["card"] = saving_card
-        self._deck.append(res)
+        self._data.append(res)
+        self._pointer_position += 1
         return ""
 
-    def __len__(self):
-        return len(self._deck)
-
     def move(self, n: int) -> None:
-        del self._deck[len(self)+n:]
-
-    def __repr__(self):
-        res = f"Deck\nLength: {len(self)}\n"
-        for index, item in enumerate(self._deck, 0):
-            if not item:
-                break
-            res += f"{index}: {item}\n"
-        return res
+        super(SavedDeck, self).move(n)
+        del self._data[self._pointer_position:]
 
 
 class SentenceFetcher:
     def __init__(self,
-                 sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = lambda *_: [[], True],
+                 sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], str]]] = lambda *_: [[], True],
                  sentence_batch_size=5):
         self._word: str = ""
         self._sentences: list[str] = []
-        self._sentence_fetcher: Callable[[str, int], Iterator[tuple[list[str], bool]]] = sent_fetcher
+        self._sentence_fetcher: Callable[[str, int], Iterator[tuple[list[str], str]]] = sent_fetcher
         self._batch_size: int = sentence_batch_size
         self._sentence_pointer: int = 0
         self._sent_batch_generator: Iterator[tuple[list[str], str]] = self._get_sent_batch_generator()

@@ -49,20 +49,8 @@ class CardGenerator:
         return [item for item in res if additional_filter(item)]
 
 
-class CardStorage:
-    def __init__(self):
-        self._deck = []
-
-    def get_deck(self) -> list[dict]:
-        return self._deck
-
-    def __len__(self):
-        return len(self._deck)
-
-
-class Deck(CardStorage):
+class Deck:
     def __init__(self, json_deck_path: str, current_deck_pointer: int, card_generator: CardGenerator):
-        super().__init__()
         if os.path.isfile(json_deck_path):
             with open(json_deck_path, "r", encoding="UTF-8") as f:
                 self._deck = json.load(f)
@@ -72,6 +60,12 @@ class Deck(CardStorage):
             raise Exception("Invalid _deck path!")
         self._cards_left = len(self) - self._pointer_position
         self._card_generator: CardGenerator = card_generator
+
+    def __len__(self):
+        return len(self._deck)
+
+    def get_deck(self) -> list[dict]:
+        return self._deck
 
     def set_card_generator(self, value: CardGenerator):
         assert (isinstance(value, CardGenerator))
@@ -132,9 +126,9 @@ class CardStatus(Enum):
     BURY = 2
 
 
-class SavedDeck(CardStorage):
+class SavedDeck:
     def __init__(self):
-        super().__init__()
+        self._deck = []
 
     def push_card(self, status: CardStatus, kwargs: dict[str, Union[str, list[str], int]]) -> str:
         res = {"status": status}
@@ -160,6 +154,9 @@ class SavedDeck(CardStorage):
             res["card"] = saving_card
         self._deck.append(res)
         return ""
+
+    def __len__(self):
+        return len(self._deck)
 
     def move(self, n: int) -> None:
         del self._deck[len(self)+n:]

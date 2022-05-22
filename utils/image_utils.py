@@ -96,7 +96,7 @@ class ImageSearch(Toplevel):
         on_close_action(**kwargs): additional action performed on closing.
         """
         self.search_term: str = search_term
-        self._img_urls: Deque = Deque(kwargs.get("init_urls", []))
+        self.img_urls: Deque = Deque(kwargs.get("init_urls", []))
         self._init_images = kwargs.get("init_images", [])
         self._url_scrapper: Callable[[Any], Generator[tuple[list[str], str], int, tuple[list[str], str]]] = \
             kwargs.get("url_scrapper")
@@ -196,7 +196,7 @@ class ImageSearch(Toplevel):
                 self._scrapper_stop_flag = True
             if error_message:
                 messagebox.showerror(error_message)
-            self._img_urls.extendleft(url_batch)
+            self.img_urls.extendleft(url_batch)
         
     def start(self):
         if CURRENT_SYSTEM == "Linux":
@@ -220,7 +220,7 @@ class ImageSearch(Toplevel):
         self._image_url_gen = self._url_scrapper(self.search_term) if self._url_scrapper is not None else None
         self._start_url_generator()
         self._inner_frame = self._sf.display_widget(partial(Frame, bg=self._window_bg))
-        self._img_urls.clear()
+        self.img_urls.clear()
 
         left_indent = 0
         for i in range(len(self.working_state)):
@@ -292,7 +292,7 @@ class ImageSearch(Toplevel):
         except RequestException:
             return ImageSearch.StatusCodes.NON_RETRIABLE_FETCHING_ERROR, None, None
 
-    def _schedule_batch_fetching(self, url_batch: list[str]):
+    def _schedule_batch_fetching(seon_closinglf, url_batch: list[str]):
         image_fetch_tasks = []
         for url in url_batch:
             image_fetch_tasks.append(self._pool.submit(self.fetch_image, url))
@@ -335,12 +335,12 @@ class ImageSearch(Toplevel):
         def add_fetching_to_queue():
             nonlocal n_retries
             self._generate_urls(1)
-            if self._img_urls.items_left() and n_retries < self._max_request_tries:
-                image_fetching_futures.append(self._pool.submit(self.fetch_image, self._img_urls.popleft()[0]))
+            if self.img_urls.items_left() and n_retries < self._max_request_tries:
+                image_fetching_futures.append(self._pool.submit(self.fetch_image, self.img_urls.popleft()[0]))
                 n_retries += 1
 
         self._generate_urls(batch_size)
-        url_batch = self._img_urls.popleft(batch_size)
+        url_batch = self.img_urls.popleft(batch_size)
         button_images_batch = []
         image_fetching_futures = self._schedule_batch_fetching(url_batch)
         while image_fetching_futures:
@@ -353,7 +353,7 @@ class ImageSearch(Toplevel):
                 else:
                     add_fetching_to_queue()
             elif fetching_status == ImageSearch.StatusCodes.RETRIABLE_FETCHING_ERROR:
-                self._img_urls.append(url)
+                self.img_urls.append(url)
                 add_fetching_to_queue()
             else:
                 add_fetching_to_queue()
@@ -364,7 +364,7 @@ class ImageSearch(Toplevel):
         self._show_more_button["state"] = "normal"
         while True:
             self._process_batch(self._n_images_per_cycle - len(self.working_state) % self._n_images_in_row)
-            if self._scrapper_stop_flag and not self._img_urls.items_left():
+            if self._scrapper_stop_flag and not self.img_urls.items_left():
                 break
             yield
         self._show_more_button["state"] = "disabled"
@@ -383,7 +383,7 @@ class ImageSearch(Toplevel):
                 img = Image.open(data_path)
                 self._process_single_image(img)
             elif data_path.startswith("http"):
-                self._img_urls.appendleft(data_path)
+                self.img_urls.appendleft(data_path)
                 self._process_batch(batch_size=1, n_retries=self._max_request_tries)
         return event.action
 
@@ -411,6 +411,7 @@ class ImageSearch(Toplevel):
 if __name__ == "__main__":
     from tkinterdnd2 import Tk
     from parsers.image_parsers.google import get_image_links
+    from pprint import pprint
 
     def start_image_search(word, master, **kwargs):
         image_finder = ImageSearch(search_term=word, master=master, **kwargs)
@@ -424,13 +425,20 @@ if __name__ == "__main__":
     root = Tk()
     # root.withdraw()
 
-    def on_closing(instance: ImageSearch):
-        res = []
+    def save_on_closing(instance: ImageSearch):
         for i in range(len(instance.working_state)):
             if instance.working_state[i]:
                 instance.saving_images[i].save(f"./{i}.png")
+    
+    def get_chosen_urls(instance: ImageSearch):
+        res = []
+        for i in range(len(instance.working_state)):
+            if instance.working_state[i]:
+                res.append(instance.img_urls[i])
+        assert len(res) == sum(instance.working_state)
+        pprint(res)
 
 
     root.after(0, start_image_search("test", root, url_scrapper=get_image_links, show_image_width=300,
-                                     on_closing_action=on_closing, timeout=0.2, max_request_tries=1))
+                                     on_closing_action=get_chosen_urls, timeout=0.2, max_request_tries=1))
     root.mainloop()

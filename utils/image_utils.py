@@ -292,7 +292,7 @@ class ImageSearch(Toplevel):
         except RequestException:
             return ImageSearch.StatusCodes.NON_RETRIABLE_FETCHING_ERROR, None, None
 
-    def _schedule_batch_fetching(seon_closinglf, url_batch: list[str]):
+    def _schedule_batch_fetching(self, url_batch: list[str]):
         image_fetch_tasks = []
         for url in url_batch:
             image_fetch_tasks.append(self._pool.submit(self.fetch_image, url))

@@ -86,6 +86,9 @@ class Deck(PointerList):
             self._cards_left -= 1
         return cur_card
 
+    def get_deck(self):
+        return self._data
+
 
 class CardStatus(Enum):
     ADD = 0
@@ -94,7 +97,7 @@ class CardStatus(Enum):
 
 
 class SavedDeck(PointerList):
-    def __init__(self):
+    def __init__(self, ):
         super(SavedDeck, self).__init__()
 
     def append(self, status: CardStatus, kwargs: dict[str, Union[str, list[str]]]) -> str:

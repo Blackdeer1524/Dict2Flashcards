@@ -151,8 +151,7 @@ class SentenceFetcher:
 
     def __call__(self, base_word, base_sentences):
         self._word = base_word
-        # REFERENCE!!!
-        self._sentences = base_sentences
+        self._sentences = base_sentences  # REFERENCE!!!
         self._local_sentences_flag = True
         self._sentence_pointer = 0
         self._update_status = False
@@ -173,7 +172,7 @@ class SentenceFetcher:
                 while not self._update_status:
                     self._sentence_pointer += self._batch_size
                     yield self._sentences[self._sentence_pointer - self._batch_size:self._sentence_pointer], ""
-                    if self._sentence_pointer >= len(self._sentences):
+                    if self._sentence_pointer and self._sentence_pointer >= len(self._sentences):
                         break
                 self._local_sentences_flag = False
                 # _sentence_fetcher doesn't need update before it's first iteration

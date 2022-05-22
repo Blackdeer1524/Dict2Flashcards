@@ -7,16 +7,19 @@ from tkinter import messagebox
 from requests import ConnectionError
 from tkinterdnd2 import Tk
 from tkinter.filedialog import askopenfilename, askdirectory
+from typing import Iterator
 
 import parsers.image_parsers
 import parsers.word_parsers.local
 import parsers.word_parsers.web
 import parsers.sentence_parsers
 
-from CONSTS import *
-from utils.cards import *
+from consts.paths import *
+from consts.card_fields import *
+from utils.cards import CardGenerator, Deck, SentenceFetcher, SavedDeck, CardStatus
 from utils.window_utils import get_option_menu
 from utils.string_utils import remove_special_chars
+import json
 
 
 class App(Tk):
@@ -53,7 +56,12 @@ class App(Tk):
         self.sentence_parser = self.web_sent_parsers[
             self.CONFIG["scrappers"]["base_sentence_parser"]].get_sentence_batch
 
-        self.CARDS_STATUSES = []
+        self.sentence_batch_size = 5
+        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser,
+                                                sentence_batch_size=self.sentence_batch_size)
+        self.sentence_replacer = self.replace_sentences()
+
+        self.saved_cards = SavedDeck()
         main_menu = Menu(self)
         filemenu = Menu(main_menu, tearoff=0)
         filemenu.add_command(label="Создать", command=App.func_placeholder)
@@ -117,8 +125,9 @@ class App(Tk):
                                                         command=App.func_placeholder,
                                                         widget_configuration={},
                                                         option_submenu_params={})
-
-        self.add_sentences_button = Button(self, text="Добавить предложения")
+        self.sentence_button_text = "Добавить предложения"
+        self.add_sentences_button = Button(self, text=self.sentence_button_text,
+                                           command=lambda x=self.sentence_replacer: next(x))
         self.sentence_word_parser_name = self.CONFIG["scrappers"]["base_sentence_parser"]
         self.sentence_parser_option_menu = get_option_menu(self,
                                                            init_text=self.sentence_word_parser_name,
@@ -139,11 +148,11 @@ class App(Tk):
             self.sent_text_list[-1].fill_placeholder()
             Buttons_list.append(Button(self, text=f"{i + 1}", command=App.func_placeholder, width=button_width))
 
-        self.delete_button = Button(self, text="Del", command=self.delete_command, width=button_width)
+        self.delete_button = Button(self, text="Del", command=self.skip_command, width=button_width)
         self.prev_button = Button(self, text="Prev", command=self.prev_command, state="disabled", width=button_width)
         self.sound_button = Button(self, text="Play", command=App.func_placeholder, width=button_width)
         self.anki_button = Button(self, text="Anki", command=App.func_placeholder, width=button_width)
-        self.skip_button = Button(self, text="Skip", command=App.func_placeholder, width=button_width)
+        self.bury_button = Button(self, text="Bury", command=App.func_placeholder, width=button_width)
 
         self.user_tags_field = Entry(self, placeholder="Тэги")
         self.user_tags_field.fill_placeholder()
@@ -182,7 +191,7 @@ class App(Tk):
         self.prev_button.grid(row=7, column=7, padx=Text_padx, pady=Text_pady, sticky="ns")
         self.sound_button.grid(row=8, column=7, padx=Text_padx, pady=0, sticky="ns")
         self.anki_button.grid(row=9, column=7, padx=Text_padx, pady=Text_pady, sticky="ns")
-        self.skip_button.grid(row=10, column=7, padx=Text_padx, pady=0, sticky="ns")
+        self.bury_button.grid(row=10, column=7, padx=Text_padx, pady=0, sticky="ns")
 
         self.user_tags_field.grid(row=11, column=0, padx=Text_padx, pady=Text_pady, columnspan=6,
                                   sticky="news")
@@ -210,7 +219,7 @@ class App(Tk):
         self.new_order = [self.browse_button, self.word_text, self.find_image_button, self.meaning_text,
                           self.add_sentences_button] + self.sent_text_list + \
                          [self.user_tags_field] + Buttons_list + [self.delete_button, self.prev_button,
-                                                                       self.anki_button, self.skip_button,
+                                                                       self.anki_button, self.bury_button,
                                                                        self.tag_prefix_field]
 
         for widget_index in range(len(self.new_order)):
@@ -238,15 +247,18 @@ class App(Tk):
         self.configure()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+        self.prev_button["state"] = "disabled"
         self.refresh()
 
-    def delete_command(self):
-        if self.deck.get_n_cards_left():
-            self.CARDS_STATUSES.append(App.CardStatus.delete)
-        self.refresh()
+    def skip_command(self):
+        if self.refresh():
+            self.saved_cards.append(CardStatus.SKIP)
 
     def prev_command(self):
         self.deck.move(-1)
+        self.saved_cards.move(-1)
+        self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() \
+                                             else "disabled"
         self.refresh()
 
     @staticmethod
@@ -414,164 +426,83 @@ class App(Tk):
         messagebox.showinfo(message="Файлы сохранены")
         self.save_files()
 
-    def replace_sentences(self, dict_sentence_list):
-        batch_size = 5
-        word = self.word_text.get(1.0, "end").strip()
-        for start_index in range(0, max(len(dict_sentence_list), 1), batch_size):
-            self.add_sentences_button["text"] = f"Добавить предложения {start_index // batch_size + 1}/{len(dict_sentence_list) // batch_size + 1}"
-            for current_sentence_index in range(start_index, start_index + batch_size):
-                self.sent_text_list[current_sentence_index % batch_size].delete(1.0, "end")
-                if len(dict_sentence_list) > current_sentence_index:
-                    self.sent_text_list[current_sentence_index % batch_size]["foreground"] = self.sent_text_list[
-                        current_sentence_index % batch_size].default_fg_color
-                    self.sent_text_list[current_sentence_index % batch_size].insert(1.0, dict_sentence_list[current_sentence_index])
-                elif not self.sent_text_list[current_sentence_index % batch_size].under_focus:
-                    self.sent_text_list[current_sentence_index % batch_size].fill_placeholder()
-            yield
-            new_word = self.word_text.get(1.0, "end").strip()
-            if word != new_word:
-                word = new_word
-                break
+    # def prepare_tags(self, tag_name, tag, list_tag=True, include_prefix=True):
+    #     self.CONFIG["tags"]["hierarchical_pref"] = remove_special_chars(self.tag_prefix_field.get().strip(), "-")
+    #     start_tag_pattern = self.CONFIG["tags"]["hierarchical_pref"] + "::" if\
+    #                         include_prefix and self.CONFIG["tags"]["hierarchical_pref"] else ""
+    #     if list_tag:
+    #         if tag[0] == "":
+    #             return ""
+    #         result = ""
+    #         for item in tag:
+    #             item = item.replace(' ', '_')
+    #             result += f"{start_tag_pattern}{tag_name}::{item} "
+    #         return result
+    #     else:
+    #         if tag == "":
+    #             return ""
+    #         tag = tag.replace(' ', '_')
+    #         return f"{start_tag_pattern}{tag_name}::{tag} "
+    #
+    # def get_dict_tags(self, include_prefix=True):
+    #     str_dict_tags = ""
+    #     for tag_tame in self.DICT_TAGS:
+    #         tag, add_tag_flag = self.DICT_TAGS[tag_tame]
+    #         if add_tag_flag.get():
+    #             if tag_tame == "pos":
+    #                 str_dict_tags += self.prepare_tags(tag_tame, tag, list_tag=False, include_prefix=include_prefix)
+    #             else:
+    #                 str_dict_tags += self.prepare_tags(tag_tame, tag, include_prefix=include_prefix)
+    #     return str_dict_tags.strip()
 
-        sent_gen = self.sentence_parser(word)
-        self.add_sentences_button["text"] = "Добавить предложения +"
-        try:
-            for batch in sent_gen:
-                if word != self.word_text.get(1.0, "end").strip():
-                    break
-                if len(batch) == 0:
-                    raise AttributeError
-                for current_sentence_index in range(batch_size):
-                    self.sent_text_list[current_sentence_index].delete(1.0, "end")
-                    if len(batch) > current_sentence_index:
-                        self.sent_text_list[current_sentence_index]["foreground"] = self.sent_text_list[
-                            current_sentence_index].default_fg_color
-                        self.sent_text_list[current_sentence_index].insert(1.0, batch[current_sentence_index])
-                    elif not self.sent_text_list[current_sentence_index % batch_size].under_focus:
-                        self.sent_text_list[current_sentence_index % batch_size].fill_placeholder()
-                yield
-        except ConnectionError:
-            messagebox.showerror("Ошибка", "Ошибка получения web-страницы!\nПроверьте подключение к интернету")
-        except AttributeError:
-            messagebox.showerror("Ошибка", "Ошибка получения предложений!\nПроверьте написание слова")
-        finally:
-            new_gen = self.replace_sentences(dict_sentence_list)
-            self.add_sentences_button["command"] = lambda x=new_gen: next(x)
-            next(new_gen)
-            yield
-    
-    def prepare_tags(self, tag_name, tag, list_tag=True, include_prefix=True):
-        self.CONFIG["tags"]["hierarchical_pref"] = remove_special_chars(self.tag_prefix_field.get().strip(), "-")
-        start_tag_pattern = self.CONFIG["tags"]["hierarchical_pref"] + "::" if\
-                            include_prefix and self.CONFIG["tags"]["hierarchical_pref"] else ""
-        if list_tag:
-            if tag[0] == "":
-                return ""
-            result = ""
-            for item in tag:
-                item = item.replace(' ', '_')
-                result += f"{start_tag_pattern}{tag_name}::{item} "
-            return result
-        else:
-            if tag == "":
-                return ""
-            tag = tag.replace(' ', '_')
-            return f"{start_tag_pattern}{tag_name}::{tag} "
-    
-    def get_dict_tags(self, include_prefix=True):
-        str_dict_tags = ""
-        for tag_tame in self.DICT_TAGS:
-            tag, add_tag_flag = self.DICT_TAGS[tag_tame]
-            if add_tag_flag.get():
-                if tag_tame == "pos":
-                    str_dict_tags += self.prepare_tags(tag_tame, tag, list_tag=False, include_prefix=include_prefix)
-                else:
-                    str_dict_tags += self.prepare_tags(tag_tame, tag, include_prefix=include_prefix)
-        return str_dict_tags.strip()
-    
-    def refresh(self):
-        """
-        Переход от старого блока слов к новому после выбора предложения
-        """
-        def fill_additional_dict_data(widget, text):
-            """
-            Заполняет тэги и альтернативные названия слов
-            :param widget: виджет куда заполнять
-            :param text: что заполлнять
-            :return:
-            """
-            widget["state"] = "normal"
-            widget.delete(1.0, "end")
-            widget.insert(1.0, text)
-            widget["state"] = "disabled"
+    def get_word(self):
+        return self.word_text.get(1.0, "end").strip()
 
+    def replace_sentences(self) -> Iterator[None]:
+        while True:
+            prev_local_flag = self.sentence_fetcher.is_local()
+            sent_batch, error_message, local_flag = self.sentence_fetcher.get_sentence_batch(self.get_word())
+            for text_field in self.sent_text_list:
+                text_field.clear()
+                text_field.fill_placeholder()
+
+            for i in range(len(sent_batch)):
+                self.sent_text_list[i].remove_placeholder()
+                self.sent_text_list[i].insert(1.0, sent_batch[i])
+
+            if error_message:
+                messagebox.showerror(title="Replace sentences", message=error_message)
+
+            if not prev_local_flag and local_flag:
+                self.add_sentences_button["text"] = self.sentence_button_text
+            elif prev_local_flag and not local_flag:
+                self.add_sentences_button["text"] = self.sentence_button_text + " +"
+            yield
+
+    def refresh(self) -> bool:
         self.word_text.focus()
-        self.word_text.update()
-        # нужно для избжания двойного заполнения виджета загушкой
-        self.IMAGES = []
-        self.DICT_IMAGE_LINK = ""
-
-        if self.deck.get_pointer_position() == self.deck.get_starting_position():
-            self.prev_button["state"] = "disabled"
-        else:
-            self.prev_button["state"] = "normal"
-
-        # Получение и обработка нового блока слов
         current_card = self.deck.get_card()
         self.title(f"Поиск предложений для Anki. Осталось: {self.deck.get_n_cards_left()} слов")
+
+        self.word_text.clear()
+        self.meaning_text.clear()
+        self.meaning_text.fill_placeholder()
+        self.sentence_fetcher(self.get_word(), current_card.get(SENTENCES_FIELD, []))
+        next(self.sentence_replacer)
         if not current_card:
-            self.word_text.delete(1.0, "end")
-            self.meaning_text.delete(1.0, "end")
-            self.meaning_text.fill_placeholder()
-
-            for j in range(5):
-                self.sent_text_list[j].delete(1.0, "end")
-
-            self.DICT_TAGS["domain"][0] = [""]
-            self.DICT_TAGS["level"][0] = [""]
-            self.DICT_TAGS["region"][0] = [""]
-            self.DICT_TAGS["usage"][0] = [""]
-            self.DICT_TAGS["pos"][0] = ""  # type: ignore
-            fill_additional_dict_data(self.dict_tags_field, "" )
-            fill_additional_dict_data(self.alt_terms_field, "")
-
             self.find_image_button["text"] = "Добавить изображение"
-            self.skip_button["state"] = "disabled"
-
-            self.CURRENT_AUDIO_LINK = ""
-
             if not self.CONFIG["scrappers"]["local_audio"]:
                 self.sound_button["state"] = "disabled"
-
-            sentence_generator = self.replace_sentences([])
-            next(sentence_generator)
-            self.add_sentences_button["command"] = lambda x=sentence_generator: next(x)
-            return
-
-        self.DICT_TAGS["domain"][0] = current_card.get("domain", [""])
-        self.DICT_TAGS["level"][0] = current_card.get("level", [""])
-        self.DICT_TAGS["region"][0] = current_card.get("region", [""])
-        self.DICT_TAGS["usage"][0] = current_card.get("usage", [""])
-        self.DICT_TAGS["pos"][0] = current_card.get("pos", "")
-        fill_additional_dict_data(self.dict_tags_field, self.get_dict_tags(include_prefix=False))
-
+            return False
         # Обновление поля для слова
-        self.word_text.delete(1.0, "end")
-        if current_card["word"]:
-            self.word_text["foreground"] = self.word_text.default_fg_color
-            self.word_text.insert(1.0, current_card["word"])
+        self.word_text.insert(1.0, current_card["word"])
+        self.word_text.fill_placeholder()
 
         # Обновление поля для значения
-        self.meaning_text.delete(1.0, "end")
-        if current_card["meaning"]:
-            self.meaning_text["foreground"] = self.meaning_text.default_fg_color
-            self.meaning_text.insert(1.0, current_card["meaning"])
-        else:
-            self.meaning_text.fill_placeholder()
+        self.meaning_text.insert(1.0, current_card["meaning"])
+        self.meaning_text.fill_placeholder()
 
         alt_terms = " ".join(current_card.get("alt_terms", []))
-        fill_additional_dict_data(self.alt_terms_field, alt_terms)
-
         self.DICT_IMAGE_LINK = current_card.get("image_link", "")
         if self.DICT_IMAGE_LINK:
             self.find_image_button["text"] = "Добавить изображение ★"
@@ -583,13 +514,7 @@ class App(Tk):
             self.sound_button["state"] = "normal"
         else:
             self.sound_button["state"] = "disabled"
-
-        self.skip_button["state"] = "normal"
-        # Обновление полей для примеров предложений
-        sentence_generator = self.replace_sentences(current_card["Sen_Ex"]) if current_card.get(
-            "Sen_Ex") is not None else self.replace_sentences([])
-        next(sentence_generator)
-        self.add_sentences_button["command"] = lambda x=sentence_generator: next(x)
+        return True
 
 
 if __name__ == "__main__":

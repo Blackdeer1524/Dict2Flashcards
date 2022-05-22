@@ -8,7 +8,7 @@ from tkinter import Entry, Button
 from tkinter import Frame
 from tkinter import Toplevel
 from tkinter import messagebox
-from typing import Callable, Generator, Any
+from typing import Callable, Generator, Any, TypeVar, Union
 
 import requests
 from PIL import Image, ImageTk
@@ -17,6 +17,7 @@ from tkinterdnd2 import DND_FILES, DND_TEXT
 
 from consts.paths import CURRENT_SYSTEM
 from utils.widgets import ScrolledFrame
+from utils.storages import PointerList
 
 if CURRENT_SYSTEM == "Linux":
     import gi
@@ -26,43 +27,39 @@ else:
     from PIL import ImageGrab
 
 
-class Deque:
-    def __init__(self, collection=None):
-        """
-        :param collection: iterable
-        """
-        self.deque = collection if collection is not None else []
+_T = TypeVar("_T")
 
-    def __len__(self):
-        return len(self.deque)
+class Deque(PointerList):
+    def __init__(self, data: list[_T] = None):
+        super(Deque, self).__init__(data=data)
 
-    def __bool__(self):
-        return bool(self.deque)
+    def items_left(self):
+        return len(self) - self.get_pointer_position()
 
-    def pop(self, n=1) -> list:
-        return [self.deque.pop() for _ in range(min(n, len(self.deque)))]
+    def popleft(self, n=1) -> list[_T]:
+        return [self.get_pointed_item() for _ in range(min(n, self.items_left()))]
 
-    def popleft(self, n=1) -> list:
-        return [self.deque.pop(0) for _ in range(min(n, len(self.deque)))]
+    def get_pointed_item(self) -> Union[_T, None]:
+        res = self[self.get_pointer_position()]
+        self.move(1)
+        return res
 
     def append(self, item):
-        self.deque.append(item)
+        self._data.append(item)
 
     def appendleft(self, item):
-        self.deque.insert(0, item)
+        self._data.insert(self.get_pointer_position(), item)
 
-    def extend(self, collection):
-        self.deque.extend(collection)
+    def extend(self, collection: list[_T]):
+        self._data.extend(collection)
 
-    def extendleft(self, collection):
-        for i in range(len(collection)-1, -1, -1):
+    def extendleft(self, collection: list[_T]):
+        for i in range(len(collection) - 1, -1, -1):
             self.appendleft(collection[i])
 
     def clear(self):
-        self.deque.clear()
-
-    def __repr__(self):
-        return f"Deque {self.deque}"
+        self._pointer_position = 0
+        self._data.clear()
 
 
 class ImageSearch(Toplevel):
@@ -338,7 +335,7 @@ class ImageSearch(Toplevel):
         def add_fetching_to_queue():
             nonlocal n_retries
             self._generate_urls(1)
-            if self._img_urls and n_retries < self._max_request_tries:
+            if self._img_urls.items_left() and n_retries < self._max_request_tries:
                 image_fetching_futures.append(self._pool.submit(self.fetch_image, self._img_urls.popleft()[0]))
                 n_retries += 1
 
@@ -367,7 +364,7 @@ class ImageSearch(Toplevel):
         self._show_more_button["state"] = "normal"
         while True:
             self._process_batch(self._n_images_per_cycle - len(self.working_state) % self._n_images_in_row)
-            if self._scrapper_stop_flag and not self._img_urls:
+            if self._scrapper_stop_flag and not self._img_urls.items_left():
                 break
             yield
         self._show_more_button["state"] = "disabled"
@@ -435,5 +432,5 @@ if __name__ == "__main__":
 
 
     root.after(0, start_image_search("test", root, url_scrapper=get_image_links, show_image_width=300,
-                                     on_closing_action=on_closing))
+                                     on_closing_action=on_closing, timeout=0.2, max_request_tries=1))
     root.mainloop()

@@ -27,7 +27,8 @@ class PointerList:
             return self._data[item]
 
     def __repr__(self):
-        res = f"Length: {len(self)}\n" \
+        res = f"Name: {self.__class__.__name__}\n" \
+              f"Length: {len(self)}\n" \
               f"Starting pointer position: {self._starting_position}\n" \
               f"Current pointer position: {self._pointer_position}\n"
         for index, item in enumerate(self, 0):

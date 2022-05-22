@@ -138,7 +138,7 @@ class ImageSearch(Toplevel):
         self.title("Image search")
         self._search_field = Entry(self, justify="center", **self._entry_params)
         self._search_field.insert(0, self.search_term)
-        self._start_search_button = Button(self, text="Search", command=self.restart_search,
+        self._start_search_button = Button(self, text="Search", command=self._restart_search,
                                             **self._command_button_params)
 
         self._search_field.grid(row=0, column=0, sticky="news",
@@ -159,7 +159,7 @@ class ImageSearch(Toplevel):
         self.window_height_limit = window_height_limit if window_height_limit is not None else \
             master.winfo_screenheight() * 2 // 3
 
-        self._show_more_gen = self.show_more()
+        self._show_more_gen = self._show_more()
         self._show_more_button = Button(master=self, text="Show more",
                                          command=lambda x=self._show_more_gen: next(x), **self._command_button_params)
         self._save_button = Button(master=self, text="Save",
@@ -174,14 +174,14 @@ class ImageSearch(Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.bind("<Escape>", lambda event: self.destroy())
         self.bind("<Return>", lambda event: self.destroy())
-        self.bind("<Control-v>", lambda event: self.paste_image())
+        self.bind("<Control-v>", lambda event: self._paste_image())
         self.drop_target_register(DND_FILES, DND_TEXT)
-        self.dnd_bind('<<Drop>>', self.drop)
+        self.dnd_bind('<<Drop>>', self._drop)
 
-        self.command_widget_total_height = self._save_button.winfo_height() + self._search_field.winfo_height() + \
+        self._command_widget_total_height = self._save_button.winfo_height() + self._search_field.winfo_height() + \
                                            2 * self._button_pady
 
-    def start_url_generator(self) -> None:
+    def _start_url_generator(self) -> None:
         if self._image_url_gen is not None:
             try:
                 next(self._image_url_gen)
@@ -190,7 +190,7 @@ class ImageSearch(Toplevel):
                 self._scrapper_stop_flag = True
         self._scrapper_stop_flag = False
     
-    def generate_urls(self, batch_size):
+    def _generate_urls(self, batch_size):
         if self._image_url_gen is not None and not self._scrapper_stop_flag:
             try:
                 url_batch, error_message = self._image_url_gen.send(batch_size)
@@ -206,22 +206,22 @@ class ImageSearch(Toplevel):
             self._cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 
         for custom_image in self._init_images:
-            self.process_single_image(custom_image)
+            self._process_single_image(custom_image)
             self.working_state[-1] = True
             self.button_list[-1]["bg"] = self._choose_color
 
-        self._scrapper_stop_flag = self.start_url_generator()
+        self._scrapper_stop_flag = self._start_url_generator()
         next(self._show_more_gen)
-        self.resize()
-    
-    def restart_search(self):
+        self._resize_window()
+
+    def _restart_search(self):
         self.search_term = self._search_field.get()
         if not self.search_term:
             messagebox.showerror(message="Empty search query")
             return
 
         self._image_url_gen = self._url_scrapper(self.search_term) if self._url_scrapper is not None else None
-        self.start_url_generator()
+        self._start_url_generator()
         self._inner_frame = self._sf.display_widget(partial(Frame, bg=self._window_bg))
         self._img_urls.clear()
 
@@ -237,7 +237,7 @@ class ImageSearch(Toplevel):
                            bg=self._choose_color,
                            activebackground=self.activebackground,
                            command=lambda button_index=left_indent:
-                           self.choose_picture(button_index))
+                           self._choose_picture(button_index))
                 b.image = self.button_list[i].image
                 b.grid(row=left_indent // self._n_images_in_row,
                        column=left_indent % self._n_images_in_row,
@@ -249,7 +249,7 @@ class ImageSearch(Toplevel):
         del self.working_state[left_indent:]
         del self.saving_images[left_indent:]
 
-        self._show_more_gen = self.show_more()
+        self._show_more_gen = self._show_more()
         self._show_more_button.configure(command=lambda x=self._show_more_gen: next(x))
         next(self._show_more_gen)
 
@@ -258,15 +258,15 @@ class ImageSearch(Toplevel):
             self._on_closing_action(self)
         super(ImageSearch, self).destroy()
 
-    def resize(self):
+    def _resize_window(self):
         current_frame_width = self._inner_frame.winfo_width()
         current_frame_height = self._inner_frame.winfo_height()
         self._sf.config(width=min(self.window_width_limit, current_frame_width),
-                         height=min(self.window_height_limit - self.command_widget_total_height,
+                        height=min(self.window_height_limit - self._command_widget_total_height,
                                      current_frame_height))
 
     @staticmethod
-    def preprocess_image(img, width: int = None, height: int = None):
+    def preprocess_image(img: Image, width: int = None, height: int = None) -> Image:
         processed_img = copy.copy(img)
         if width is not None and processed_img.width > width:
             k_width = width / processed_img.width
@@ -295,7 +295,7 @@ class ImageSearch(Toplevel):
         except RequestException:
             return ImageSearch.StatusCodes.NON_RETRIABLE_FETCHING_ERROR, None, None
 
-    def schedule_batch_fetching(self, url_batch: list[str]):
+    def _schedule_batch_fetching(self, url_batch: list[str]):
         image_fetch_tasks = []
         for url in url_batch:
             image_fetch_tasks.append(self._pool.submit(self.fetch_image, url))
@@ -310,15 +310,15 @@ class ImageSearch(Toplevel):
         except (IOError, UnicodeError):
             return ImageSearch.StatusCodes.IMAGE_PROCESSING_ERROR, None, None
 
-    def choose_picture(self, button_index):
+    def _choose_picture(self, button_index):
         self.working_state[button_index] = not self.working_state[button_index]
         self.button_list[button_index]["bg"] = self._choose_color if self.working_state[button_index] else self._button_bg
 
-    def place_buttons(self, button_image_batch):
+    def _place_buttons(self, button_image_batch):
         for j in range(len(button_image_batch)):
             b = Button(master=self._inner_frame, image=button_image_batch[j],
                        bg=self._button_bg, activebackground=self.activebackground,
-                       command=lambda button_index=len(self.working_state): self.choose_picture(button_index))
+                       command=lambda button_index=len(self.working_state): self._choose_picture(button_index))
             b.image = button_image_batch[j]
             b.grid(row=len(self.working_state) // self._n_images_in_row,
                    column=len(self.working_state) % self._n_images_in_row,
@@ -327,9 +327,9 @@ class ImageSearch(Toplevel):
             self.button_list.append(b)
 
         self._inner_frame.update()
-        self.resize()
+        self._resize_window()
 
-    def process_batch(self, batch_size, n_retries=0):
+    def _process_batch(self, batch_size, n_retries=0):
         """
         :param batch_size: how many images to place
         :param n_retries: (if some error occurred) replace "bad" image with the new one and tries to fetch it.
@@ -337,15 +337,15 @@ class ImageSearch(Toplevel):
         """
         def add_fetching_to_queue():
             nonlocal n_retries
-            self.generate_urls(1)
+            self._generate_urls(1)
             if self._img_urls and n_retries < self._max_request_tries:
                 image_fetching_futures.append(self._pool.submit(self.fetch_image, self._img_urls.popleft()[0]))
                 n_retries += 1
 
-        self.generate_urls(batch_size)
+        self._generate_urls(batch_size)
         url_batch = self._img_urls.popleft(batch_size)
         button_images_batch = []
-        image_fetching_futures = self.schedule_batch_fetching(url_batch)
+        image_fetching_futures = self._schedule_batch_fetching(url_batch)
         while image_fetching_futures:
             fetching_status, content, url = image_fetching_futures.pop(0).result()
             if fetching_status == ImageSearch.StatusCodes.NORMAL:
@@ -360,37 +360,37 @@ class ImageSearch(Toplevel):
                 add_fetching_to_queue()
             else:
                 add_fetching_to_queue()
-        self.place_buttons(button_images_batch)
+        self._place_buttons(button_images_batch)
 
-    def show_more(self):
+    def _show_more(self):
         self.update()
         self._show_more_button["state"] = "normal"
         while True:
-            self.process_batch(self._n_images_per_cycle - len(self.working_state) % self._n_images_in_row)
+            self._process_batch(self._n_images_per_cycle - len(self.working_state) % self._n_images_in_row)
             if self._scrapper_stop_flag and not self._img_urls:
                 break
             yield
         self._show_more_button["state"] = "disabled"
         yield
 
-    def process_single_image(self, img: Image.Image):
+    def _process_single_image(self, img: Image.Image):
         button_img_batch = [ImageTk.PhotoImage(
             self.preprocess_image(img, width=self.optimal_visual_width, height=self.optimal_visual_height))]
         self.saving_images.append(img)
-        self.place_buttons(button_img_batch)
+        self._place_buttons(button_img_batch)
 
-    def drop(self, event):
+    def _drop(self, event):
         if event.data:
             data_path = event.data
             if os.path.exists(data_path):
                 img = Image.open(data_path)
-                self.process_single_image(img)
+                self._process_single_image(img)
             elif data_path.startswith("http"):
                 self._img_urls.appendleft(data_path)
-                self.process_batch(batch_size=1, n_retries=self._max_request_tries)
+                self._process_batch(batch_size=1, n_retries=self._max_request_tries)
         return event.action
 
-    def paste_image(self):
+    def _paste_image(self):
         if CURRENT_SYSTEM == "Linux":
             def pixbuf2image(pix):
                 """Convert gdkpixbuf to PIL image"""
@@ -406,9 +406,9 @@ class ImageSearch(Toplevel):
 
             if self._cb.wait_is_image_available():
                 pixbuf = self._cb.wait_for_image()
-                self.process_single_image(pixbuf2image(pixbuf))
+                self._process_single_image(pixbuf2image(pixbuf))
         else:
-            self.process_single_image(ImageGrab.grabclipboard())
+            self._process_single_image(ImageGrab.grabclipboard())
 
 
 if __name__ == "__main__":

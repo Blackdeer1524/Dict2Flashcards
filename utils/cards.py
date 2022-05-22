@@ -100,7 +100,9 @@ class SavedDeck(PointerList):
     def __init__(self, ):
         super(SavedDeck, self).__init__()
 
-    def append(self, status: CardStatus, kwargs: dict[str, Union[str, list[str]]]) -> str:
+    def append(self, status: CardStatus, kwargs: dict[str, Union[str, list[str]]] = None) -> str:
+        if kwargs is None:
+            kwargs = {}
         res = {"status": status}
         if status != CardStatus.SKIP:
             try:
@@ -144,12 +146,16 @@ class SentenceFetcher:
         self._local_sentences_flag: bool = True
         self._update_status: bool = False
 
+    def is_local(self):
+        return self._local_sentences_flag
+
     def __call__(self, base_word, base_sentences):
         self._word = base_word
         # REFERENCE!!!
         self._sentences = base_sentences
         self._local_sentences_flag = True
         self._sentence_pointer = 0
+        self._update_status = False
 
     def update_word(self, new_word: str):
         if self._word != new_word:
@@ -162,15 +168,15 @@ class SentenceFetcher:
         """
         while True:
             if self._local_sentences_flag:
-                while self._sentence_pointer < len(self._sentences):
-                    # checks for update even before the first iteration
-                    if self._update_status:
-                        break
-                    yield self._sentences[self._sentence_pointer:self._sentence_pointer + self._batch_size], ""
-                    self._sentence_pointer += self._batch_size
                 self._sentence_pointer = 0
+                # Always do the first iteration (not considering update condition)
+                while not self._update_status:
+                    self._sentence_pointer += self._batch_size
+                    yield self._sentences[self._sentence_pointer - self._batch_size:self._sentence_pointer], ""
+                    if self._sentence_pointer >= len(self._sentences):
+                        break
                 self._local_sentences_flag = False
-                # __sentence_fetcher doesn't need update before it's first iteration
+                # _sentence_fetcher doesn't need update before it's first iteration
                 # because of its first argument
                 self._update_status = False
 
@@ -184,6 +190,7 @@ class SentenceFetcher:
             else:
                 self._local_sentences_flag = True
 
-    def get_sentence_batch(self, word: str) -> tuple[list[str], str]:
+    def get_sentence_batch(self, word: str) -> tuple[list[str], str, bool]:
         self.update_word(word)
-        return next(self._sent_batch_generator)
+        sentences, error_message = next(self._sent_batch_generator)
+        return sentences, error_message, self._local_sentences_flag

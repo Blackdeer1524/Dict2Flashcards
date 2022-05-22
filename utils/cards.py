@@ -53,7 +53,7 @@ class Deck:
     def __init__(self, json_deck_path: str, current_deck_pointer: int, card_generator: CardGenerator):
         if os.path.isfile(json_deck_path):
             with open(json_deck_path, "r", encoding="UTF-8") as f:
-                self._deck = json.load(f)
+                self._deck: list[dict[str, Union[str, dict]]] = json.load(f)
             self._pointer_position = self._starting_position = min(max(len(self._deck) - 1, 0),
                                                                    max(0, current_deck_pointer))
         else:
@@ -128,9 +128,9 @@ class CardStatus(Enum):
 
 class SavedDeck:
     def __init__(self):
-        self._deck = []
+        self._deck: list[dict[str, Union[str, dict]]] = []
 
-    def push_card(self, status: CardStatus, kwargs: dict[str, Union[str, list[str], int]]) -> str:
+    def push_card(self, status: CardStatus, kwargs: dict[str, Union[str, list[str]]]) -> str:
         res = {"status": status}
         if status != CardStatus.SKIP:
             try:

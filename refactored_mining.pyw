@@ -76,23 +76,6 @@ class App(Tk):
         main_menu.add_cascade(label="Файл", menu=filemenu)
         tag_menu = Menu(main_menu, tearoff=0)
 
-        self.domain_var = BooleanVar(name="domain")
-        self.level_var = BooleanVar(name="level")
-        self.region_var = BooleanVar(name="region")
-        self.usage_var = BooleanVar(name="usage")
-        self.pos_var = BooleanVar(name="pos")
-
-        self.DICT_TAGS = {"domain": [[""], self.domain_var],
-                          "level": [[""], self.level_var],
-                          "region": [[""], self.region_var],
-                          "usage": [[""], self.usage_var],
-                          "pos": ["", self.pos_var]}
-
-        tag_menu.add_checkbutton(label='domain', variable=self.domain_var)
-        tag_menu.add_checkbutton(label='level', variable=self.level_var)
-        tag_menu.add_checkbutton(label='region', variable=self.region_var)
-        tag_menu.add_checkbutton(label='usage', variable=self.usage_var)
-        tag_menu.add_checkbutton(label='pos', variable=self.pos_var)
         main_menu.add_cascade(label='Тэги', menu=tag_menu)
 
         main_menu.add_command(label="Добавить", command=App.func_placeholder)
@@ -389,11 +372,6 @@ class App(Tk):
         # получение координат на экране через self.winfo_rootx(), self.winfo_rooty() даёт некоторое смещение
         self.CONFIG["app"]["main_window_geometry"] = self.winfo_geometry()
         self.CONFIG["tags"]["hierarchical_pref"] = self.tag_prefix_field.get()
-        self.CONFIG["tags"]["include_domain"] = self.domain_var.get()
-        self.CONFIG["tags"]["include_level"] = self.level_var.get()
-        self.CONFIG["tags"]["include_region"] = self.region_var.get()
-        self.CONFIG["tags"]["include_usage"] = self.usage_var.get()
-        self.CONFIG["tags"]["include_pos"] = self.pos_var.get()
         self.save_conf_file()
 
         self.HISTORY[self.CONFIG["directories"]["last_open_file"]] = self.deck.get_pointer_position()

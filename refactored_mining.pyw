@@ -7,7 +7,7 @@ from tkinter import messagebox
 from requests import ConnectionError
 from tkinterdnd2 import Tk
 from tkinter.filedialog import askopenfilename, askdirectory
-from typing import Iterator
+from typing import Any
 
 import parsers.image_parsers
 import parsers.word_parsers.local
@@ -20,48 +20,48 @@ from utils.cards import CardGenerator, Deck, SentenceFetcher, SavedDeck, CardSta
 from utils.window_utils import get_option_menu
 from utils.string_utils import remove_special_chars
 import json
+from utils.storages import validate_json
 
 
 class App(Tk):
     def __init__(self, *args, **kwargs):
         super(App, self).__init__(*args, **kwargs)
-        self.CONFIG, error_code = App.load_conf_file()
+        self.configurations, error_code = App.load_conf_file()
         if error_code:
             self.destroy()
         self.save_conf_file()
 
-        self.HISTORY = App.load_history_file()
-        if not self.HISTORY.get(self.CONFIG["directories"]["last_open_file"]):
-            self.HISTORY[self.CONFIG["directories"]["last_open_file"]] = 0
+        self.history = App.load_history_file()
+        if not self.history.get(self.configurations["directories"]["last_open_file"]):
+            self.history[self.configurations["directories"]["last_open_file"]] = 0
         self.web_word_parsers = App.get_web_word_parsers()
         self.local_word_parsers = App.get_local_word_parsers()
         self.web_sent_parsers = App.get_sentence_parsers()
         self.image_parsers = App.get_image_parsers()
 
-        if self.CONFIG["scrappers"]["word_parser_type"] == "web":
+        if self.configurations["scrappers"]["word_parser_type"] == "web":
             cd = CardGenerator(
-                parsing_function=self.web_word_parsers[self.CONFIG["scrappers"]["word_parser_name"]].define,
-                item_converter=self.web_word_parsers[self.CONFIG["scrappers"]["word_parser_name"]].translate)
-        elif self.CONFIG["scrappers"]["word_parser_type"] == "local":
+                parsing_function=self.web_word_parsers[self.configurations["scrappers"]["word_parser_name"]].define,
+                item_converter=self.web_word_parsers[self.configurations["scrappers"]["word_parser_name"]].translate)
+        elif self.configurations["scrappers"]["word_parser_type"] == "local":
             cd = CardGenerator(
                 local_dict_path="./media/{}.json".format(
-                    self.web_word_parsers[self.CONFIG["scrappers"]["word_parser_name"]].DICTIONARY_PATH),
-                item_converter=self.web_word_parsers[self.CONFIG["scrappers"]["word_parser_name"]].translate)
+                    self.web_word_parsers[self.configurations["scrappers"]["word_parser_name"]].DICTIONARY_PATH),
+                item_converter=self.web_word_parsers[self.configurations["scrappers"]["word_parser_name"]].translate)
         else:
-            raise NotImplemented("Unknown word_parser_type: {}!".format(self.CONFIG["scrappers"]["word_parser_type"]))
+            raise NotImplemented("Unknown word_parser_type: {}!".format(self.configurations["scrappers"]["word_parser_type"]))
 
-        self.deck = Deck(json_deck_path=self.CONFIG["directories"]["last_open_file"],
-                         current_deck_pointer=self.HISTORY[self.CONFIG["directories"]["last_open_file"]],
+        self.deck = Deck(json_deck_path=self.configurations["directories"]["last_open_file"],
+                         current_deck_pointer=self.history[self.configurations["directories"]["last_open_file"]],
                          card_generator=cd)
         self.sentence_parser = self.web_sent_parsers[
-            self.CONFIG["scrappers"]["base_sentence_parser"]].get_sentence_batch
+            self.configurations["scrappers"]["base_sentence_parser"]].get_sentence_batch
 
         self.sentence_batch_size = 5
         self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser,
                                                 sentence_batch_size=self.sentence_batch_size)
-        self.sentence_replacer = self.replace_sentences()
-
         self.saved_cards = SavedDeck()
+
         main_menu = Menu(self)
         filemenu = Menu(main_menu, tearoff=0)
         filemenu.add_command(label="Создать", command=App.func_placeholder)
@@ -87,7 +87,7 @@ class App(Tk):
                                 1: "dark"}
         self.theme2index_map = {value: key for key, value in self.index2theme_map.items()}
 
-        self.theme_index_var = IntVar(value=self.theme2index_map[self.CONFIG["app"]["theme"]])
+        self.theme_index_var = IntVar(value=self.theme2index_map[self.configurations["app"]["theme"]])
         theme_menu.add_radiobutton(label="Светлая", variable=self.theme_index_var, value=0, command=App.func_placeholder)
         theme_menu.add_radiobutton(label="Тёмная", variable=self.theme_index_var, value=1, command=App.func_placeholder)
         main_menu.add_cascade(label="Тема", menu=theme_menu)
@@ -97,11 +97,11 @@ class App(Tk):
         self.config(menu=main_menu)
 
         self.browse_button = Button(self, text="Найти в браузере", command=App.func_placeholder)
-        self.config_word_parser_button = Button(self, text="Настроить словарь", command=App.func_placeholder)
+        self.configurations_word_parser_button = Button(self, text="Настроить словарь", command=App.func_placeholder)
         self.find_image_button = Button(self, text="Добавить изображение", command=App.func_placeholder)
         self.image_word_parsers_names = list(self.image_parsers)
         
-        self.image_word_parser_name = self.CONFIG["scrappers"]["base_image_parser"]
+        self.image_word_parser_name = self.configurations["scrappers"]["base_image_parser"]
         self.image_parser_option_menu = get_option_menu(self,
                                                         init_text=self.image_word_parser_name,
                                                         values=self.image_word_parsers_names,
@@ -110,8 +110,8 @@ class App(Tk):
                                                         option_submenu_params={})
         self.sentence_button_text = "Добавить предложения"
         self.add_sentences_button = Button(self, text=self.sentence_button_text,
-                                           command=lambda x=self.sentence_replacer: next(x))
-        self.sentence_word_parser_name = self.CONFIG["scrappers"]["base_sentence_parser"]
+                                           command=self.replace_sentences)
+        self.sentence_word_parser_name = self.configurations["scrappers"]["base_sentence_parser"]
         self.sentence_parser_option_menu = get_option_menu(self,
                                                            init_text=self.sentence_word_parser_name,
                                                            values=list(self.web_sent_parsers),
@@ -141,14 +141,14 @@ class App(Tk):
         self.user_tags_field.fill_placeholder()
 
         self.tag_prefix_field = Entry(self, justify="center", width=8)
-        self.tag_prefix_field.insert(0, self.CONFIG["tags"]["hierarchical_pref"])
+        self.tag_prefix_field.insert(0, self.configurations["tags"]["hierarchical_pref"])
         self.dict_tags_field = Text(self, relief="ridge", state="disabled", height=2)
 
         Text_padx = 10
         Text_pady = 2
         # Расстановка виджетов
         self.browse_button.grid(row=0, column=0, padx=(Text_padx, 0), pady=(Text_pady, 0), sticky="news", columnspan=4)
-        self.config_word_parser_button.grid(row=0, column=4, padx=(0, Text_padx), pady=(Text_pady, 0),
+        self.configurations_word_parser_button.grid(row=0, column=4, padx=(0, Text_padx), pady=(Text_pady, 0),
                                             columnspan=4, sticky="news")
 
         self.word_text.grid(row=1, column=0, padx=Text_padx, pady=Text_pady, columnspan=8, sticky="news")
@@ -226,7 +226,7 @@ class App(Tk):
         self.bind("<Control-Key-5>", lambda event: self.func_placeholder())
 
         self.minsize(500, 0)
-        self.geometry(self.CONFIG["app"]["main_window_geometry"])
+        self.geometry(self.configurations["app"]["main_window_geometry"])
         self.configure()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -259,10 +259,10 @@ class App(Tk):
 
     def save_conf_file(self):
         with open(CONFIG_FILE_PATH, "w") as f:
-            json.dump(self.CONFIG, f, indent=3)
+            json.dump(self.configurations, f, indent=3)
 
     @staticmethod
-    def load_conf_file() -> (dict, bool):
+    def load_conf_file() -> tuple[dict[str, dict], bool]:
         standard_conf_file = {"app": {"theme": "dark",
                                       "main_window_geometry": "500x800+0+0",
                                       "image_search_position": "+0+0"},
@@ -273,54 +273,45 @@ class App(Tk):
                                             "local_search_type": 0,
                                             "local_audio": "",
                                             "non_pos_specific_search": False},
+                              "tags": {"hierarchical_pref": ""},
                               "directories": {"media_dir": "",
                                               "last_open_file": "",
                                               "last_save_dir": ""},
-                              "tags": {"hierarchical_pref": "eng",
-                                       "include_domain": True,
-                                       "include_level": True,
-                                       "include_region": True,
-                                       "include_usage": True,
-                                       "include_pos": True},
                               "anki": {"anki_deck": "",
                                        "anki_field": ""}
                               }
 
+        conf_file: dict[str, dict[str, Any]]
         if not os.path.exists(CONFIG_FILE_PATH):
-            conf_file = {}
+            conf_file = {}  # type: ignore
         else:
             with open(CONFIG_FILE_PATH, "r", encoding="UTF-8") as f:
                 conf_file = json.load(f)
 
-        check_queue = [(standard_conf_file, conf_file)]
-        for (src, dst) in check_queue:
-            for checking_key in src:
-                if dst.get(checking_key) is None:
-                    dst[checking_key] = src[checking_key]
-                elif type(dst[checking_key]) == dict:
-                    check_queue.append((src[checking_key], dst[checking_key]))
+        validate_json(checking_scheme=conf_file, default_scheme=standard_conf_file)
 
-        if not conf_file["directories"]["media_dir"]:
+        if not conf_file["directories"]["media_dir"] or not os.path.isdir(conf_file["directories"]["media_dir"]):
             conf_file["directories"]["media_dir"] = askdirectory(title="Выберете директорию для медиа файлов",
                                                                  mustexist=True,
                                                                  initialdir=STANDARD_ANKI_MEDIA)
             if not conf_file["directories"]["media_dir"]:
-                return conf_file, 1
+                return (conf_file, True)
                         
-        if not conf_file["directories"]["last_open_file"]:
+        if not conf_file["directories"]["last_open_file"] or not os.path.isfile(conf_file["directories"]["media_dir"]):
             conf_file["directories"]["last_open_file"] = askopenfilename(title="Выберете JSON файл со словами",
                                                                          filetypes=(("JSON", ".json"),),
                                                                          initialdir="./")
             if not conf_file["directories"]["media_dir"]:
-                return conf_file, 1
+                return (conf_file, True)
             
-        if not conf_file["directories"]["last_save_dir"]:
+        if not conf_file["directories"]["last_save_dir"] or not os.path.isdir(conf_file["directories"]["media_dir"]):
             conf_file["directories"]["last_save_dir"] = askdirectory(title="Выберете директорию сохранения",
                                                                      mustexist=True,
                                                                      initialdir="./")
             if not conf_file["directories"]["media_dir"]:
-                return conf_file, 1
-        return conf_file, 0
+                return (conf_file, True)
+
+        return (conf_file, False)
 
     @staticmethod
     def iter_namespace(ns_pkg):
@@ -370,19 +361,19 @@ class App(Tk):
         Сохраняет файлы если они не пустые или есть изменения
         """
         # получение координат на экране через self.winfo_rootx(), self.winfo_rooty() даёт некоторое смещение
-        self.CONFIG["app"]["main_window_geometry"] = self.winfo_geometry()
-        self.CONFIG["tags"]["hierarchical_pref"] = self.tag_prefix_field.get()
+        self.configurations["app"]["main_window_geometry"] = self.winfo_geometry()
+        self.configurations["tags"]["hierarchical_pref"] = self.tag_prefix_field.get()
         self.save_conf_file()
 
-        self.HISTORY[self.CONFIG["directories"]["last_open_file"]] = self.deck.get_pointer_position()
+        self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position()
 
-        with open(self.CONFIG["directories"]["last_open_file"], "w", encoding="utf-8") as new_write_file:
+        with open(self.configurations["directories"]["last_open_file"], "w", encoding="utf-8") as new_write_file:
             json.dump(self.deck.get_deck(), new_write_file, indent=4)
 
         # self.save_audio_file()
 
         with open(HISTORY_FILE_PATH, "w") as saving_f:
-            json.dump(self.HISTORY, saving_f, indent=4)
+            json.dump(self.history, saving_f, indent=4)
 
         # if self.SKIPPED_FILE:
         #     self.save_skip_file()
@@ -405,9 +396,9 @@ class App(Tk):
         self.save_files()
 
     # def prepare_tags(self, tag_name, tag, list_tag=True, include_prefix=True):
-    #     self.CONFIG["tags"]["hierarchical_pref"] = remove_special_chars(self.tag_prefix_field.get().strip(), "-")
-    #     start_tag_pattern = self.CONFIG["tags"]["hierarchical_pref"] + "::" if\
-    #                         include_prefix and self.CONFIG["tags"]["hierarchical_pref"] else ""
+    #     self.configurations["tags"]["hierarchical_pref"] = remove_special_chars(self.tag_prefix_field.get().strip(), "-")
+    #     start_tag_pattern = self.configurations["tags"]["hierarchical_pref"] + "::" if\
+    #                         include_prefix and self.configurations["tags"]["hierarchical_pref"] else ""
     #     if list_tag:
     #         if tag[0] == "":
     #             return ""
@@ -436,26 +427,24 @@ class App(Tk):
     def get_word(self):
         return self.word_text.get(1.0, "end").strip()
 
-    def replace_sentences(self) -> Iterator[None]:
-        while True:
-            prev_local_flag = self.sentence_fetcher.is_local()
-            sent_batch, error_message, local_flag = self.sentence_fetcher.get_sentence_batch(self.get_word())
-            for text_field in self.sent_text_list:
-                text_field.clear()
-                text_field.fill_placeholder()
+    def replace_sentences(self) -> None:
+        prev_local_flag = self.sentence_fetcher.is_local()
+        sent_batch, error_message, local_flag = self.sentence_fetcher.get_sentence_batch(self.get_word())
+        for text_field in self.sent_text_list:
+            text_field.clear()
+            text_field.fill_placeholder()
 
-            for i in range(len(sent_batch)):
-                self.sent_text_list[i].remove_placeholder()
-                self.sent_text_list[i].insert(1.0, sent_batch[i])
+        for i in range(len(sent_batch)):
+            self.sent_text_list[i].remove_placeholder()
+            self.sent_text_list[i].insert(1.0, sent_batch[i])
 
-            if error_message:
-                messagebox.showerror(title="Replace sentences", message=error_message)
+        if error_message:
+            messagebox.showerror(title="Replace sentences", message=error_message)
 
-            if not prev_local_flag and local_flag:
-                self.add_sentences_button["text"] = self.sentence_button_text
-            elif prev_local_flag and not local_flag:
-                self.add_sentences_button["text"] = self.sentence_button_text + " +"
-            yield
+        if not prev_local_flag and local_flag:
+            self.add_sentences_button["text"] = self.sentence_button_text
+        elif prev_local_flag and not local_flag:
+            self.add_sentences_button["text"] = self.sentence_button_text + " +"
 
     def refresh(self) -> bool:
         self.word_text.focus()
@@ -466,10 +455,10 @@ class App(Tk):
         self.meaning_text.clear()
         self.meaning_text.fill_placeholder()
         self.sentence_fetcher(self.get_word(), current_card.get(SENTENCES_FIELD, []))
-        next(self.sentence_replacer)
+        self.replace_sentences()
         if not current_card:
             self.find_image_button["text"] = "Добавить изображение"
-            if not self.CONFIG["scrappers"]["local_audio"]:
+            if not self.configurations["scrappers"]["local_audio"]:
                 self.sound_button["state"] = "disabled"
             return False
         # Обновление поля для слова
@@ -488,7 +477,7 @@ class App(Tk):
             self.find_image_button["text"] = "Добавить изображение"
         self.CURRENT_AUDIO_LINK = current_card.get("audio_link", "")
 
-        if self.CONFIG["scrappers"]["local_audio"] or self.CURRENT_AUDIO_LINK:
+        if self.configurations["scrappers"]["local_audio"] or self.CURRENT_AUDIO_LINK:
             self.sound_button["state"] = "normal"
         else:
             self.sound_button["state"] = "disabled"

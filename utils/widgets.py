@@ -54,6 +54,7 @@ class EntryWithPlaceholder(Entry):
         self.bind("<FocusIn>", self._foc_in)
         self.bind("<FocusOut>", self._foc_out)
         self._is_under_focus = False
+        self._placeholder_set_status = False
 
     def get(self):
         return "" if self["foreground"] == self._placeholder_fg_color else self.tk.call(self._w, 'get')

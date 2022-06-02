@@ -1,10 +1,9 @@
 import importlib
 import pkgutil
-from tkinter import Label, Button, Checkbutton, Toplevel, Menu, Frame, BooleanVar, IntVar, Entry
+from tkinter import Button, Menu, IntVar, Entry
 from utils.widgets import TextWithPlaceholder as Text
 from utils.widgets import EntryWithPlaceholder as Entry
 from tkinter import messagebox
-from requests import ConnectionError
 from tkinterdnd2 import Tk
 from tkinter.filedialog import askopenfilename, askdirectory
 from typing import Any
@@ -15,10 +14,9 @@ import parsers.word_parsers.web
 import parsers.sentence_parsers
 
 from consts.paths import *
-from consts.card_fields import *
+from consts.card_fields import FIELDS
 from utils.cards import CardGenerator, Deck, SentenceFetcher, SavedDeck, CardStatus
 from utils.window_utils import get_option_menu
-from utils.string_utils import remove_special_chars
 import json
 from utils.storages import validate_json
 
@@ -51,7 +49,7 @@ class App(Tk):
         else:
             raise NotImplemented("Unknown word_parser_type: {}!".format(self.configurations["scrappers"]["word_parser_type"]))
 
-        self.deck = Deck(json_deck_path=self.configurations["directories"]["last_open_file"],
+        self.deck = Deck(deck_path=self.configurations["directories"]["last_open_file"],
                          current_deck_pointer=self.history[self.configurations["directories"]["last_open_file"]],
                          card_generator=cd)
         self.sentence_parser = self.web_sent_parsers[
@@ -229,8 +227,6 @@ class App(Tk):
         self.geometry(self.configurations["app"]["main_window_geometry"])
         self.configure()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-
-        self.prev_button["state"] = "disabled"
         self.refresh()
 
     def skip_command(self):
@@ -238,10 +234,8 @@ class App(Tk):
             self.saved_cards.append(CardStatus.SKIP)
 
     def prev_command(self):
-        self.deck.move(-1)
+        self.deck.move(-2)
         self.saved_cards.move(-1)
-        self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() \
-                                             else "disabled"
         self.refresh()
 
     @staticmethod
@@ -395,35 +389,6 @@ class App(Tk):
         messagebox.showinfo(message="Файлы сохранены")
         self.save_files()
 
-    # def prepare_tags(self, tag_name, tag, list_tag=True, include_prefix=True):
-    #     self.configurations["tags"]["hierarchical_pref"] = remove_special_chars(self.tag_prefix_field.get().strip(), "-")
-    #     start_tag_pattern = self.configurations["tags"]["hierarchical_pref"] + "::" if\
-    #                         include_prefix and self.configurations["tags"]["hierarchical_pref"] else ""
-    #     if list_tag:
-    #         if tag[0] == "":
-    #             return ""
-    #         result = ""
-    #         for item in tag:
-    #             item = item.replace(' ', '_')
-    #             result += f"{start_tag_pattern}{tag_name}::{item} "
-    #         return result
-    #     else:
-    #         if tag == "":
-    #             return ""
-    #         tag = tag.replace(' ', '_')
-    #         return f"{start_tag_pattern}{tag_name}::{tag} "
-    #
-    # def get_dict_tags(self, include_prefix=True):
-    #     str_dict_tags = ""
-    #     for tag_tame in self.DICT_TAGS:
-    #         tag, add_tag_flag = self.DICT_TAGS[tag_tame]
-    #         if add_tag_flag.get():
-    #             if tag_tame == "pos":
-    #                 str_dict_tags += self.prepare_tags(tag_tame, tag, list_tag=False, include_prefix=include_prefix)
-    #             else:
-    #                 str_dict_tags += self.prepare_tags(tag_tame, tag, include_prefix=include_prefix)
-    #     return str_dict_tags.strip()
-
     def get_word(self):
         return self.word_text.get(1.0, "end").strip()
 
@@ -447,26 +412,30 @@ class App(Tk):
             self.add_sentences_button["text"] = self.sentence_button_text + " +"
 
     def refresh(self) -> bool:
+        self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() \
+                                             else "disabled"
+
         self.word_text.focus()
         current_card = self.deck.get_card()
         self.title(f"Поиск предложений для Anki. Осталось: {self.deck.get_n_cards_left()} слов")
 
         self.word_text.clear()
         self.meaning_text.clear()
-        self.meaning_text.fill_placeholder()
-        self.sentence_fetcher(self.get_word(), current_card.get(SENTENCES_FIELD, []))
-        self.replace_sentences()
         if not current_card:
             self.find_image_button["text"] = "Добавить изображение"
             if not self.configurations["scrappers"]["local_audio"]:
                 self.sound_button["state"] = "disabled"
+            self.sentence_fetcher("", [])
+            self.replace_sentences()
             return False
         # Обновление поля для слова
-        self.word_text.insert(1.0, current_card["word"])
+        self.word_text.insert(1.0, current_card.get(FIELDS.word))
+        self.sentence_fetcher(self.get_word(), current_card.get(FIELDS.sentences, []))
+        self.replace_sentences()
         self.word_text.fill_placeholder()
 
         # Обновление поля для значения
-        self.meaning_text.insert(1.0, current_card["meaning"])
+        self.meaning_text.insert(1.0, current_card.get(FIELDS.definition))
         self.meaning_text.fill_placeholder()
 
         alt_terms = " ".join(current_card.get("alt_terms", []))

@@ -135,8 +135,7 @@ class CardStatus(Enum):
 
 
 class SavedDeck(PointerList):
-    def __init__(self, saving_path: str):
-        self.saving_path = saving_path
+    def __init__(self):
         super(SavedDeck, self).__init__()
 
     def append(self, status: CardStatus, kwargs: dict[str, Union[str, list[str]]] = None):
@@ -153,8 +152,8 @@ class SavedDeck(PointerList):
         super(SavedDeck, self).move(n)
         del self._data[self._pointer_position:]
     
-    def save(self):
-        with open(self.saving_path) as deck_file:
+    def save(self, saving_path: str):
+        with open(saving_path) as deck_file:
             json.dump(self._data, deck_file, cls=_CardJSONEncoder)
             
 

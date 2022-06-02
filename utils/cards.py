@@ -8,12 +8,15 @@ from collections.abc import Mapping
 
 
 class Card(Mapping):
-    def __init__(self, card_fields: dict[str, Any]):
+    def __init__(self, card_fields: dict[str, Any] = None):
+        if card_fields is None:
+            card_fields = {}
+
         self._data = {}
         for field_name in FIELDS:
             if (field_value := card_fields.get(field_name)) is not None:
                 self._data[field_name] = field_value
-        assert self._data.get(FIELDS.word)
+        # assert self._data.get(FIELDS.word)
 
     def __len__(self):
         return len(self._data)
@@ -91,9 +94,13 @@ class Deck(PointerList):
                 deck: list[dict[str, Union[str, dict]]] = json.load(f)
             super(Deck, self).__init__(data=deck,
                                        starting_position=current_deck_pointer,
-                                       default_return_value=None)
+                                       default_return_value=Card())
         else:
             raise Exception("Invalid _deck path!")
+
+        for i in range(len(self)):
+            self._data[i] = Card(self._data[i])
+
         self._cards_left = len(self) - self._pointer_position
         self._card_generator: CardGenerator = card_generator
 

@@ -1,10 +1,41 @@
-from typing import Callable, Iterator, Union
+from typing import Callable, Iterator, Union, Any
 import os
 import json
-from consts.card_fields import *
+from consts.card_fields import FIELDS
 from enum import Enum
-from utils.error_handling import create_exception_message
 from utils.storages import PointerList
+from collections.abc import Mapping
+
+
+class Card(Mapping):
+    def __init__(self, card_fields: dict[str, Any]):
+        self._data = {}
+        for field_name in FIELDS:
+            if (field_value := card_fields.get(field_name)) is not None:
+                self._data[field_name] = field_value
+        assert self._data.get(FIELDS.word)
+
+    def __len__(self):
+        return len(self._data)
+
+    def __getitem__(self, item):
+        return self._data[item]
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __repr__(self):
+        return f"Card {self._data}"
+
+    def to_dict(self):
+        return self._data
+
+
+class _CardJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Card):
+            return o.to_dict()
+        return super().default(o)
 
 
 class CardGenerator:
@@ -32,7 +63,7 @@ class CardGenerator:
                             f"Check given parameters:",
                             kwargs)
 
-    def get(self, query: str, **kwargs) -> list[dict]:
+    def get(self, query: str, **kwargs) -> list[Card]:
         """
         word_filter: Callable[[comparable: str, query_word: str], bool]
         additional_filter: Callable[[translated_word_data: dict], bool]
@@ -47,17 +78,20 @@ class CardGenerator:
         for card in source:
             if word_filter(card[0], query):
                 res.extend(self.item_converter(card))
-        return [item for item in res if additional_filter(item)]
+        return [Card(item) for item in res if additional_filter(item)]
 
 
 class Deck(PointerList):
-    def __init__(self, json_deck_path: str, current_deck_pointer: int, card_generator: CardGenerator):
-        if os.path.isfile(json_deck_path):
-            with open(json_deck_path, "r", encoding="UTF-8") as f:
+    def __init__(self, deck_path: str,
+                 current_deck_pointer: int,
+                 card_generator: CardGenerator):
+        self.deck_path = deck_path
+        if os.path.isfile(self.deck_path):
+            with open(self.deck_path, "r", encoding="UTF-8") as f:
                 deck: list[dict[str, Union[str, dict]]] = json.load(f)
             super(Deck, self).__init__(data=deck,
                                        starting_position=current_deck_pointer,
-                                       default_return_value={})
+                                       default_return_value=None)
         else:
             raise Exception("Invalid _deck path!")
         self._cards_left = len(self) - self._pointer_position
@@ -75,19 +109,23 @@ class Deck(PointerList):
         self._cards_left = len(self) - self._pointer_position
 
     def add_card_to_deck(self, query: str, **kwargs):
-        res: list[dict] = self._card_generator.get(query, **kwargs)
+        res: list[Card] = self._card_generator.get(query, **kwargs)
         self._data = self[:self._pointer_position] + res + self[self._pointer_position:]
         self._cards_left += len(res)
 
-    def get_card(self) -> dict:
+    def get_card(self) -> Card:
         cur_card = self[self._pointer_position]
         if cur_card:
             self._pointer_position += 1
             self._cards_left -= 1
         return cur_card
 
-    def get_deck(self):
+    def get_deck(self) -> list[Card]:
         return self._data
+
+    def save(self):
+        with open(self.deck_path) as deck_file:
+            json.dump(self._data, deck_file, cls=_CardJSONEncoder)
 
 
 class CardStatus(Enum):
@@ -97,41 +135,28 @@ class CardStatus(Enum):
 
 
 class SavedDeck(PointerList):
-    def __init__(self, ):
+    def __init__(self, saving_path: str):
+        self.saving_path = saving_path
         super(SavedDeck, self).__init__()
 
-    def append(self, status: CardStatus, kwargs: dict[str, Union[str, list[str]]] = None) -> str:
+    def append(self, status: CardStatus, kwargs: dict[str, Union[str, list[str]]] = None):
         if kwargs is None:
             kwargs = {}
         res = {"status": status}
         if status != CardStatus.SKIP:
-            try:
-                saving_card = {WORD_FIELD: kwargs[WORD_FIELD],
-                               DEFINITION_FIELD: kwargs[DEFINITION_FIELD],
-                               SENTENCES_FIELD: kwargs[SENTENCES_FIELD]}
-            except KeyError:
-                return create_exception_message()
-
-            image_links = kwargs.get(IMG_LINKS_FIELD)
-            if image_links is not None:
-                saving_card[IMG_LINKS_FIELD] = image_links
-
-            audio_links = kwargs.get(AUDIO_LINKS_FIELD)
-            if audio_links is not None:
-                saving_card[AUDIO_LINKS_FIELD] = audio_links
-
-            tags = kwargs.get(TAGS_FIELD)
-            if tags is not None:
-                saving_card[TAGS_FIELD] = tags
+            saving_card = Card(kwargs)
             res["card"] = saving_card
         self._data.append(res)
         self._pointer_position += 1
-        return ""
 
     def move(self, n: int) -> None:
         super(SavedDeck, self).move(n)
         del self._data[self._pointer_position:]
-
+    
+    def save(self):
+        with open(self.saving_path) as deck_file:
+            json.dump(self._data, deck_file, cls=_CardJSONEncoder)
+            
 
 class SentenceFetcher:
     def __init__(self,

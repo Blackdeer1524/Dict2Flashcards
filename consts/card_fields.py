@@ -1,7 +1,19 @@
-WORD_FIELD = "word"
-DEFINITION_FIELD = "meaning"
-SENTENCES_FIELD = "Sen_Ex"
-IMG_LINKS_FIELD = "image_link"
-AUDIO_LINKS_FIELD = "audio_link"
-TAGS_FIELD = "tags"
-ALT_TERMS_FIELD = "alt_terms"
+from typing import NamedTuple
+
+
+__all__ = ["FIELDS"]
+
+
+class _CardFields(NamedTuple):
+    word: str = "word"
+    alt_terms: str = "alt_terms"
+    definition: str = "meaning"
+    sentences: str = "Sen_Ex"
+    img_links: str = "image_link"
+    audio_links: str = "audio_link"
+    dict_tags: str = "dict_tags"
+    user_tags: str = "user_tags"
+
+
+
+FIELDS = _CardFields()

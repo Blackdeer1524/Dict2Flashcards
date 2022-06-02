@@ -44,7 +44,6 @@ def get_local_audio_path(word, pos="", local_audio_folder_path="./", with_pos=Tr
     return res if os.path.exists(res) else ""
 
 
-
 class AudioDownloader(Toplevel):
     class CopyEncounterAction(IntEnum):
         UNSPECIFIED = 0
@@ -214,7 +213,7 @@ class AudioDownloader(Toplevel):
             if audio_links_list:
                 delay = self.request_delay if wait_before_next_batch else 0
                 next_word, next_pos, next_wp_name, next_url = audio_links_list.pop(0)
-                self.master.after(delay, lambda: iterate(index +1, next_word, next_pos, next_wp_name, next_url))
+                self.master.after(delay, lambda: iterate(index + 1, next_word, next_pos, next_wp_name, next_url))
             else:
                 if self.errors["missing_audios"]:
                     absent_audio_words = ", ".join(self.errors['missing_audios'])

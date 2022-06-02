@@ -1,3 +1,4 @@
+import abc
 from typing import Any, TypeVar
 
 
@@ -54,6 +55,9 @@ class PointerList:
 
     def move(self, n: int):
         self._pointer_position = min(max(self._pointer_position + n, 0), len(self))
+
+    def save(self):
+        raise NotImplementedError
 
 
 def validate_json(checking_scheme: dict[Any, Any], default_scheme: dict[Any, Any]) -> None:

@@ -1,5 +1,50 @@
-import abc
 from typing import Any, TypeVar
+from collections.abc import Mapping
+
+
+class _FrozenDictNode(Mapping):
+    def __init__(self, data: dict[Any, Any]):
+        self._data = data
+
+    def __len__(self):
+        return len(self._data)
+
+    def __getitem__(self, item):
+        return self._data[item]
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __repr__(self):
+        return str(self._data)
+
+    def __bool__(self):
+        return bool(self._data)
+
+    def to_dict(self):
+        return self._data
+
+
+class FrozenDict(_FrozenDictNode):
+    def __init__(self, data: dict[Any, Any]):
+        master_dict = {}
+
+        proc_queue = []
+        for key in data:
+            proc_queue.append((master_dict, key, data[key]))
+
+        while proc_queue:
+            master, master_key, proc_unit = proc_queue[-1]
+            last_queue_length = len(proc_queue)
+            if isinstance(proc_unit, dict):
+                for proc_key in proc_unit:
+                    if isinstance((proc_val := proc_unit[proc_key]), dict):
+                        proc_queue.append((proc_unit, proc_key, proc_val))
+
+            if not (len(proc_queue) - last_queue_length):
+                master[master_key] = _FrozenDictNode(proc_unit)
+                proc_queue.pop()
+        super(FrozenDict, self).__init__(data=master_dict)
 
 
 _T = TypeVar("_T")
@@ -88,8 +133,6 @@ def validate_json(checking_scheme: dict[Any, Any], default_scheme: dict[Any, Any
 
 
 def main():
-    from pprint import pprint
-
     standard_conf_file = {"app": {"theme": "dark",
                                   "main_window_geometry": "500x800+0+0",
                                   "image_search_position": "+0+0"},
@@ -110,22 +153,37 @@ def main():
                          "theme": "dark",
                                   "main_window_geometry": "500x800+0+0",
                                   "image_search_position": "+0+0"},
-                         "scrappers": {"base_sentence_parser": "web_sentencedict",
-                                        "word_parser_type": "web",
-                                        "word_parser_name": "cambridge_US",
-                                        "base_image_parser": "google",
-                                        "local_search_type": 0,
-                                        "local_audio": "",
-                                        "non_pos_specific_search": False},
-                         "directories": {"media_dir": "",
-                                          "last_open_file": "",
-                                          "last_save_dir": ""},
-                         "anki": {1: {3: 2},
-                                   "anki_deck": "",
-                                   "anki_field": {1: 2}}
-                         }
+                 "scrappers": {"base_sentence_parser": "web_sentencedict",
+                                "word_parser_type": "web",
+                                "word_parser_name": "cambridge_US",
+                                "base_image_parser": "google",
+                                "local_search_type": 0,
+                                "local_audio": "",
+                                "non_pos_specific_search": False},
+                 "directories": {"media_dir": "",
+                                  "last_open_file": "",
+                                  "last_save_dir": ""},
+                 "anki": {1: {3: 2},
+                           "anki_deck": "",
+                           "anki_field": {1: 2}}
+                 }
+
+    frozen_check = FrozenDict(data=checking)
+    checking_queue = [(checking, frozen_check)]
+    while checking_queue:
+        src, frozen_src = checking_queue.pop()
+        assert len(src) == len(frozen_src)
+        for src_key, frozen_src_key in zip(sorted(list(src.keys()),        key=lambda x: str(x)),
+                                           sorted(list(frozen_src.keys()), key=lambda x: str(x))):
+            assert src_key == frozen_src_key
+            src_val        = src[src_key]
+            frozen_src_val = frozen_src[frozen_src_key]
+            if isinstance(src_val, dict):
+                checking_queue.append((src_val, frozen_src_val))
+            else:
+                assert src_val == frozen_src_val
+
     validate_json(checking, standard_conf_file)
-    pprint(checking)
     assert checking == standard_conf_file
 
 

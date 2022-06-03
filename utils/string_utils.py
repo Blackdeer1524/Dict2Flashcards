@@ -5,42 +5,30 @@ LETTERS = set("abcdefghijklmnopqrstuvwxyz")
 
 
 class SearchType(IntEnum):
-    exact = 0
-    forward = 1
-    backward = 2
-    everywhere = 3
+    EXACT = 0
+    FORWARD = 1
+    BACKWARD = 2
+    EVERYWHERE = 3
 
 
-def string_search(source, query, search_type=3, case_sencitive=True):
-    """
-    :param source: where to search
-    :param query: what to search
-    :param search_type:
-        exact = 0
-        forward = 1
-        backward = 2
-        everywhere = 3
-    :param case_sencitive:
-    :return:
-    """
+def get_search_pattern(query: str,
+                       search_type: SearchType=SearchType.EVERYWHERE,
+                       case_sensitive: bool=True) -> re.Pattern:
     query = query.strip()
-    if search_type == SearchType.exact:
+    if search_type == SearchType.EXACT:
         search_pattern = r"\b{}\b".format(query)
-    elif search_type == SearchType.forward:
+    elif search_type == SearchType.FORWARD:
         search_pattern = r"\b{}".format(query)
-    elif search_type == SearchType.backward:
+    elif search_type == SearchType.BACKWARD:
         search_pattern = r"{}\b".format(query)
     else:
         search_pattern = r"{}".format(query)
 
-    if not case_sencitive:
+    if not case_sensitive:
         pattern = re.compile(search_pattern, re.IGNORECASE)
     else:
         pattern = re.compile(search_pattern)
-
-    if re.search(pattern, source):
-        return True
-    return False
+    return pattern
 
 
 def remove_special_chars(text, sep=" ", special_chars='№!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '):

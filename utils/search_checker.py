@@ -193,16 +193,20 @@ class _CardFieldData:
                 return None
         return current_entry
 
+
 @dataclass(frozen=True)
 class Expression:
-    card_field_data: _CardFieldData
-
     def compute(self, card: Card):
         raise NotImplementedError(f"compute method was not implemented for {self.__class__.__name__}!")
     
 
 @dataclass(frozen=True)
-class FieldCheck(Expression):
+class FieldExpression(Expression):
+    card_field_data: _CardFieldData
+
+
+@dataclass(frozen=True)
+class FieldCheck(FieldExpression):
     query: str
 
     def compute(self, card: Card) -> bool:
@@ -210,7 +214,7 @@ class FieldCheck(Expression):
 
 
 @dataclass(frozen=True)
-class Method(Expression):
+class Method(FieldExpression):
     method: Callable[[Any], int]
     
     def compute(self, card: Card) -> int:
@@ -220,6 +224,7 @@ class Method(Expression):
 class ExpressionParser:
     def __init__(self, tokens: list[Token]):
         self._tokens: list[Token] = tokens
+        self._expressions: list[Union[Expression, Token]] = []
 
     def get_field_check(self, index: int) -> tuple[Union[FieldCheck, None], int]:
         """index: Value token index"""
@@ -236,23 +241,55 @@ class ExpressionParser:
             return Method(_CardFieldData(self._tokens[index + 2].value), method_factory(self._tokens[index].value)), 3
         return None, 0
 
-    def token2expression(self) -> list[Union[Expression, Token]]:
-        expressions: list[Union[Expression, Token]] = []
+    def _promote_to_expressions(self):
         i = 0
         while i < len(self._tokens):
             if self._tokens[i].type == TokenType.STRING:
+
                 res, offset = self.get_field_check(i)
                 if res is None:
                     res, offset = self.get_method(i)
                 if res is None:
-                    expressions.append(self._tokens[i])
+                    self._expressions.append(self._tokens[i])
                 else:
-                    expressions.append(res)
+                    self._expressions.append(res)
                 i += offset
             else:
-                expressions.append(self._tokens[i])
+                self._expressions.append(self._tokens[i])
             i += 1
-        return expressions
+
+    def _check_grammar(self):
+        if len(self._expressions) == 1:
+            return
+
+        i = 0
+        while i < len(self._expressions) - 1:      
+            current = self._expressions[i]
+            right = self._expressions[i + 1]
+            
+            if isinstance(current, Expression) and \
+                not ((isinstance(right, Token) and 
+                      (right.type == TokenType.PARENTHESIS or
+                       right.type == TokenType.LOGIC or
+                       right.type == TokenType.END))):
+                raise QuerySyntaxError("Stranded EXPRESSION")
+            elif isinstance(current, Token):
+                if current.type == TokenType.LOGIC and not (isinstance(right, Expression) or
+                                                            isinstance(right, Token) and
+                                                            (right.type == TokenType.PARENTHESIS or
+                                                             right.type == TokenType.STRING)):
+                    raise QuerySyntaxError("Wrong logic operator usage!")
+                elif current.type == TokenType.STRING and not (isinstance(right, Token) and
+                                                               (right.type == TokenType.LOGIC or
+                                                                right.type == TokenType.END)):
+                    raise QuerySyntaxError("Stranded STRING token!")
+            i += 1
+
+
+    def tokens2expressions(self) -> list[Union[Expression, Token]]:
+        self._promote_to_expressions()
+        self._check_grammar()
+        return self._expressions
 
 
 @dataclass(frozen=True)
@@ -277,7 +314,12 @@ class EvalNode:
 class LogicParser:
     def __init__(self, expressions: list[Expression]):
         self._expressions = expressions
-
+    
+    # def create_tree(self):
+    #     i = 0
+    #     while i <
+        
+    
 
 def main():
     from pprint import pprint
@@ -288,7 +330,7 @@ def main():
     tokens = tokenizer.tokenize()
 
     parser = ExpressionParser(tokens=tokens)
-    pprint(parser.token2expression())
+    pprint(parser.tokens2expressions())
 
 
 if __name__ == "__main__":

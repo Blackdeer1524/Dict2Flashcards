@@ -1,3 +1,5 @@
+import copy
+
 from consts.card_fields import FIELDS
 from typing import Optional, Any, Union
 from enum import Enum, auto
@@ -26,8 +28,9 @@ class QuerySyntaxError(ParsingException):
     pass
 
 
-LOGIC_HIGH = frozenset(("and", "not", "<", "<=", ">", ">=", "==", "!="))
-LOGIC_LOW  = frozenset(("or", ))
+LOGIC_HIGH = frozenset(("<", "<=", ">", ">=", "==", "!="))
+LOGIC_MID = frozenset(("and", "not"))
+LOGIC_LOW  = frozenset(("or"))
 LOGIC_SET  = LOGIC_HIGH | LOGIC_LOW
 
 
@@ -64,7 +67,7 @@ FIELD_VAL_SEP = ":"
 FIELD_NAMES_SET = frozenset(FIELDS)
 
 
-class TokenType(Enum):
+class Token_T(Enum):
     START = auto()
     END = auto()
     SEP = auto()
@@ -78,24 +81,24 @@ class TokenType(Enum):
 @dataclass(frozen=True)
 class Token:
     value: str
-    type: Optional[TokenType] = None
+    type: Optional[Token_T] = None
 
     def __post_init__(self):
         if self.type is not None:
             return
 
         if not self.value:
-            super().__setattr__("type", TokenType.END)
+            super().__setattr__("type", Token_T.END)
         elif self.value == FIELD_VAL_SEP:
-            super().__setattr__("type", TokenType.SEP)
+            super().__setattr__("type", Token_T.SEP)
         elif self.value == "(":
-            super().__setattr__("type", TokenType.LP)
+            super().__setattr__("type", Token_T.LP)
         elif self.value == ")":
-            super().__setattr__("type", TokenType.RP)
+            super().__setattr__("type", Token_T.RP)
         elif self.value in LOGIC_SET:
-            super().__setattr__("type", TokenType.LOGIC)
+            super().__setattr__("type", Token_T.LOGIC)
         else:
-            super().__setattr__("type", TokenType.STRING)
+            super().__setattr__("type", Token_T.STRING)
 
 
 class Tokenizer:
@@ -107,7 +110,7 @@ class Tokenizer:
             start_ind += 1
 
         if start_ind == len(self.exp):
-            return Token("", TokenType.END), start_ind
+            return Token("", Token_T.END), start_ind
 
         if self.exp[start_ind] in f"(){FIELD_VAL_SEP}":
             return Token(self.exp[start_ind]), start_ind + 1
@@ -119,8 +122,8 @@ class Tokenizer:
             while i < len(self.exp) and (self.exp[i] != "\"" or self.exp[i-1] == "\\"):
                 i += 1
             if i == len(self.exp):
-                return Token("Error", TokenType.WRONG_VALUE), i
-            return Token(self.exp[start_ind:i], TokenType.STRING), i + 1
+                return Token("Error", Token_T.WRONG_VALUE), i
+            return Token(self.exp[start_ind:i], Token_T.STRING), i + 1
 
         i = start_ind
         while i < len(self.exp):
@@ -133,13 +136,13 @@ class Tokenizer:
         return Token(self.exp[start_ind:i]), i
 
     def get_tokens(self):
-        cur_token: Token = Token("", TokenType.START)
+        cur_token: Token = Token("", Token_T.START)
         search_index = 0
         res: list[Token] = []
-        while cur_token.type != TokenType.END :
+        while cur_token.type != Token_T.END :
             cur_token, search_index = self._get_next_token(search_index)
             res.append(cur_token)
-            if cur_token.type == TokenType.WRONG_VALUE:
+            if cur_token.type == Token_T.WRONG_VALUE:
                 raise WrongTokenError("Wrong search query!")
         return res
 
@@ -199,10 +202,11 @@ class _CardFieldData:
         return current_entry
 
 
+@dataclass(frozen=True)
 class Expression:
     def compute(self, card: Card):
         raise NotImplementedError(f"compute method was not implemented for {self.__class__.__name__}!")
-    
+
 
 @dataclass(frozen=True)
 class FieldExpression(Expression):
@@ -232,23 +236,23 @@ class TokenParses:
 
     def get_field_check(self, index: int) -> tuple[Union[FieldCheck, None], int]:
         """index: Value token index"""
-        if self._tokens[index + 1].type == TokenType.SEP and \
-           self._tokens[index + 2].type == TokenType.STRING:
+        if self._tokens[index + 1].type == Token_T.SEP and \
+           self._tokens[index + 2].type == Token_T.STRING:
             return FieldCheck(_CardFieldData(self._tokens[index].value), self._tokens[index + 2].value), 2
         return None, 0
 
     def get_method(self, index: int) -> tuple[Union[Method, None], int]:
         """index: Value token index"""
-        if self._tokens[index + 1].type == TokenType.LP and \
-           self._tokens[index + 2].type == TokenType.STRING and \
-           self._tokens[index + 3].type == TokenType.RP:
+        if self._tokens[index + 1].type == Token_T.LP and \
+           self._tokens[index + 2].type == Token_T.STRING and \
+           self._tokens[index + 3].type == Token_T.RP:
             return Method(_CardFieldData(self._tokens[index + 2].value), method_factory(self._tokens[index].value)), 3
         return None, 0
 
     def _promote_to_expressions(self):
         i = 0
         while i < len(self._tokens):
-            if self._tokens[i].type == TokenType.STRING:
+            if self._tokens[i].type == Token_T.STRING:
 
                 res, offset = self.get_field_check(i)
                 if res is None:
@@ -273,26 +277,26 @@ class TokenParses:
 
             if isinstance(current, Expression) and \
                 not ((isinstance(right, Token) and
-                      (right.type == TokenType.LP or
-                       right.type == TokenType.RP or
-                       right.type == TokenType.LOGIC or
-                       right.type == TokenType.END))):
+                      (right.type == Token_T.LP or
+                       right.type == Token_T.RP or
+                       right.type == Token_T.LOGIC or
+                       right.type == Token_T.END))):
                 raise QuerySyntaxError("Stranded EXPRESSION")
             elif isinstance(current, Token):
-                if current.type == TokenType.LOGIC and not (isinstance(right, Expression) or
+                if current.type == Token_T.LOGIC and not (isinstance(right, Expression) or
                                                             isinstance(right, Token) and
-                                                            (right.type == TokenType.LP or
-                                                             right.type == TokenType.RP or
-                                                             right.type == TokenType.STRING)):
+                                                            (right.type == Token_T.LP or
+                                                             right.type == Token_T.RP or
+                                                             right.type == Token_T.STRING)):
                     raise QuerySyntaxError("Wrong logic operator usage!")
-                elif current.type == TokenType.STRING and (not current.value.isdecimal() or not
-                (isinstance(right, Token) and (right.type == TokenType.LOGIC or right.type == TokenType.END))):
+                elif current.type == Token_T.STRING and (not current.value.isdecimal() or not
+                (isinstance(right, Token) and (right.type == Token_T.LOGIC or right.type == Token_T.END))):
                     raise QuerySyntaxError("Stranded STRING token!")
-                elif current.type == TokenType.SEP:
+                elif current.type == Token_T.SEP:
                     raise QuerySyntaxError("Stranded SEP token!")
-                elif current.type == TokenType.LP:
+                elif current.type == Token_T.LP:
                     parenthesis_stack += 1
-                elif current.type == TokenType.RP:
+                elif current.type == Token_T.RP:
                     parenthesis_stack -= 1
                     if parenthesis_stack < 0:
                         raise QuerySyntaxError("Too many closing parentheses!")
@@ -308,45 +312,79 @@ class TokenParses:
 @dataclass(frozen=True)
 class EvalNode:
     operator: str
-    left: Optional[Expression] = None
-    right: Optional[Expression] = None
-    operation: Union[Callable[[bool],       bool],
-                     Callable[[bool, bool], bool]] = field(init=False, repr=False)
+    left: Optional[Union[Expression, Token]] = None
+    right: Optional[Union[Expression, Token]] = None
+    operation: Union[Callable[[Any],       bool],
+                     Callable[[Any, Any], bool]] = field(init=False, repr=False)
 
     def __post_init__(self):
-        super().__setattr__(self, "operation", logic_factory(self.operator))
+        if isinstance(self.left, Token) and isinstance(self.right, Token):
+            raise QuerySyntaxError("Two STRING's in one node!")
+        super().__setattr__("operation", logic_factory(self.operator))
 
     def compute(self, card: Card) -> bool:
         if self.left is not None and self.right is not None:
+            if isinstance(self.left, Token):
+                return self.operation(float(self.left.value), self.right.compute(card))
+            elif isinstance(self.right, Token):
+                return self.operation(self.left.compute(card), float(self.right.value))
             return self.operation(self.left.compute(card), self.right.compute(card))
         elif self.left is not None:
             return self.operation(self.left.compute(card))
         raise LogicOperatorError("Empty node!")
 
 
-def create_tree(expressions: list[Union[Expression, Token]], start: int) -> tuple[EvalNode, int]:
-    current_index = start
-    while current_index < len(expressions) - 1:
-        current_operand = expressions[current_index]
-        # if isinstance(current_operand, Token) and current_operand.type == TokenType.END
+class LogicTree:
+    def __init__(self, expressions):
+        self._expressions = copy.deepcopy(expressions)
 
-        operator = expressions[current_index + 1]
-        right_operand = expressions[current_index + 2]
-        if isinstance(right_operand, Token) and right_operand.type == TokenType.PARENTHESIS:
-            right_operand, current_index = create_tree(expressions, current_index + 1)
+    def construct(self, start: int = 0) -> EvalNode:
+        current_index = start
+        while current_index < len(self._expressions) - 1:
+            left_operand = self._expressions[current_index]
+            if isinstance(left_operand, Token):
+                if (left_operand.type == Token_T.RP or left_operand.type == Token_T.END):
+                    break
+                elif left_operand.type == Token_T.LP:
+                    self._expressions.pop(current_index)
+                    self.construct(current_index)
+
+            operator = self._expressions[current_index + 1]
+            assert isinstance(operator, Token)
+            if operator.type == Token_T.RP or operator.type == Token_T.END:
+                break
+
+            right_operand = self._expressions[current_index + 2]
+            if isinstance(right_operand, Token) and right_operand.type == Token_T.LP:
+                self._expressions.pop(current_index + 2)
+                self.construct(current_index + 2)
+
+            if operator.value in LOGIC_HIGH:
+                left_operand = self._expressions.pop(current_index)
+                self._expressions.pop(current_index)
+                right_operand = self._expressions.pop(current_index)
+                self._expressions.insert(current_index, EvalNode(left=left_operand, right=right_operand,
+                                                                 operator=operator.value))
+            else:
+                current_index += 2
+
+        current_index = start
+        while current_index < len(self._expressions) - 1:
+            left_operand = self._expressions[current_index]
+
+            operator = self._expressions.pop(current_index + 1)
+            assert isinstance(operator, Token)
+            if operator.type == Token_T.RP or operator.type == Token_T.END:
+                break
+
+            self._expressions.pop(current_index)
+            right_operand = self._expressions.pop(current_index)
+            self._expressions.insert(current_index, EvalNode(left=left_operand, right=right_operand,
+                                                             operator=operator.value))
+
+        return self._expressions[start]
 
 
-
-
-class LogicParser:
-    def __init__(self, expressions: list[Expression]):
-        self._expressions = expressions
-    
-    # def create_tree(self):
-    #     i = 0
-    #     while i <
-        
-    
 
 def main():
     from pprint import pprint
@@ -357,7 +395,10 @@ def main():
     tokens = tokenizer.get_tokens()
 
     parser = TokenParses(tokens=tokens)
-    pprint(parser.tokens2expressions())
+    expressions = parser.tokens2expressions()
+    tree = LogicTree(expressions)
+    master_node = tree.construct()
+    pprint()
 
 
 if __name__ == "__main__":

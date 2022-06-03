@@ -127,7 +127,7 @@ class Tokenizer:
 
         return Token(self.exp[start_ind:i]), i
 
-    def tokenize(self):
+    def get_tokens(self):
         cur_token: Token = Token("", TokenType.START)
         search_index = 0
         res: list[Token] = []
@@ -194,7 +194,6 @@ class _CardFieldData:
         return current_entry
 
 
-@dataclass(frozen=True)
 class Expression:
     def compute(self, card: Card):
         raise NotImplementedError(f"compute method was not implemented for {self.__class__.__name__}!")
@@ -221,7 +220,7 @@ class Method(FieldExpression):
         return self.method(self.card_field_data.get_field_data(card))
     
 
-class ExpressionParser:
+class TokenParses:
     def __init__(self, tokens: list[Token]):
         self._tokens: list[Token] = tokens
         self._expressions: list[Union[Expression, Token]] = []
@@ -262,13 +261,12 @@ class ExpressionParser:
         if len(self._expressions) == 1:
             return
 
-        i = 0
-        while i < len(self._expressions) - 1:      
+        for i in range(len(self._expressions) - 1):
             current = self._expressions[i]
             right = self._expressions[i + 1]
-            
+
             if isinstance(current, Expression) and \
-                not ((isinstance(right, Token) and 
+                not ((isinstance(right, Token) and
                       (right.type == TokenType.PARENTHESIS or
                        right.type == TokenType.LOGIC or
                        right.type == TokenType.END))):
@@ -283,8 +281,8 @@ class ExpressionParser:
                                                                (right.type == TokenType.LOGIC or
                                                                 right.type == TokenType.END)):
                     raise QuerySyntaxError("Stranded STRING token!")
-            i += 1
-
+                elif current.type == TokenType.SEP:
+                    raise QuerySyntaxError("Stranded SEP token!")
 
     def tokens2expressions(self) -> list[Union[Expression, Token]]:
         self._promote_to_expressions()
@@ -327,9 +325,9 @@ def main():
     tokenizer = Tokenizer("word: test and meaning:\"some meaning\" "
                           "or alt_terms:alt and (sentences : \"some sentences\" or tags : some_tags) "
                           "and len(sentences) < 5")
-    tokens = tokenizer.tokenize()
+    tokens = tokenizer.get_tokens()
 
-    parser = ExpressionParser(tokens=tokens)
+    parser = TokenParses(tokens=tokens)
     pprint(parser.tokens2expressions())
 
 

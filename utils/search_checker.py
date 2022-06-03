@@ -1,5 +1,5 @@
 from consts.card_fields import FIELDS
-from typing import Optional, Any
+from typing import Optional, Any, Union
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from utils.cards import Card
@@ -31,8 +31,13 @@ class TokenType(Enum):
     VALUE = auto()
     WRONG_VALUE = auto()
 
+
+class Expression:
+    pass
+
+
 @dataclass(frozen=True)
-class Token:
+class Token(Expression):
     value: str
     type: Optional[TokenType] = None
 
@@ -97,10 +102,10 @@ class Tokenizer:
         return res
 
 
-def get_field_data(field_path: list[str], card: Card) -> Any:
-    """field_path: chain of keys"""
+def get_field_data(query_chain: list[str], card: Card) -> Any:
+    """query_chain: chain of keys"""
     current_entry = card
-    for key in field_path:
+    for key in query_chain:
         current_entry = current_entry.get(key)
         if current_entry is None:
             return None
@@ -108,48 +113,105 @@ def get_field_data(field_path: list[str], card: Card) -> Any:
 
 
 @dataclass(frozen=True)
-class FieldQuery:
-    path: str
-    query: str
-    field_path: list[str] = field(init=False)
+class _Field:
+    path: str = field(repr=False)
+    query_chain: list[str] = field(init=False, repr=True)
 
     def __post_init__(self):
-        split_path = self.path.split(sep="[")
-        FieldQuery.__setattr__(self, "field_path")
+        self._check_nested_path()
+        split_path = []
 
-    def check_nested_path(self):
+        start = current_index = 0
+
+        while current_index < len(self.path) and self.path[current_index] != "[":
+            current_index += 1
+        last_closed_bracket = current_index
+
+        while current_index < len(self.path):
+            if self.path[current_index] == "[":
+                split_path.append(self.path[start:last_closed_bracket])
+                start = current_index + 1
+            elif self.path[current_index] == "]":
+                last_closed_bracket = current_index
+            current_index += 1
+        
+        if start != current_index:
+            split_path.append(self.path[start:last_closed_bracket])
+            
+        super().__setattr__("query_chain", split_path)
+
+    def _check_nested_path(self) -> None:
         bracket_stack = 0
-        for char in self.path:
+        last_closing_bracket = -1
+        for i in range(len(self.path)):
+            char = self.path[i]
             if char == "[":
                 bracket_stack += 1
             elif char == "]":
+                last_closing_bracket = i
                 bracket_stack -= 1
                 if bracket_stack < 0:
                     raise QuerySyntaxError("Wrong order of brackets in search query!")
 
+        if last_closing_bracket > 0:
+            for i in range(last_closing_bracket + 1, len(self.path)):
+                if not self.path[i].isspace():
+                    raise QuerySyntaxError("Wrong bracket sequence")
+
 
 @dataclass(frozen=True)
-class Method:
+class FieldCheck(Expression):
+    field: _Field
+    query: str
+
+
+@dataclass(frozen=True)
+class Method(Expression):
     method_name: str
     target: str
 
 
-# class Parser:
-#     def __init__(self, tokens: list[Token]):
-#         self._tokens: list[Token] = tokens
-#         self._expressions = []
-#
-#     def token2expression(self):
-#         i = 0
-#         while i < len(self._tokens):
-#             if self._tokens[i].type == TokenType.VALUE:
-#                 if self._tokens[i + 1].type == TokenType.SEP and self._tokens[i + 2].type == TokenType.VALUE:
-#                     self._expressions.append(FieldQuery(self._tokens[i].value, self._tokens[i + 2].value))
-#                 elif
-#
-#
-#
-#
+class Parser:
+    def __init__(self, tokens: list[Token]):
+        self._tokens: list[Token] = tokens
+        self._expressions: list[Expression] = []
+
+    def get_field_check(self, index: int) -> tuple[Union[FieldCheck, None], int]:
+        """index: Value token index"""
+        if self._tokens[index + 1].type == TokenType.SEP and \
+           self._tokens[index + 2].type == TokenType.VALUE:
+            return FieldCheck(_Field(self._tokens[index].value), self._tokens[index + 2].value), 2
+        return None, 0
+
+    def get_method(self, index: int) -> tuple[Union[Method, None], int]:
+        """index: Value token index"""
+        if self._tokens[index + 1].type == TokenType.PARENTHESIS and \
+           self._tokens[index + 2].type == TokenType.VALUE and \
+           self._tokens[index + 3].type == TokenType.PARENTHESIS:
+            return Method(self._tokens[index].value, self._tokens[index + 2].value), 3
+        return None, 0
+
+    def token2expression(self):
+        i = 0
+        while i < len(self._tokens):
+            if self._tokens[i].type == TokenType.VALUE:
+                res, offset = self.get_field_check(i)
+                if res is None:
+                    res, offset = self.get_method(i)
+                if res is None:
+                    self._expressions.append(self._tokens[i])
+                else:
+                    self._expressions.append(res)
+                i += offset
+            else:
+                self._expressions.append(self._tokens[i])
+
+            i += 1
+
+    def get_expressions(self):
+        return self._expressions
+
+
 # def calculate_field_length(field_token: Token) -> int:
 #     if field_token.type != TokenType.VALUE:
 #         raise WrongTokenException(f"VALUE token expected. {field_token.type} was given!")
@@ -158,32 +220,17 @@ class Method:
 #     seq = field_token.value.split(sep="[")
 
 
-
-
-# class Parser:
-#     methods = {"len": }
-#
-#
-#     def __init__(self, tokens: list[Token]):
-#         self.tokens = tokens
-#
-#     def parse(self):
-#         i = 1
-#         while i < len(self.tokens):
-
-
-
-
-
 def main():
     from pprint import pprint
 
     tokenizer = Tokenizer("word: test and meaning:\"some meaning\" "
                           "or alt_terms:alt and (sentences : \"some sentences\" or tags : some_tags) "
                           "and len(sentences) < 5")
-    res = tokenizer.tokenize()
+    tokens = tokenizer.tokenize()
 
-    pprint(res)
+    parser = Parser(tokens=tokens)
+    parser.token2expression()
+    pprint(parser.get_expressions())
 
 
 if __name__ == "__main__":

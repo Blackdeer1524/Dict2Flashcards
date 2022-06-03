@@ -219,7 +219,8 @@ class FieldCheck(FieldExpression):
     query: str
 
     def compute(self, card: Card) -> bool:
-        return self.query in self.card_field_data.get_field_data(card)
+        field_data = self.card_field_data.get_field_data(card)
+        return self.query in field_data if field_data is not None else False
 
 
 @dataclass(frozen=True)
@@ -227,7 +228,8 @@ class Method(FieldExpression):
     method: Callable[[Any], int]
     
     def compute(self, card: Card) -> int:
-        return self.method(self.card_field_data.get_field_data(card))
+        field_data = self.card_field_data.get_field_data(card)
+        return self.method(self.card_field_data.get_field_data(card)) if field_data is not None else 0
     
 
 class TokenParses:
@@ -291,7 +293,7 @@ class TokenParses:
                                                              right.type == Token_T.STRING)):
                     raise QuerySyntaxError("Wrong logic operator usage!")
                 elif current.type == Token_T.STRING and (not current.value.isdecimal() or not
-                (isinstance(right, Token) and (right.type == Token_T.LOGIC or right.type == Token_T.END))):
+                (isinstance(right, Token) and (right.type == Token_T.LOGIC or right.type == Token_T.RP or right.type == Token_T.END))):
                     raise QuerySyntaxError("Stranded STRING token!")
                 elif current.type == Token_T.SEP:
                     raise QuerySyntaxError("Stranded SEP token!")
@@ -339,7 +341,7 @@ class LogicTree:
     def __init__(self, expressions):
         self._expressions = copy.deepcopy(expressions)
 
-    def _convolve_subtree(self, start: int):
+    def construct(self, start: int = 0):
         highest = LOGIC_PRECEDENCE[0]
         current_index = start
         while current_index < len(self._expressions) - 1:
@@ -369,87 +371,78 @@ class LogicTree:
             else:
                 current_index += 2
 
+        done_once = False
         for cur_logic_precedence in LOGIC_PRECEDENCE[1:]:
             current_index = start
             while current_index < len(self._expressions) - 1:
-                operator = self._expressions.pop(current_index + 1)
+
+                operator = self._expressions[current_index + 1]
                 assert isinstance(operator, Token)
+
                 if operator.type == Token_T.RP or operator.type == Token_T.END:
                     break
 
                 if operator.value in cur_logic_precedence:
                     left_operand = self._expressions.pop(current_index)
+                    self._expressions.pop(current_index)
                     right_operand = self._expressions.pop(current_index)
                     self._expressions.insert(current_index, EvalNode(left=left_operand, right=right_operand,
                                                                      operator=operator.value))
                 else:
                     current_index += 2
-        return self._expressions[start]
-
-
-
-
-    def construct(self, start: int = 0) -> EvalNode:
-        current_index = start
-        while current_index < len(self._expressions) - 1:
-            left_operand = self._expressions[current_index]
-            if isinstance(left_operand, Token):
-                if (left_operand.type == Token_T.RP or left_operand.type == Token_T.END):
-                    break
-                elif left_operand.type == Token_T.LP:
-                    self._expressions.pop(current_index)
-                    self.construct(current_index)
-
-            operator = self._expressions[current_index + 1]
-            assert isinstance(operator, Token)
-            if operator.type == Token_T.RP or operator.type == Token_T.END:
-                break
-
-            right_operand = self._expressions[current_index + 2]
-            if isinstance(right_operand, Token) and right_operand.type == Token_T.LP:
-                self._expressions.pop(current_index + 2)
-                self.construct(current_index + 2)
-
-            if operator.value in LOGIC_HIGH:
-                left_operand = self._expressions.pop(current_index)
-                self._expressions.pop(current_index)
-                right_operand = self._expressions.pop(current_index)
-                self._expressions.insert(current_index, EvalNode(left=left_operand, right=right_operand,
-                                                                 operator=operator.value))
             else:
-                current_index += 2
+                continue
+            done_once = True
 
-        current_index = start
-        while current_index < len(self._expressions) - 1:
-            left_operand = self._expressions[current_index]
+        if done_once:
+            self._expressions.pop(current_index + 1)
 
-            operator = self._expressions.pop(current_index + 1)
-            assert isinstance(operator, Token)
-            if operator.type == Token_T.RP or operator.type == Token_T.END:
-                break
+    def get_master_node(self):
+        assert len(self._expressions) == 1
+        return self._expressions[0]
 
-            self._expressions.pop(current_index)
-            right_operand = self._expressions.pop(current_index)
-            self._expressions.insert(current_index, EvalNode(left=left_operand, right=right_operand,
-                                                             operator=operator.value))
 
-        return self._expressions[start]
-
+def parse_language(expression: str) -> EvalNode:
+    _tokenizer = Tokenizer(expression)
+    tokens = _tokenizer.get_tokens()
+    _token_parser = TokenParses(tokens=tokens)
+    expressions = _token_parser.tokens2expressions()
+    _logic_tree = LogicTree(expressions)
+    _logic_tree.construct()
+    return _logic_tree.get_master_node()
 
 
 def main():
     from pprint import pprint
 
-    tokenizer = Tokenizer("word: test and meaning:\"some meaning\" "
-                          "or alt_terms:alt and (sentences : \"some sentences\" or tags : some_tags) "
-                          "and len(sentences) < 5")
-    tokens = tokenizer.get_tokens()
+    queries = ("word: test and meaning:\"some meaning\" "
+                          "or alt_terms:alt and (sentences : \"some sentences\" or tags : some_tags and (tags[pos] : noun)) "
+                          "and (len(sentences) < 5)",
+                "\"test tag\": \"test value\" and len(user_tags[image_links]) == 5",
+               "len(\"meaning [  test  ][tag]\") == 2 or len(meaning[test][tag]) != 2")
 
-    parser = TokenParses(tokens=tokens)
-    expressions = parser.tokens2expressions()
-    tree = LogicTree(expressions)
-    master_node = tree.construct()
-    pprint(master_node)
+
+    for query in queries:
+        root = parse_language(query)
+
+    query = "word: test and pos: verb"
+    root = parse_language(query)
+    print(root)
+
+    test_card = {
+        "word": "test",
+        "meaning": "to do something in order to discover if something is safe, works correctly, etc., or if something is present",
+        "Sen_Ex": [
+            "The manufacturers are currently testing the new engine.",
+            "They tested her blood for signs of the infection."
+        ],
+        "level": [
+            "B2"
+        ],
+        "pos": "verb",
+        "audio_link": "https://dictionary.cambridge.org//media/english/us_pron/t/tes/test_/test.mp3"
+    }
+    print(root.compute(card=test_card))
 
 
 if __name__ == "__main__":

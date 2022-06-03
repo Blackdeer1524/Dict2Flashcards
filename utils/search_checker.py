@@ -1,11 +1,11 @@
 import copy
-
 from consts.card_fields import FIELDS
 from typing import Optional, Any, Union
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from utils.cards import Card
 from typing import Callable, Iterable
+from functools import reduce
 
 
 class ParsingException(Exception):
@@ -30,8 +30,9 @@ class QuerySyntaxError(ParsingException):
 
 LOGIC_HIGH = frozenset(("<", "<=", ">", ">=", "==", "!="))
 LOGIC_MID = frozenset(("and", "not"))
-LOGIC_LOW  = frozenset(("or"))
-LOGIC_SET  = LOGIC_HIGH | LOGIC_LOW
+LOGIC_LOW  = frozenset(("or",))
+LOGIC_PRECEDENCE = (LOGIC_HIGH, LOGIC_MID, LOGIC_LOW)
+LOGIC_SET  = reduce(lambda x, y: x | y, LOGIC_PRECEDENCE)
 
 
 def logic_factory(operator: str) -> Union[Callable[[bool], bool],
@@ -338,6 +339,56 @@ class LogicTree:
     def __init__(self, expressions):
         self._expressions = copy.deepcopy(expressions)
 
+    def _convolve_subtree(self, start: int):
+        highest = LOGIC_PRECEDENCE[0]
+        current_index = start
+        while current_index < len(self._expressions) - 1:
+            left_operand = self._expressions[current_index]
+            if isinstance(left_operand, Token):
+                if (left_operand.type == Token_T.RP or left_operand.type == Token_T.END):
+                    break
+                elif left_operand.type == Token_T.LP:
+                    self._expressions.pop(current_index)
+                    self.construct(current_index)
+
+            operator = self._expressions[current_index + 1]
+            if operator.type == Token_T.RP or operator.type == Token_T.END:
+                break
+
+            right_operand = self._expressions[current_index + 2]
+            if isinstance(right_operand, Token) and right_operand.type == Token_T.LP:
+                self._expressions.pop(current_index + 2)
+                self.construct(current_index + 2)
+
+            if operator.value in highest:
+                left_operand = self._expressions.pop(current_index)
+                self._expressions.pop(current_index)
+                right_operand = self._expressions.pop(current_index)
+                self._expressions.insert(current_index, EvalNode(left=left_operand, right=right_operand,
+                                                                 operator=operator.value))
+            else:
+                current_index += 2
+
+        for cur_logic_precedence in LOGIC_PRECEDENCE[1:]:
+            current_index = start
+            while current_index < len(self._expressions) - 1:
+                operator = self._expressions.pop(current_index + 1)
+                assert isinstance(operator, Token)
+                if operator.type == Token_T.RP or operator.type == Token_T.END:
+                    break
+
+                if operator.value in cur_logic_precedence:
+                    left_operand = self._expressions.pop(current_index)
+                    right_operand = self._expressions.pop(current_index)
+                    self._expressions.insert(current_index, EvalNode(left=left_operand, right=right_operand,
+                                                                     operator=operator.value))
+                else:
+                    current_index += 2
+        return self._expressions[start]
+
+
+
+
     def construct(self, start: int = 0) -> EvalNode:
         current_index = start
         while current_index < len(self._expressions) - 1:
@@ -398,7 +449,7 @@ def main():
     expressions = parser.tokens2expressions()
     tree = LogicTree(expressions)
     master_node = tree.construct()
-    pprint()
+    pprint(master_node)
 
 
 if __name__ == "__main__":

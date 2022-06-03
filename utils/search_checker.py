@@ -26,7 +26,9 @@ class QuerySyntaxError(ParsingException):
     pass
 
 
-LOGIC_SET = frozenset(("and", "or", "not", "<", "<=", ">", ">=", "==", "!="))
+LOGIC_HIGH = frozenset(("and", "not", "<", "<=", ">", ">=", "==", "!="))
+LOGIC_LOW  = frozenset(("or", ))
+LOGIC_SET  = LOGIC_HIGH | LOGIC_LOW
 
 
 def logic_factory(operator: str) -> Union[Callable[[bool], bool],
@@ -67,7 +69,8 @@ class TokenType(Enum):
     END = auto()
     SEP = auto()
     LOGIC = auto()
-    PARENTHESIS = auto()
+    LP = auto()
+    RP = auto()
     STRING = auto()
     WRONG_VALUE = auto()
 
@@ -85,10 +88,12 @@ class Token:
             super().__setattr__("type", TokenType.END)
         elif self.value == FIELD_VAL_SEP:
             super().__setattr__("type", TokenType.SEP)
+        elif self.value == "(":
+            super().__setattr__("type", TokenType.LP)
+        elif self.value == ")":
+            super().__setattr__("type", TokenType.RP)
         elif self.value in LOGIC_SET:
             super().__setattr__("type", TokenType.LOGIC)
-        elif self.value in "()":
-            super().__setattr__("type", TokenType.PARENTHESIS)
         else:
             super().__setattr__("type", TokenType.STRING)
 
@@ -234,9 +239,9 @@ class TokenParses:
 
     def get_method(self, index: int) -> tuple[Union[Method, None], int]:
         """index: Value token index"""
-        if self._tokens[index + 1].type == TokenType.PARENTHESIS and \
+        if self._tokens[index + 1].type == TokenType.LP and \
            self._tokens[index + 2].type == TokenType.STRING and \
-           self._tokens[index + 3].type == TokenType.PARENTHESIS:
+           self._tokens[index + 3].type == TokenType.RP:
             return Method(_CardFieldData(self._tokens[index + 2].value), method_factory(self._tokens[index].value)), 3
         return None, 0
 
@@ -261,28 +266,38 @@ class TokenParses:
         if len(self._expressions) == 1:
             return
 
+        parenthesis_stack = 0
         for i in range(len(self._expressions) - 1):
             current = self._expressions[i]
             right = self._expressions[i + 1]
 
             if isinstance(current, Expression) and \
                 not ((isinstance(right, Token) and
-                      (right.type == TokenType.PARENTHESIS or
+                      (right.type == TokenType.LP or
+                       right.type == TokenType.RP or
                        right.type == TokenType.LOGIC or
                        right.type == TokenType.END))):
                 raise QuerySyntaxError("Stranded EXPRESSION")
             elif isinstance(current, Token):
                 if current.type == TokenType.LOGIC and not (isinstance(right, Expression) or
                                                             isinstance(right, Token) and
-                                                            (right.type == TokenType.PARENTHESIS or
+                                                            (right.type == TokenType.LP or
+                                                             right.type == TokenType.RP or
                                                              right.type == TokenType.STRING)):
                     raise QuerySyntaxError("Wrong logic operator usage!")
-                elif current.type == TokenType.STRING and not (isinstance(right, Token) and
-                                                               (right.type == TokenType.LOGIC or
-                                                                right.type == TokenType.END)):
+                elif current.type == TokenType.STRING and (not current.value.isdecimal() or not
+                (isinstance(right, Token) and (right.type == TokenType.LOGIC or right.type == TokenType.END))):
                     raise QuerySyntaxError("Stranded STRING token!")
                 elif current.type == TokenType.SEP:
                     raise QuerySyntaxError("Stranded SEP token!")
+                elif current.type == TokenType.LP:
+                    parenthesis_stack += 1
+                elif current.type == TokenType.RP:
+                    parenthesis_stack -= 1
+                    if parenthesis_stack < 0:
+                        raise QuerySyntaxError("Too many closing parentheses!")
+        if parenthesis_stack:
+            raise QuerySyntaxError("Too many opening parentheses!")
 
     def tokens2expressions(self) -> list[Union[Expression, Token]]:
         self._promote_to_expressions()
@@ -307,6 +322,20 @@ class EvalNode:
         elif self.left is not None:
             return self.operation(self.left.compute(card))
         raise LogicOperatorError("Empty node!")
+
+
+def create_tree(expressions: list[Union[Expression, Token]], start: int) -> tuple[EvalNode, int]:
+    current_index = start
+    while current_index < len(expressions) - 1:
+        current_operand = expressions[current_index]
+        # if isinstance(current_operand, Token) and current_operand.type == TokenType.END
+
+        operator = expressions[current_index + 1]
+        right_operand = expressions[current_index + 2]
+        if isinstance(right_operand, Token) and right_operand.type == TokenType.PARENTHESIS:
+            right_operand, current_index = create_tree(expressions, current_index + 1)
+
+
 
 
 class LogicParser:

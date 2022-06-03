@@ -3,20 +3,20 @@ import os
 import json
 from consts.card_fields import FIELDS
 from enum import Enum
-from utils.storages import PointerList
-from collections.abc import Mapping
+from utils.storages import PointerList, FrozenDict
 
 
-class Card(Mapping):
+class Card(FrozenDict):
     def __init__(self, card_fields: dict[str, Any] = None):
         if card_fields is None:
-            card_fields = {}
+            super(Card, self).__init__(data={})
+            return
 
-        self._data = {}
+        data = {}
         for field_name in FIELDS:
             if (field_value := card_fields.get(field_name)) is not None:
-                self._data[field_name] = field_value
-        # assert self._data.get(FIELDS.word)
+                data[field_name] = field_value
+        super(Card, self).__init__(data=data)
 
     def __len__(self):
         return len(self._data)
@@ -29,6 +29,9 @@ class Card(Mapping):
 
     def __repr__(self):
         return f"Card {self._data}"
+
+    def __bool__(self):
+        return bool(self._data)
 
     def to_dict(self):
         return self._data
@@ -115,10 +118,18 @@ class Deck(PointerList):
         super(Deck, self).move(n)
         self._cards_left = len(self) - self._pointer_position
 
-    def add_card_to_deck(self, query: str, **kwargs):
+    def find_card(self, searching_func: Callable[[Card], bool]) -> list[int]:
+        move_list = []
+        for current_index in range(self.get_pointer_position(), len(self)):
+            if searching_func(self[current_index]):
+                move_list.append(current_index - self.get_pointer_position())
+        return move_list
+
+    def add_card_to_deck(self, query: str, **kwargs) -> int:
         res: list[Card] = self._card_generator.get(query, **kwargs)
         self._data = self[:self._pointer_position] + res + self[self._pointer_position:]
         self._cards_left += len(res)
+        return len(res)
 
     def get_card(self) -> Card:
         cur_card = self[self._pointer_position]
@@ -134,7 +145,8 @@ class Deck(PointerList):
         with open(self.deck_path) as deck_file:
             json.dump(self._data, deck_file, cls=_CardJSONEncoder)
 
-
+    
+    
 class CardStatus(Enum):
     ADD = 0
     SKIP = 1

@@ -1,3 +1,4 @@
+import copy
 from typing import Any, TypeVar
 from collections.abc import Mapping
 
@@ -27,29 +28,21 @@ class _FrozenDictNode(Mapping):
 
 class FrozenDict(_FrozenDictNode):
     def __init__(self, data: dict[Any, Any]):
-        master_dict = {}
-
-        proc_queue = []
-        for key in data:
-            proc_queue.append((master_dict, key, data[key]))
-
-        while proc_queue:
-            master, master_key, proc_unit = proc_queue[-1]
-            last_queue_length = len(proc_queue)
+        def _convert_to_frozen_node(master: dict, master_key: Any, proc_unit: Any):
             if isinstance(proc_unit, dict):
                 for proc_key in proc_unit:
                     if isinstance((proc_val := proc_unit[proc_key]), dict):
-                        proc_queue.append((proc_unit, proc_key, proc_val))
-                if len(proc_queue) - last_queue_length:
-                    continue
+                        _convert_to_frozen_node(proc_unit, proc_key, proc_val)
                 master[master_key] = _FrozenDictNode(proc_unit)
-                proc_queue.pop()
             else:
                 master[master_key] = proc_unit
-                proc_queue.pop()
+
+        master_dict = copy.deepcopy(data)
+        for key in master_dict:
+            _convert_to_frozen_node(master_dict, key, master_dict[key])
 
         super(FrozenDict, self).__init__(data=master_dict)
-    
+
 
 _T = TypeVar("_T")
 class PointerList:
@@ -137,6 +130,8 @@ def validate_json(checking_scheme: dict[Any, Any], default_scheme: dict[Any, Any
 
 
 def main():
+    from pprint import pprint
+
     standard_conf_file = {"app": {"theme": "dark",
                                   "main_window_geometry": "500x800+0+0",
                                   "image_search_position": "+0+0"},

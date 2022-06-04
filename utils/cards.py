@@ -72,19 +72,20 @@ class CardGenerator:
     def get(self, query: str, **kwargs) -> list[Card]:
         """
         word_filter: Callable[[comparable: str, query_word: str], bool]
-        additional_filter: Callable[[translated_word_data: dict], bool]
+        additional_filter: Callable[[translated_word_data: Card], bool]
         """
         word_filter: Callable[[str, str], bool] = \
-            kwargs.get("word_filter", lambda comparable, query_word: True if comparable == query_word else False)
-        additional_filter: Callable[[dict], bool] = \
+            kwargs.get("word_filter", lambda comparable, query_word: True if query_word in comparable else False)
+        additional_filter: Callable[[Card], bool] = \
             kwargs.get("additional_filter", lambda card_data: True)
 
         source: list[(str, dict)] = self.local_dictionary if self._is_local else self.parsing_function(query)
-        res: list[dict] = []
+        res: list[Card] = []
         for card in source:
             if word_filter(card[0], query):
-                res.extend(self.item_converter(card))
-        return [Card(item) for item in res if additional_filter(item)]
+                res.extend([Card(item) for item in self.item_converter(card)])
+
+        return [item for item in res if additional_filter(item)]
 
 
 class Deck(PointerList):
@@ -142,7 +143,7 @@ class Deck(PointerList):
         return self._data
 
     def save(self):
-        with open(self.deck_path) as deck_file:
+        with open(self.deck_path, "w", encoding="utf-8") as deck_file:
             json.dump(self._data, deck_file, cls=_CardJSONEncoder)
 
     
@@ -172,7 +173,7 @@ class SavedDeck(PointerList):
         del self._data[self._pointer_position:]
     
     def save(self, saving_path: str):
-        with open(saving_path) as deck_file:
+        with open(saving_path, "w", encoding="utf-8") as deck_file:
             json.dump(self._data, deck_file, cls=_CardJSONEncoder)
             
 

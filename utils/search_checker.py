@@ -183,10 +183,20 @@ class Tokenizer:
         res: list[Token] = []
 
         current_token_type = Token_T.START
+
+        parenthesis_counter = 0
         while current_token_type != Token_T.END:
             cur_token, search_index = self._get_next_token(search_index, current_token_type)
             res.append(cur_token)
+            if cur_token.value == "(":
+                parenthesis_counter += 1
+            elif cur_token.value == ")":
+                parenthesis_counter -= 1
+                if parenthesis_counter < 0:
+                    raise QuerySyntaxError("Too many closing parentheses!")
             current_token_type = cur_token.type
+        if parenthesis_counter:
+            raise QuerySyntaxError("Too many opening parentheses!")
         return res
 
 
@@ -274,25 +284,7 @@ class Method(FieldExpression):
         return self.method(self.card_field_data.get_field_data(card)) if field_data is not None else 0
     
 
-# class Token_T(Enum):
-#     START = auto()
-#     END = auto()
-#     SEP = auto()
-#     LOGIC = auto()
-#     LOGIC_LP = auto()
-#     LOGIC_RP = auto()
-#     STRING = auto()
-#     WRONG_VALUE = auto()
-
 class TokenParser:
-    # master_unit_set = frozenset([Token(type=t_type) for t_type in Token_T])
-    #
-    # next_unit = FrozenDict({Token(type=Token_T.START): ,
-    #                         Token(type=Token_T.END)  : frozenset(),
-    #                         Token(type=Token_T.SEP)  : frozenset(),
-    #                         Token(type=Token_T.LOGIC): frozenset((Token(type=))),
-    #                         })
-
     def __init__(self, tokens: list[Token]):
         self._tokens: list[Token] = tokens
         self._expressions: list[Union[Expression, Token]] = []
@@ -328,46 +320,8 @@ class TokenParser:
                 self._expressions.append(self._tokens[i])
             i += 1
 
-    def _check_grammar(self):
-        if len(self._expressions) == 1:
-            return
-
-        parenthesis_stack = 0
-        for i in range(len(self._expressions) - 1):
-            current = self._expressions[i]
-            right = self._expressions[i + 1]
-
-            if isinstance(current, Expression) and \
-                not ((isinstance(right, Token) and
-                      (right.type == Token_T.LOGIC_LP or
-                       right.type == Token_T.LOGIC_RP or
-                       right.type == Token_T.LOGIC or
-                       right.type == Token_T.END))):
-                raise QuerySyntaxError("Stranded EXPRESSION token")
-            elif isinstance(current, Token):
-                if current.type == Token_T.LOGIC and not (isinstance(right, Expression) or
-                                                            isinstance(right, Token) and
-                                                            (right.type == Token_T.LOGIC_LP or
-                                                             right.type == Token_T.LOGIC_RP or
-                                                             right.type == Token_T.STRING)):
-                    raise QuerySyntaxError("Wrong logic operator usage!")
-                elif current.type == Token_T.STRING and (not current.value.isdecimal() or not
-                (isinstance(right, Token) and (right.type == Token_T.LOGIC or right.type == Token_T.LOGIC_RP or right.type == Token_T.END))):
-                    raise QuerySyntaxError("Stranded STRING token!")
-                elif current.type == Token_T.SEP:
-                    raise QuerySyntaxError("Stranded SEP token!")
-                elif current.type == Token_T.LOGIC_LP:
-                    parenthesis_stack += 1
-                elif current.type == Token_T.LOGIC_RP:
-                    parenthesis_stack -= 1
-                    if parenthesis_stack < 0:
-                        raise QuerySyntaxError("Too many closing parentheses!")
-        if parenthesis_stack:
-            raise QuerySyntaxError("Too many opening parentheses!")
-
     def tokens2expressions(self) -> list[Union[Expression, Token]]:
         self._promote_to_expressions()
-        self._check_grammar()
         return self._expressions
 
 
@@ -475,15 +429,15 @@ def parse_language(expression: str) -> EvalNode:
 def main():
     from pprint import pprint
 
-    # queries = ("word: test and meaning:\"some meaning\" "
-    #                       "or alt_terms:alt and (sentences : \"some sentences\" or tags : some_tags and (tags[pos] : noun)) "
-    #                       "and (len(sentences) < 5)",
-    #             "\"test tag\": \"test value\" and len(user_tags[image_links]) == 5",
-    #            "len(\"meaning [  test  ][tag]\") == 2 or len(meaning[test][tag]) != 2")
-    #
-    #
-    # for query in queries:
-    #     root = parse_language(query)
+    queries = ("word: test and meaning:\"some meaning\" "
+                          "or alt_terms:alt and (sentences : \"some sentences\" or tags : some_tags and (tags[pos] : noun)) "
+                          "and (len(sentences) < 5)",
+                "\"test tag\": \"test value\" and len(user_tags[image_links]) == 5",
+               "len(\"meaning [  test  ][tag]\") == 2 or len(meaning[test][tag]) != 2")
+
+
+    for query in queries:
+        root = parse_language(query)
 
     query = "word: test and pos: verb and len(Sen_Ex) == len(level)"
     syntax_tree = parse_language(query)

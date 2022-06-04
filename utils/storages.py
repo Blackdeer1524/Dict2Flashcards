@@ -40,12 +40,16 @@ class FrozenDict(_FrozenDictNode):
                 for proc_key in proc_unit:
                     if isinstance((proc_val := proc_unit[proc_key]), dict):
                         proc_queue.append((proc_unit, proc_key, proc_val))
-
-            if not (len(proc_queue) - last_queue_length):
+                if len(proc_queue) - last_queue_length:
+                    continue
                 master[master_key] = _FrozenDictNode(proc_unit)
                 proc_queue.pop()
-        super(FrozenDict, self).__init__(data=master_dict)
+            else:
+                master[master_key] = proc_unit
+                proc_queue.pop()
 
+        super(FrozenDict, self).__init__(data=master_dict)
+    
 
 _T = TypeVar("_T")
 class PointerList:

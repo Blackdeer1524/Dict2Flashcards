@@ -4,8 +4,9 @@ from typing import Optional, Any, Union
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from utils.cards import Card
-from typing import Callable, Iterable
+from typing import Callable, Iterable, ClassVar
 from functools import reduce
+from utils.storages import FrozenDict
 
 
 class ParsingException(Exception):
@@ -81,21 +82,42 @@ class Token_T(Enum):
 
 @dataclass(frozen=True)
 class Token:
-    value: str
+    value: Optional[str] = None
     type: Optional[Token_T] = None
 
+    type2value: ClassVar[FrozenDict] = FrozenDict({Token_T.START: "START",
+                                                   Token_T.END: "END",
+                                                   Token_T.SEP: FIELD_VAL_SEP,
+                                                   # LOGIC: error
+                                                   Token_T.LP: "(",
+                                                   Token_T.RP: ")",
+                                                   # STRING: error
+                                                   Token_T.WRONG_VALUE: "ERROR"
+                                                   })
+    value2type: ClassVar[FrozenDict] = FrozenDict({value: key for key, value in type2value.items()})
+
     def __post_init__(self):
+        if self.value is None:
+            if self.type is None:
+                raise WrongTokenError("Empty token constructor!")
+
+            if (new_value := Token.type2value.get(self.type)) is not None:
+                super().__setattr__("value", new_value)
+                return
+
+            if self.type in (Token_T.LOGIC, Token_T.STRING):
+                raise WrongTokenError(f"Don't know how to induce value for type {self.type}")
+            return
+
         if self.type is not None:
+            return
+
+        if (new_type := Token.value2type.get(self.value)) is not None:
+            super().__setattr__("type", new_type)
             return
 
         if not self.value:
             super().__setattr__("type", Token_T.END)
-        elif self.value == FIELD_VAL_SEP:
-            super().__setattr__("type", Token_T.SEP)
-        elif self.value == "(":
-            super().__setattr__("type", Token_T.LP)
-        elif self.value == ")":
-            super().__setattr__("type", Token_T.RP)
         elif self.value in LOGIC_SET:
             super().__setattr__("type", Token_T.LOGIC)
         else:
@@ -111,11 +133,10 @@ class Tokenizer:
             start_ind += 1
 
         if start_ind == len(self.exp):
-            return Token("", Token_T.END), start_ind
+            return Token(type=Token_T.END), start_ind
 
         if self.exp[start_ind] in f"(){FIELD_VAL_SEP}":
             return Token(self.exp[start_ind]), start_ind + 1
-
 
         if self.exp[start_ind] == "\"":
             start_ind += 1
@@ -123,7 +144,7 @@ class Tokenizer:
             while i < len(self.exp) and (self.exp[i] != "\"" or self.exp[i-1] == "\\"):
                 i += 1
             if i == len(self.exp):
-                return Token("Error", Token_T.WRONG_VALUE), i
+                return Token(type=Token_T.WRONG_VALUE), i
             return Token(self.exp[start_ind:i], Token_T.STRING), i + 1
 
         i = start_ind
@@ -137,14 +158,14 @@ class Tokenizer:
         return Token(self.exp[start_ind:i]), i
 
     def get_tokens(self):
-        cur_token: Token = Token("", Token_T.START)
+        cur_token: Token = Token(type=Token_T.START)
         search_index = 0
         res: list[Token] = []
         while cur_token.type != Token_T.END :
             cur_token, search_index = self._get_next_token(search_index)
             res.append(cur_token)
             if cur_token.type == Token_T.WRONG_VALUE:
-                raise WrongTokenError("Wrong search query!")
+                raise QuerySyntaxError("Wrong search query! Check your <\"> symbols!")
         return res
 
 
@@ -186,7 +207,7 @@ class _CardFieldData:
                 last_closing_bracket = i
                 bracket_stack -= 1
                 if bracket_stack < 0:
-                    raise QuerySyntaxError(f"Wrong order of brackets in search query! Query: {path}")
+                    raise QuerySyntaxError(f"Wrong bracket sequence! Query: {path}")
 
         if last_closing_bracket > 0:
             for i in range(last_closing_bracket + 1, len(path)):
@@ -206,7 +227,7 @@ class _CardFieldData:
 @dataclass(frozen=True)
 class Expression:
     def compute(self, card: Card):
-        raise NotImplementedError(f"compute method was not implemented for {self.__class__.__name__}!")
+        raise NotImplementedError(f"<compute> method was not implemented for {self.__class__.__name__}!")
 
 
 @dataclass(frozen=True)
@@ -232,7 +253,25 @@ class Method(FieldExpression):
         return self.method(self.card_field_data.get_field_data(card)) if field_data is not None else 0
     
 
-class TokenParses:
+# class Token_T(Enum):
+#     START = auto()
+#     END = auto()
+#     SEP = auto()
+#     LOGIC = auto()
+#     LP = auto()
+#     RP = auto()
+#     STRING = auto()
+#     WRONG_VALUE = auto()
+
+class TokenParser:
+    # master_unit_set = frozenset([Token(type=t_type) for t_type in Token_T])
+    #
+    # next_unit = FrozenDict({Token(type=Token_T.START): ,
+    #                         Token(type=Token_T.END)  : frozenset(),
+    #                         Token(type=Token_T.SEP)  : frozenset(),
+    #                         Token(type=Token_T.LOGIC): frozenset((Token(type=))),
+    #                         })
+
     def __init__(self, tokens: list[Token]):
         self._tokens: list[Token] = tokens
         self._expressions: list[Union[Expression, Token]] = []
@@ -284,7 +323,7 @@ class TokenParses:
                        right.type == Token_T.RP or
                        right.type == Token_T.LOGIC or
                        right.type == Token_T.END))):
-                raise QuerySyntaxError("Stranded EXPRESSION")
+                raise QuerySyntaxError("Stranded EXPRESSION token")
             elif isinstance(current, Token):
                 if current.type == Token_T.LOGIC and not (isinstance(right, Expression) or
                                                             isinstance(right, Token) and
@@ -398,14 +437,15 @@ class LogicTree:
             self._expressions.pop(current_index + 1)
 
     def get_master_node(self):
-        assert len(self._expressions) == 1
+        if len(self._expressions) != 1:
+            raise ParsingException("Error creating syntax tree! ")
         return self._expressions[0]
 
 
 def parse_language(expression: str) -> EvalNode:
     _tokenizer = Tokenizer(expression)
     tokens = _tokenizer.get_tokens()
-    _token_parser = TokenParses(tokens=tokens)
+    _token_parser = TokenParser(tokens=tokens)
     expressions = _token_parser.tokens2expressions()
     _logic_tree = LogicTree(expressions)
     _logic_tree.construct()
@@ -425,9 +465,9 @@ def main():
     for query in queries:
         root = parse_language(query)
 
-    query = "word: test and pos: verb"
-    root = parse_language(query)
-    print(root)
+    query = "word: test and pos: verb and len(Sen_Ex) != len(level)"
+    syntax_tree = parse_language(query)
+    print(syntax_tree)
 
     test_card = {
         "word": "test",
@@ -442,7 +482,8 @@ def main():
         "pos": "verb",
         "audio_link": "https://dictionary.cambridge.org//media/english/us_pron/t/tes/test_/test.mp3"
     }
-    print(root.compute(card=test_card))
+    result = syntax_tree.compute(card=test_card)
+    print(result)
 
 
 if __name__ == "__main__":

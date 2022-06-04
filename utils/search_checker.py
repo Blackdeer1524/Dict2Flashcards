@@ -110,7 +110,8 @@ class Token:
 
          Token_T.METHOD_STRING: {")": Token_T.METHOD_RP},
 
-         Token_T.METHOD_RP:     {")": Token_T.LOGIC_RP} | logic_deduction.to_dict(),
+         Token_T.METHOD_RP:     {")": Token_T.LOGIC_RP,
+                                 END_PLACEHOLDER: Token_T.END} | logic_deduction.to_dict(),
 
          Token_T.LOGIC_LP:      {STRING_PLACEHOLDER: Token_T.STRING},
 
@@ -128,7 +129,7 @@ class Token:
         expected_types = Token.next_expected[self.prev_token_type]
         if (deduced_type := expected_types.get(self.value)) is None:
             if (str_type := expected_types.get(STRING_PLACEHOLDER)) is None:
-                raise WrongTokenError(f"Unexpected token! {self.value} was given and "
+                raise WrongTokenError(f"Unexpected token! {self.value} was given when "
                                       f"[{' '.join(expected_types.keys())}] were expected!")
             super().__setattr__("type", str_type)
             return
@@ -297,17 +298,17 @@ class TokenParser:
         self._expressions: list[Union[Expression, Token]] = []
 
     def get_field_check(self, index: int) -> tuple[Union[FieldCheck, None], int]:
-        """index: Value token index"""
+        """index: STRING token index"""
         if self._tokens[index + 1].type == Token_T.SEP and \
-           self._tokens[index + 2].type == Token_T.STRING:
+           self._tokens[index + 2].type == Token_T.QUERY_STRING:
             return FieldCheck(_CardFieldData(self._tokens[index].value), self._tokens[index + 2].value), 2
         return None, 0
 
     def get_method(self, index: int) -> tuple[Union[Method, None], int]:
-        """index: Value token index"""
-        if self._tokens[index + 1].type == Token_T.LOGIC_LP and \
-           self._tokens[index + 2].type == Token_T.STRING and \
-           self._tokens[index + 3].type == Token_T.LOGIC_RP:
+        """index: STRING token index"""
+        if self._tokens[index + 1].type == Token_T.METHOD_LP and \
+           self._tokens[index + 2].type == Token_T.METHOD_STRING and \
+           self._tokens[index + 3].type == Token_T.METHOD_RP:
             return Method(_CardFieldData(self._tokens[index + 2].value), method_factory(self._tokens[index].value)), 3
         return None, 0
 
@@ -315,7 +316,6 @@ class TokenParser:
         i = 0
         while i < len(self._tokens):
             if self._tokens[i].type == Token_T.STRING:
-
                 res, offset = self.get_field_check(i)
                 if res is None:
                     res, offset = self.get_method(i)
@@ -475,17 +475,17 @@ def parse_language(expression: str) -> EvalNode:
 def main():
     from pprint import pprint
 
-    queries = ("word: test and meaning:\"some meaning\" "
-                          "or alt_terms:alt and (sentences : \"some sentences\" or tags : some_tags and (tags[pos] : noun)) "
-                          "and (len(sentences) < 5)",
-                "\"test tag\": \"test value\" and len(user_tags[image_links]) == 5",
-               "len(\"meaning [  test  ][tag]\") == 2 or len(meaning[test][tag]) != 2")
+    # queries = ("word: test and meaning:\"some meaning\" "
+    #                       "or alt_terms:alt and (sentences : \"some sentences\" or tags : some_tags and (tags[pos] : noun)) "
+    #                       "and (len(sentences) < 5)",
+    #             "\"test tag\": \"test value\" and len(user_tags[image_links]) == 5",
+    #            "len(\"meaning [  test  ][tag]\") == 2 or len(meaning[test][tag]) != 2")
+    #
+    #
+    # for query in queries:
+    #     root = parse_language(query)
 
-
-    for query in queries:
-        root = parse_language(query)
-
-    query = "word: test and pos: verb and len(Sen_Ex) != len(level)"
+    query = "word: test and pos: verb and len(Sen_Ex) == len(level)"
     syntax_tree = parse_language(query)
     print(syntax_tree)
 

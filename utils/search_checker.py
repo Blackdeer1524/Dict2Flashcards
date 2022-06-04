@@ -123,14 +123,29 @@ class Token:
     
     value: str
     prev_token_type: Token_T = field(repr=False)
-    type: Token_T = field(init=False)
+    type: Optional[Token_T] = None
     
     def __post_init__(self):
-        expected_types = Token.next_expected[self.prev_token_type]
+        def get_expected_keys() -> str:
+            nonlocal expected_types
+            return f"[{' '.join(expected_types.keys())}] were expected!"
+
+        def get_expected_values() -> str:
+            nonlocal expected_types
+            return f"[{' '.join([token.name for token in expected_types.values()])}] were expected!"
+
+        expected_types: FrozenDict[str, Token_T] = Token.next_expected[self.prev_token_type]
+        if self.type is not None:
+            if (self.type == Token_T.STRING and expected_types.get(STRING_PLACEHOLDER)) is None or \
+                expected_types.get(self.value) is None:
+                raise QuerySyntaxError(f"Unexpected forced token! {self.type} was forced when "
+                                       f"{get_expected_values()}")
+            return
+
         if (deduced_type := expected_types.get(self.value)) is None:
             if (str_type := expected_types.get(STRING_PLACEHOLDER)) is None:
                 raise WrongTokenError(f"Unexpected token! {self.value} was given when "
-                                      f"[{' '.join(expected_types.keys())}] were expected!")
+                                      f"{get_expected_keys()}")
             super().__setattr__("type", str_type)
             return
         super().__setattr__("type", deduced_type)
@@ -156,7 +171,12 @@ class Tokenizer:
         if start_ind == len(self.exp):
             return Token(END_PLACEHOLDER, prev_token_type), start_ind
 
-        if self.exp[start_ind] in f"(){FIELD_VAL_SEP}":
+        if self.exp[start_ind] == FIELD_VAL_SEP:
+            return Token(value=self.exp[start_ind],
+                         prev_token_type=prev_token_type,
+                         type=Token_T.SEP), start_ind + 1
+
+        if self.exp[start_ind] in "()":
             return Token(self.exp[start_ind], prev_token_type), start_ind + 1
 
         if self.exp[start_ind] == "\"":
@@ -412,7 +432,9 @@ class LogicTree:
 
     def get_master_node(self):
         if len(self._expressions) != 1:
-            raise ParsingException("Error creating syntax tree! ")
+            raise ParsingException("Error creating syntax tree!")
+        if isinstance(self._expressions[0], Token):
+            raise QuerySyntaxError("Empty query!")
         return self._expressions[0]
 
 
@@ -436,10 +458,11 @@ def main():
                "len(\"meaning [  test  ][tag]\") == 2 or len(meaning[test][tag]) != 2")
 
 
-    for query in queries:
-        root = parse_language(query)
+    # for query in queries:
+    #     root = parse_language(query)
 
-    query = "word: test and pos: verb and len(Sen_Ex)"
+    # query = "word: test and pos: verb and len(Sen_Ex)"
+    query = "test: test and a"
     syntax_tree = parse_language(query)
     print(syntax_tree)
 

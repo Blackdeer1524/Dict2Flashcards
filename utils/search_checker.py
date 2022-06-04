@@ -30,8 +30,8 @@ class QuerySyntaxError(ParsingException):
 
 
 LOGIC_HIGH = frozenset(("<", "<=", ">", ">=", "==", "!="))
-LOGIC_MID = frozenset(("and", "not"))
-LOGIC_LOW  = frozenset(("or",))
+LOGIC_MID = frozenset(("and", ))
+LOGIC_LOW  = frozenset(("or", ))
 LOGIC_PRECEDENCE = (LOGIC_HIGH, LOGIC_MID, LOGIC_LOW)
 LOGIC_SET  = reduce(lambda x, y: x | y, LOGIC_PRECEDENCE)
 
@@ -439,7 +439,7 @@ def main():
     for query in queries:
         root = parse_language(query)
 
-    query = "word: test and pos: verb and len(Sen_Ex) == len(level)"
+    query = "word: test and pos: verb and len(Sen_Ex)"
     syntax_tree = parse_language(query)
     print(syntax_tree)
 

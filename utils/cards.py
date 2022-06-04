@@ -1,9 +1,11 @@
+import abc
 from typing import Callable, Iterator, Union, Any
 import os
 import json
 from consts.card_fields import FIELDS
 from enum import Enum
 from utils.storages import PointerList, FrozenDict
+from abc import ABC
 
 
 class Card(FrozenDict):
@@ -44,48 +46,61 @@ class _CardJSONEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-class CardGenerator:
-    def __init__(self, **kwargs):
+class CardGenerator(ABC):
+    def __init__(self, item_converter: Callable[[(str, dict)], dict]):
+        self.item_converter = item_converter
+
+    @abc.abstractmethod
+    def _get_search_subset(self, query: str) -> list[tuple[str, dict]]:
+        pass
+
+    def get(self, query: str, word_filter: Callable[[str], bool],
+            additional_filter: Callable[[Card], bool] = None) -> list[Card]:
+        if additional_filter is None:
+            additional_filter = lambda _: True
+
+        source: list[(str, dict)] = self._get_search_subset(query)
+        res: list[Card] = []
+        for card in source:
+            if word_filter(card[0]):
+                for item in self.item_converter(card):
+                    if additional_filter(card := Card(item)):
+                        res.append(card)
+        return res
+
+
+class LocalCardGenerator(CardGenerator):
+    def __init__(self,
+                 local_dict_path: str,
+                 item_converter: Callable[[(str, dict)], dict]):
         """
-        parsing_function: Callable[[str], list[(str, dict)]]
         local_dict_path: str
         item_converter: Callable[[(str, dict)], dict]
         """
-        parsing_function: Callable[[str], list[(str, dict)]] = kwargs.get("parsing_function")
-        local_dict_path: str = kwargs.get("local_dict_path", "")
-        self.item_converter: Callable[[(str, dict)], dict] = kwargs.get("item_converter")
-        assert self.item_converter is not None
+        super(LocalCardGenerator, self).__init__(item_converter)
+        if not os.path.isfile(local_dict_path):
+            raise Exception(f"Local dictionary with path {local_dict_path} doesn't exist")
 
-        if os.path.isfile(local_dict_path):
-            self._is_local = True
-            with open(local_dict_path, "r", encoding="UTF-8") as f:
-                self.local_dictionary: list[(str, dict)] = json.load(f)
-        elif parsing_function is not None:
-            self._is_local = False
-            self.parsing_function: Callable[[str], list[(str, dict)]] = parsing_function
-            self.local_dictionary = []
-        else:
-            raise Exception("Wrong parameters for CardGenerator class!"
-                            f"Check given parameters:",
-                            kwargs)
+        with open(local_dict_path, "r", encoding="UTF-8") as f:
+            self.local_dictionary: list[(str, dict)] = json.load(f)
 
-    def get(self, query: str, **kwargs) -> list[Card]:
+    def _get_search_subset(self, query: str) -> list[tuple[str, dict]]:
+        return self.local_dictionary
+
+
+class WebCardGenerator(CardGenerator):
+    def __init__(self,
+                 parsing_function: Callable[[str], list[(str, dict)]],
+                 item_converter: Callable[[(str, dict)], dict]):
         """
-        word_filter: Callable[[comparable: str, query_word: str], bool]
-        additional_filter: Callable[[translated_word_data: Card], bool]
+        parsing_function: Callable[[str], list[(str, dict)]]
+        item_converter: Callable[[(str, dict)], dict]
         """
-        word_filter: Callable[[str, str], bool] = \
-            kwargs.get("word_filter", lambda comparable, query_word: True if query_word in comparable else False)
-        additional_filter: Callable[[Card], bool] = \
-            kwargs.get("additional_filter", lambda card_data: True)
+        super(WebCardGenerator, self).__init__(item_converter)
+        self.parsing_function = parsing_function
 
-        source: list[(str, dict)] = self.local_dictionary if self._is_local else self.parsing_function(query)
-        res: list[Card] = []
-        for card in source:
-            if word_filter(card[0], query):
-                res.extend([Card(item) for item in self.item_converter(card)])
-
-        return [item for item in res if additional_filter(item)]
+    def _get_search_subset(self, query: str) -> list[tuple[str, dict]]:
+        return self.parsing_function(query)
 
 
 class Deck(PointerList):

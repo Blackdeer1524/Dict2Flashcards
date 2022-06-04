@@ -1,11 +1,10 @@
-import abc
 from typing import Callable, Iterator, Union, Any
 import os
 import json
 from consts.card_fields import FIELDS
 from enum import Enum
 from utils.storages import PointerList, FrozenDict
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 class Card(FrozenDict):
@@ -20,20 +19,8 @@ class Card(FrozenDict):
                 data[field_name] = field_value
         super(Card, self).__init__(data=data)
 
-    def __len__(self):
-        return len(self._data)
-
-    def __getitem__(self, item):
-        return self._data[item]
-
-    def __iter__(self):
-        return iter(self._data)
-
     def __repr__(self):
         return f"Card {self._data}"
-
-    def __bool__(self):
-        return bool(self._data)
 
     def to_dict(self):
         return self._data
@@ -50,7 +37,7 @@ class CardGenerator(ABC):
     def __init__(self, item_converter: Callable[[(str, dict)], dict]):
         self.item_converter = item_converter
 
-    @abc.abstractmethod
+    @abstractmethod
     def _get_search_subset(self, query: str) -> list[tuple[str, dict]]:
         pass
 
@@ -59,7 +46,7 @@ class CardGenerator(ABC):
         if additional_filter is None:
             additional_filter = lambda _: True
 
-        source: list[(str, dict)] = self._get_search_subset(query)
+        source: list[tuple[str, dict]] = self._get_search_subset(query)
         res: list[Card] = []
         for card in source:
             if word_filter(card[0]):

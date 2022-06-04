@@ -71,72 +71,92 @@ FIELD_NAMES_SET = frozenset(FIELDS)
 
 class Token_T(Enum):
     START = auto()
-    END = auto()
-    SEP = auto()
-    LOGIC = auto()
-    LP = auto()
-    RP = auto()
     STRING = auto()
-    WRONG_VALUE = auto()
+    SEP = auto()
+    QUERY_STRING = auto()
+    LOGIC = auto()
+    METHOD_LP = auto()
+    METHOD_STRING = auto()
+    METHOD_RP = auto()
+    LOGIC_LP = auto()
+    LOGIC_RP = auto()
+    END = auto()
 
+STRING_PLACEHOLDER = "*"
+END_PLACEHOLDER = "END"
 
 @dataclass(frozen=True)
 class Token:
-    value: Optional[str] = None
-    type: Optional[Token_T] = None
+    logic_deduction: ClassVar[FrozenDict] = FrozenDict({logic_statement: Token_T.LOGIC for logic_statement in LOGIC_SET})
+    next_expected: ClassVar[FrozenDict] = FrozenDict(
+        {Token_T.START:         {"(": Token_T.LOGIC_LP,
+                                 STRING_PLACEHOLDER: Token_T.STRING,
+                                 END_PLACEHOLDER: Token_T.END},
 
-    type2value: ClassVar[FrozenDict] = FrozenDict({Token_T.START: "START",
-                                                   Token_T.END: "END",
-                                                   Token_T.SEP: FIELD_VAL_SEP,
-                                                   # LOGIC: error
-                                                   Token_T.LP: "(",
-                                                   Token_T.RP: ")",
-                                                   # STRING: error
-                                                   Token_T.WRONG_VALUE: "ERROR"
-                                                   })
-    value2type: ClassVar[FrozenDict] = FrozenDict({value: key for key, value in type2value.items()})
+         Token_T.STRING:        {FIELD_VAL_SEP: Token_T.SEP,
+                                 "(": Token_T.METHOD_LP,
+                                 ")": Token_T.LOGIC_RP,
+                                 END_PLACEHOLDER: Token_T.END} | logic_deduction.to_dict(),
 
+         Token_T.SEP:           {STRING_PLACEHOLDER: Token_T.QUERY_STRING},
+
+         Token_T.QUERY_STRING:  {")": Token_T.LOGIC_RP,
+                                 END_PLACEHOLDER: Token_T.END} | logic_deduction.to_dict(),
+
+         Token_T.LOGIC:         {STRING_PLACEHOLDER: Token_T.STRING,
+                                 "(": Token_T.LOGIC_LP},
+
+         Token_T.METHOD_LP:     {STRING_PLACEHOLDER: Token_T.METHOD_STRING},
+
+         Token_T.METHOD_STRING: {")": Token_T.METHOD_RP},
+
+         Token_T.METHOD_RP:     {")": Token_T.LOGIC_RP} | logic_deduction.to_dict(),
+
+         Token_T.LOGIC_LP:      {STRING_PLACEHOLDER: Token_T.STRING},
+
+         Token_T.LOGIC_RP:      {END_PLACEHOLDER: Token_T.END,
+                                 ")": Token_T.LOGIC_RP} | logic_deduction.to_dict(),
+
+         Token_T.END:           {}
+         })
+    
+    value: str
+    prev_token_type: Token_T = field(repr=False)
+    type: Token_T = field(init=False)
+    
     def __post_init__(self):
-        if self.value is None:
-            if self.type is None:
-                raise WrongTokenError("Empty token constructor!")
-
-            if (new_value := Token.type2value.get(self.type)) is not None:
-                super().__setattr__("value", new_value)
-                return
-
-            if self.type in (Token_T.LOGIC, Token_T.STRING):
-                raise WrongTokenError(f"Don't know how to induce value for type {self.type}")
+        expected_types = Token.next_expected[self.prev_token_type]
+        if (deduced_type := expected_types.get(self.value)) is None:
+            if (str_type := expected_types.get(STRING_PLACEHOLDER)) is None:
+                raise WrongTokenError(f"Unexpected token! {self.value} was given and "
+                                      f"[{' '.join(expected_types.keys())}] were expected!")
+            super().__setattr__("type", str_type)
             return
-
-        if self.type is not None:
-            return
-
-        if (new_type := Token.value2type.get(self.value)) is not None:
-            super().__setattr__("type", new_type)
-            return
-
-        if not self.value:
-            super().__setattr__("type", Token_T.END)
-        elif self.value in LOGIC_SET:
-            super().__setattr__("type", Token_T.LOGIC)
-        else:
-            super().__setattr__("type", Token_T.STRING)
+        super().__setattr__("type", deduced_type)
 
 
 class Tokenizer:
+    all_token_types = frozenset((t_type for t_type in Token_T))
+    
+    next_expected = FrozenDict({Token_T.START: all_token_types,
+                                Token_T.END: frozenset(),
+                                Token_T.SEP: frozenset((Token_T.QUERY_STRING, )),
+                                Token_T.QUERY_STRING: frozenset((Token_T.LOGIC, Token_T.LOGIC_RP, Token_T.END)),
+                                Token_T.STRING: frozenset((Token_T.METHOD_LP, Token_T.METHOD_RP, Token_T.LOGIC, Token_T.SEP, Token_T.END)),
+                                })
+    
     def __init__(self, exp: str):
         self.exp = exp
 
-    def _get_next_token(self, start_ind: int) -> tuple[Token, int]:
+    def _get_next_token(self, start_ind: int, prev_token_type: Token_T) -> tuple[Token, int]:
         while start_ind < len(self.exp) and self.exp[start_ind].isspace():
             start_ind += 1
 
         if start_ind == len(self.exp):
-            return Token(type=Token_T.END), start_ind
+            return Token(END_PLACEHOLDER, prev_token_type), start_ind
 
         if self.exp[start_ind] in f"(){FIELD_VAL_SEP}":
-            return Token(self.exp[start_ind]), start_ind + 1
+            return Token(self.exp[start_ind], prev_token_type), start_ind + 1
 
         if self.exp[start_ind] == "\"":
             start_ind += 1
@@ -144,28 +164,28 @@ class Tokenizer:
             while i < len(self.exp) and (self.exp[i] != "\"" or self.exp[i-1] == "\\"):
                 i += 1
             if i == len(self.exp):
-                return Token(type=Token_T.WRONG_VALUE), i
-            return Token(self.exp[start_ind:i], Token_T.STRING), i + 1
+                raise WrongTokenError("Wrong <\"> usage!")
+            return Token(self.exp[start_ind:i], prev_token_type), i + 1
 
         i = start_ind
         while i < len(self.exp):
             if self.exp[i].isspace():
-                return Token(self.exp[start_ind:i]), i + 1
+                return Token(self.exp[start_ind:i], prev_token_type), i + 1
             elif self.exp[i] in f"(){FIELD_VAL_SEP}":
                 break
             i += 1
 
-        return Token(self.exp[start_ind:i]), i
+        return Token(self.exp[start_ind:i], prev_token_type), i
 
     def get_tokens(self):
-        cur_token: Token = Token(type=Token_T.START)
         search_index = 0
         res: list[Token] = []
-        while cur_token.type != Token_T.END :
-            cur_token, search_index = self._get_next_token(search_index)
+
+        current_token_type = Token_T.START
+        while current_token_type != Token_T.END:
+            cur_token, search_index = self._get_next_token(search_index, current_token_type)
             res.append(cur_token)
-            if cur_token.type == Token_T.WRONG_VALUE:
-                raise QuerySyntaxError("Wrong search query! Check your <\"> symbols!")
+            current_token_type = cur_token.type
         return res
 
 
@@ -258,8 +278,8 @@ class Method(FieldExpression):
 #     END = auto()
 #     SEP = auto()
 #     LOGIC = auto()
-#     LP = auto()
-#     RP = auto()
+#     LOGIC_LP = auto()
+#     LOGIC_RP = auto()
 #     STRING = auto()
 #     WRONG_VALUE = auto()
 
@@ -285,9 +305,9 @@ class TokenParser:
 
     def get_method(self, index: int) -> tuple[Union[Method, None], int]:
         """index: Value token index"""
-        if self._tokens[index + 1].type == Token_T.LP and \
+        if self._tokens[index + 1].type == Token_T.LOGIC_LP and \
            self._tokens[index + 2].type == Token_T.STRING and \
-           self._tokens[index + 3].type == Token_T.RP:
+           self._tokens[index + 3].type == Token_T.LOGIC_RP:
             return Method(_CardFieldData(self._tokens[index + 2].value), method_factory(self._tokens[index].value)), 3
         return None, 0
 
@@ -319,26 +339,26 @@ class TokenParser:
 
             if isinstance(current, Expression) and \
                 not ((isinstance(right, Token) and
-                      (right.type == Token_T.LP or
-                       right.type == Token_T.RP or
+                      (right.type == Token_T.LOGIC_LP or
+                       right.type == Token_T.LOGIC_RP or
                        right.type == Token_T.LOGIC or
                        right.type == Token_T.END))):
                 raise QuerySyntaxError("Stranded EXPRESSION token")
             elif isinstance(current, Token):
                 if current.type == Token_T.LOGIC and not (isinstance(right, Expression) or
                                                             isinstance(right, Token) and
-                                                            (right.type == Token_T.LP or
-                                                             right.type == Token_T.RP or
+                                                            (right.type == Token_T.LOGIC_LP or
+                                                             right.type == Token_T.LOGIC_RP or
                                                              right.type == Token_T.STRING)):
                     raise QuerySyntaxError("Wrong logic operator usage!")
                 elif current.type == Token_T.STRING and (not current.value.isdecimal() or not
-                (isinstance(right, Token) and (right.type == Token_T.LOGIC or right.type == Token_T.RP or right.type == Token_T.END))):
+                (isinstance(right, Token) and (right.type == Token_T.LOGIC or right.type == Token_T.LOGIC_RP or right.type == Token_T.END))):
                     raise QuerySyntaxError("Stranded STRING token!")
                 elif current.type == Token_T.SEP:
                     raise QuerySyntaxError("Stranded SEP token!")
-                elif current.type == Token_T.LP:
+                elif current.type == Token_T.LOGIC_LP:
                     parenthesis_stack += 1
-                elif current.type == Token_T.RP:
+                elif current.type == Token_T.LOGIC_RP:
                     parenthesis_stack -= 1
                     if parenthesis_stack < 0:
                         raise QuerySyntaxError("Too many closing parentheses!")
@@ -386,18 +406,18 @@ class LogicTree:
         while current_index < len(self._expressions) - 1:
             left_operand = self._expressions[current_index]
             if isinstance(left_operand, Token):
-                if (left_operand.type == Token_T.RP or left_operand.type == Token_T.END):
+                if (left_operand.type == Token_T.LOGIC_RP or left_operand.type == Token_T.END):
                     break
-                elif left_operand.type == Token_T.LP:
+                elif left_operand.type == Token_T.LOGIC_LP:
                     self._expressions.pop(current_index)
                     self.construct(current_index)
 
             operator = self._expressions[current_index + 1]
-            if operator.type == Token_T.RP or operator.type == Token_T.END:
+            if operator.type == Token_T.LOGIC_RP or operator.type == Token_T.END:
                 break
 
             right_operand = self._expressions[current_index + 2]
-            if isinstance(right_operand, Token) and right_operand.type == Token_T.LP:
+            if isinstance(right_operand, Token) and right_operand.type == Token_T.LOGIC_LP:
                 self._expressions.pop(current_index + 2)
                 self.construct(current_index + 2)
 
@@ -418,7 +438,7 @@ class LogicTree:
                 operator = self._expressions[current_index + 1]
                 assert isinstance(operator, Token)
 
-                if operator.type == Token_T.RP or operator.type == Token_T.END:
+                if operator.type == Token_T.LOGIC_RP or operator.type == Token_T.END:
                     break
 
                 if operator.value in cur_logic_precedence:

@@ -1,7 +1,8 @@
 import importlib
 import pkgutil
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
+from utils.storages import FrozenDict
 import parsers.image_parsers
 import parsers.word_parsers.local
 import parsers.word_parsers.web
@@ -10,13 +11,13 @@ import parsers.sentence_parsers
 
 @dataclass(init=False, frozen=True, repr=False)
 class PluginLoader:
-    web_word_parsers:   dict
-    local_word_parsers: dict
-    web_sent_parsers:   dict
-    image_parsers:      dict
-    
+    web_word_parsers:   FrozenDict
+    local_word_parsers: FrozenDict
+    web_sent_parsers:   FrozenDict
+    image_parsers:      FrozenDict
+
     def __init__(self):
-        def parse_namespace(namespace, name_prefix: str) -> dict:
+        def parse_namespace(namespace) -> dict:
             def iter_namespace(ns_pkg):
                 # Specifying the second argument (prefix) to iter_modules makes the
                 # returned name an absolute name instead of a relative one. This allows
@@ -27,14 +28,21 @@ class PluginLoader:
             res = {}
             for finder, name, ispkg in iter_namespace(namespace):
                 parser_trunc_name = name.split(sep=".")[-1]
-                if parser_trunc_name.startswith(name_prefix):
-                    res[parser_trunc_name] = importlib.import_module(name)
+                res[parser_trunc_name] = importlib.import_module(name)
             return res
 
-        super().__setattr__("web_word_parsers", parse_namespace(parsers.word_parsers.web, ""))
-        super().__setattr__("local_word_parsers", parse_namespace(parsers.word_parsers.local, ""))
-        super().__setattr__("web_sent_parsers", parse_namespace(parsers.sentence_parsers, "web"))
-        super().__setattr__("image_parsers", parse_namespace(parsers.image_parsers, ""))
+        super().__setattr__("web_word_parsers", FrozenDict({name: (module.translate, module.define)
+                                                            for name, module in
+                                                            parse_namespace(parsers.word_parsers.web).items()}))
+        super().__setattr__("local_word_parsers", FrozenDict({name: (module.translate, module.DICTIONARY_PATH)
+                                                              for name, module in
+                                                              parse_namespace(parsers.word_parsers.local).items()}))
+        super().__setattr__("web_sent_parsers", FrozenDict({name: (module.get_sentence_batch)
+                                                            for name, module in
+                                                            parse_namespace(parsers.sentence_parsers).items()}))
+        super().__setattr__("image_parsers", FrozenDict({name: (module.get_image_links)
+                                                         for name, module in
+                                                         parse_namespace(parsers.image_parsers).items()}))
 
     def __repr__(self):
         indent = "\n\t"
@@ -47,4 +55,4 @@ class PluginLoader:
         return res
 
 
-print(PluginLoader())
+plugins = PluginLoader()

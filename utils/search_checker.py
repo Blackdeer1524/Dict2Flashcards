@@ -4,7 +4,7 @@ from typing import Optional, Any, Union
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from utils.cards import Card
-from typing import Callable, Iterable, ClassVar
+from typing import Callable, Sized, ClassVar
 from functools import reduce
 from utils.storages import FrozenDict
 
@@ -29,6 +29,10 @@ class QuerySyntaxError(ParsingException):
     pass
 
 
+class TreeBuildingError(ParsingException):
+    pass
+
+
 LOGIC_HIGH = frozenset(("<", "<=", ">", ">=", "==", "!="))
 LOGIC_MID = frozenset(("and", ))
 LOGIC_LOW  = frozenset(("or", ))
@@ -42,8 +46,6 @@ def logic_factory(operator: str) -> Union[Callable[[bool], bool],
         return lambda x, y: x and y
     elif operator == "or":
         return lambda x, y: x or y
-    elif operator == "not":
-        return lambda x: not x
     elif operator == "<":
         return lambda x, y: x < y
     elif operator == "<=":
@@ -59,9 +61,14 @@ def logic_factory(operator: str) -> Union[Callable[[bool], bool],
     raise LogicOperatorError(f"Unknown operator: {operator}")
     
 
-def method_factory(method_name: str) -> Callable[[Iterable], int]:
+def method_factory(method_name: str) -> Callable[[Any], int]:
     if method_name == "len":
-        return lambda x: len(x)
+        def field_length(x: Sized):
+            try:
+                return len(x)
+            except TypeError:
+                return 0
+        return field_length
     raise WrongMethodError(f"Unknown method name: {method_name}")
     
 
@@ -138,13 +145,13 @@ class Token:
         if self.type is not None:
             if (self.type == Token_T.STRING and expected_types.get(STRING_PLACEHOLDER)) is None or \
                 expected_types.get(self.value) is None:
-                raise QuerySyntaxError(f"Unexpected forced token! {self.type} was forced when "
-                                       f"{get_expected_values()}")
+                raise WrongTokenError(f"Unexpected forced token! \"{self.type}\" was forced when "
+                                      f"{get_expected_values()}")
             return
 
         if (deduced_type := expected_types.get(self.value)) is None:
             if (str_type := expected_types.get(STRING_PLACEHOLDER)) is None:
-                raise WrongTokenError(f"Unexpected token! {self.value} was given when "
+                raise WrongTokenError(f"Unexpected token! \"{self.value}\" was given when "
                                       f"{get_expected_keys()}")
             super().__setattr__("type", str_type)
             return
@@ -185,7 +192,7 @@ class Tokenizer:
             while i < len(self.exp) and (self.exp[i] != "\"" or self.exp[i-1] == "\\"):
                 i += 1
             if i == len(self.exp):
-                raise WrongTokenError("Wrong <\"> usage!")
+                raise QuerySyntaxError("Wrong <\"> usage!")
             return Token(self.exp[start_ind:i], prev_token_type), i + 1
 
         i = start_ind
@@ -258,12 +265,12 @@ class _CardFieldData:
                 last_closing_bracket = i
                 bracket_stack -= 1
                 if bracket_stack < 0:
-                    raise QuerySyntaxError(f"Wrong bracket sequence! Query: {path}")
+                    raise QuerySyntaxError("Wrong bracket sequence in field query!")
 
         if last_closing_bracket > 0:
             for i in range(last_closing_bracket + 1, len(path)):
                 if not path[i].isspace():
-                    raise QuerySyntaxError(f"Wrong bracket sequence! Query: {path}")
+                    raise QuerySyntaxError("Wrong bracket sequence in field query!")
     
     def get_field_data(self, card: Card) -> Any:
         """query_chain: chain of keys"""
@@ -332,6 +339,9 @@ class TokenParser:
                 if res is None:
                     res, offset = self.get_method(i)
                 if res is None:
+                    if not self._tokens[i].value.isdecimal():
+                        raise WrongTokenError(f"Decimal type expected, \"{self._tokens[i].value}\" was given!")
+
                     self._expressions.append(self._tokens[i])
                 else:
                     self._expressions.append(res)
@@ -350,12 +360,12 @@ class EvalNode:
     operator: str
     left: Optional[Union[Expression, Token]] = None
     right: Optional[Union[Expression, Token]] = None
-    operation: Union[Callable[[Any],       bool],
+    operation: Union[Callable[[Any],      bool],
                      Callable[[Any, Any], bool]] = field(init=False, repr=False)
 
     def __post_init__(self):
         if isinstance(self.left, Token) and isinstance(self.right, Token):
-            raise QuerySyntaxError("Two STRING's in one node!")
+            raise TreeBuildingError("Two STRING's in one node!")
         super().__setattr__("operation", logic_factory(self.operator))
 
     def compute(self, card: Card) -> bool:
@@ -367,7 +377,7 @@ class EvalNode:
             return self.operation(self.left.compute(card), self.right.compute(card))
         elif self.left is not None:
             return self.operation(self.left.compute(card))
-        raise LogicOperatorError("Empty node!")
+        raise TreeBuildingError("Empty node!")
 
 
 class LogicTree:
@@ -380,7 +390,7 @@ class LogicTree:
         while current_index < len(self._expressions) - 1:
             left_operand = self._expressions[current_index]
             if isinstance(left_operand, Token):
-                if (left_operand.type == Token_T.LOGIC_RP or left_operand.type == Token_T.END):
+                if left_operand.type in (Token_T.LOGIC_RP, Token_T.END):
                     break
                 elif left_operand.type == Token_T.LOGIC_LP:
                     self._expressions.pop(current_index)
@@ -408,10 +418,7 @@ class LogicTree:
         for cur_logic_precedence in LOGIC_PRECEDENCE[1:]:
             current_index = start
             while current_index < len(self._expressions) - 1:
-
                 operator = self._expressions[current_index + 1]
-                assert isinstance(operator, Token)
-
                 if operator.type == Token_T.LOGIC_RP or operator.type == Token_T.END:
                     break
 
@@ -432,20 +439,21 @@ class LogicTree:
 
     def get_master_node(self):
         if len(self._expressions) != 1:
-            raise ParsingException("Error creating syntax tree!")
-        if isinstance(self._expressions[0], Token):
-            raise QuerySyntaxError("Empty query!")
+            raise TreeBuildingError("Error creating a syntax tree!")
         return self._expressions[0]
 
 
-def parse_language(expression: str) -> EvalNode:
+def get_card_filter(expression: str) -> Callable[[Card], bool]:
     _tokenizer = Tokenizer(expression)
     tokens = _tokenizer.get_tokens()
+    if tokens[0].type == Token_T.END:
+        return lambda x: True
+
     _token_parser = TokenParser(tokens=tokens)
     expressions = _token_parser.tokens2expressions()
     _logic_tree = LogicTree(expressions)
     _logic_tree.construct()
-    return _logic_tree.get_master_node()
+    return _logic_tree.get_master_node().compute
 
 
 def main():
@@ -459,13 +467,11 @@ def main():
 
 
     # for query in queries:
-    #     root = parse_language(query)
+    #     root = get_card_filter(query)
 
     # query = "word: test and pos: verb and len(Sen_Ex)"
-    query = "test: test and a"
-    syntax_tree = parse_language(query)
-    print(syntax_tree)
-
+    query = ""
+    card_filter = get_card_filter(query)
     test_card = {
         "word": "test",
         "meaning": "to do something in order to discover if something is safe, works correctly, etc., or if something is present",
@@ -479,7 +485,7 @@ def main():
         "pos": "verb",
         "audio_link": "https://dictionary.cambridge.org//media/english/us_pron/t/tes/test_/test.mp3"
     }
-    result = syntax_tree.compute(card=test_card)
+    result = card_filter(test_card)
     print(result)
 
 

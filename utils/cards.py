@@ -1,10 +1,11 @@
 import json
 import os
 from abc import ABC, abstractmethod
-from enum import Enum, auto
+from enum import Enum
 from typing import Callable, Iterator, Union, Any
 
 from consts.card_fields import FIELDS
+from utils.storages import FrozenDictJSONEncoder
 from utils.storages import PointerList, FrozenDict
 
 
@@ -24,16 +25,6 @@ class Card(FrozenDict):
 
     def __repr__(self):
         return f"Card {self._data}"
-
-    def to_dict(self):
-        return self._data
-
-
-class _CardJSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, Card):
-            return o.to_dict()
-        return super().default(o)
 
 
 class CardGenerator(ABC):
@@ -149,7 +140,7 @@ class Deck(PointerList):
 
     def save(self):
         with open(self.deck_path, "w", encoding="utf-8") as deck_file:
-            json.dump(self._data, deck_file, cls=_CardJSONEncoder)
+            json.dump(self._data, deck_file, cls=FrozenDictJSONEncoder)
 
     
     
@@ -179,7 +170,7 @@ class SavedDeck(PointerList):
     
     def save(self, saving_path: str):
         with open(saving_path, "w", encoding="utf-8") as deck_file:
-            json.dump(self._data, deck_file, cls=_CardJSONEncoder)
+            json.dump(self._data, deck_file, cls=FrozenDictJSONEncoder)
             
 
 class SentenceFetcher:

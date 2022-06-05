@@ -1,6 +1,7 @@
 import copy
-from typing import Any, TypeVar
 from collections.abc import Mapping
+from json import JSONEncoder
+from typing import Any, TypeVar
 
 
 class _FrozenDictNode(Mapping):
@@ -42,6 +43,24 @@ class FrozenDict(_FrozenDictNode):
             _convert_to_frozen_node(master_dict, key, master_dict[key])
 
         super(FrozenDict, self).__init__(data=master_dict)
+
+    def to_dict(self):
+        def convert(data: _FrozenDictNode):
+            # you make a deepcopy so that you wouldn't overwrite original _data
+            a = copy.deepcopy(data._data)
+            for key in a:
+                if isinstance((value:=a[key]), _FrozenDictNode):
+                    value = convert(value)
+                    a[key] = value
+            return a
+        return convert(self)
+
+
+class FrozenDictJSONEncoder(JSONEncoder):
+    def default(self, o):
+        if isinstance(o, FrozenDict):
+            return o.to_dict()
+        return super().default(o)
 
 
 _T = TypeVar("_T")
@@ -130,8 +149,6 @@ def validate_json(checking_scheme: dict[Any, Any], default_scheme: dict[Any, Any
 
 
 def main():
-    from pprint import pprint
-
     standard_conf_file = {"app": {"theme": "dark",
                                   "main_window_geometry": "500x800+0+0",
                                   "image_search_position": "+0+0"},

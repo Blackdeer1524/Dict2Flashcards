@@ -68,9 +68,6 @@ class App(Tk):
         filemenu.add_separator()
         filemenu.add_command(label="Сменить пользователя", command=App.func_placeholder)
         main_menu.add_cascade(label="Файл", menu=filemenu)
-        tag_menu = Menu(main_menu, tearoff=0)
-
-        main_menu.add_cascade(label='Тэги', menu=tag_menu)
 
         main_menu.add_command(label="Добавить", command=self.add_word_dialog)
         main_menu.add_command(label="Перейти", command=self.find_dialog)
@@ -115,7 +112,7 @@ class App(Tk):
 
         self.word_text = Text(self, placeholder="Слово", height=2)
         self.alt_terms_field = Text(self, relief="ridge", state="disabled", height=1)
-        self.meaning_text = Text(self, placeholder="Значение")
+        self.definition_text = Text(self, placeholder="Значение")
 
         self.sent_text_list = []
         Buttons_list = []
@@ -153,7 +150,7 @@ class App(Tk):
         self.image_parser_option_menu.grid(row=3, column=4, padx=(0, Text_padx), pady=Text_pady, columnspan=4,
                                            sticky="news")
 
-        self.meaning_text.grid(row=4, column=0, padx=Text_padx, columnspan=8, sticky="news")
+        self.definition_text.grid(row=4, column=0, padx=Text_padx, columnspan=8, sticky="news")
 
         self.add_sentences_button.grid(row=5, column=0, padx=(Text_padx, 0), pady=Text_pady, sticky="news", columnspan=4)
         self.sentence_parser_option_menu.grid(row=5, column=4, padx=(0, Text_padx), pady=Text_pady, columnspan=4,
@@ -193,7 +190,7 @@ class App(Tk):
             event.widget.tk_focusPrev().focus()
             return "break"
 
-        self.new_order = [self.browse_button, self.word_text, self.find_image_button, self.meaning_text,
+        self.new_order = [self.browse_button, self.word_text, self.find_image_button, self.definition_text,
                           self.add_sentences_button] + self.sent_text_list + \
                          [self.user_tags_field] + Buttons_list + [self.delete_button, self.prev_button,
                                                                        self.anki_button, self.bury_button,
@@ -334,7 +331,7 @@ class App(Tk):
         self.configurations["tags"]["hierarchical_pref"] = self.tag_prefix_field.get()
         self.save_conf_file()
 
-        self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position()
+        self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position() - 1
 
         self.deck.save()
         with open(HISTORY_FILE_PATH, "w") as saving_f:
@@ -362,7 +359,13 @@ class App(Tk):
 
     def get_word(self):
         return self.word_text.get(1.0, "end").strip()
-
+    
+    def get_definition(self):
+        return self.definition_text.get(1.0, "end").rstrip()
+    
+    def get_sentence(self, n: int):
+        return self.sent_text_list[n].get(1.0, "end").rstrip()
+    
     def replace_sentences(self) -> None:
         sent_batch, error_message, local_flag = self.sentence_fetcher.get_sentence_batch(self.get_word())
         for text_field in self.sent_text_list:
@@ -382,19 +385,19 @@ class App(Tk):
             self.dict_tags_field.insert(1.0, text)
             self.dict_tags_field["state"] = "disabled"
 
-        self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() \
+        current_card = self.deck.get_card()
+        self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() + 1 \
                                              else "disabled"
 
-        self.word_text.focus()
-        current_card = self.deck.get_card()
         self.title(f"Поиск предложений для Anki. Осталось: {self.deck.get_n_cards_left()} слов")
 
         self.word_text.clear()
         self.word_text.insert(1.0, current_card.get(FIELDS.word, ""))
+        self.word_text.focus()
 
-        self.meaning_text.clear()
-        self.meaning_text.insert(1.0, current_card.get(FIELDS.definition, ""))
-        self.meaning_text.fill_placeholder()
+        self.definition_text.clear()
+        self.definition_text.insert(1.0, current_card.get(FIELDS.definition, ""))
+        self.definition_text.fill_placeholder()
 
         self.sentence_fetcher(self.get_word(), current_card.get(FIELDS.sentences, []))
         self.replace_sentences()
@@ -423,7 +426,7 @@ class App(Tk):
 
     def add_word_dialog(self):
         def define_word_button():
-            clean_word = add_word_entry.get(1.0, "end").strip()
+            clean_word = add_word_entry.get().strip()
             pattern = re.compile(clean_word)
             word_filter = lambda comparable: re.search(pattern, comparable)
 
@@ -444,10 +447,12 @@ class App(Tk):
                 add_word_frame.deiconify()
 
         add_word_frame = Toplevel(self)
+        add_word_frame.withdraw()
+
         add_word_frame.grid_columnconfigure(0, weight=1)
         add_word_frame.title("Добавить")
 
-        add_word_entry = Text(add_word_frame, placeholder="Слово", height=1)
+        add_word_entry = Entry(add_word_frame, placeholder="Слово")
         add_word_entry.focus()
         add_word_entry.grid(row=0, column=0, padx=5, pady=3, sticky="we")
 
@@ -459,6 +464,7 @@ class App(Tk):
 
         add_word_frame.bind_all("<Escape>", lambda event: add_word_frame.destroy())
         add_word_frame.bind_all("<Return>", lambda event: define_word_button())
+        add_word_frame.deiconify()
         spawn_toplevel_in_center(master=self, toplevel_widget=add_word_frame,
                                  desired_toplevel_width=self.winfo_width())
 
@@ -522,7 +528,9 @@ class App(Tk):
             find_frame.deiconify()
 
         find_frame = Toplevel(self)
+        find_frame.withdraw()
         find_frame.title("Перейти")
+        find_frame.grid_columnconfigure(0, weight=1)
 
         find_entry = Text(find_frame, height=5)
         find_entry.grid(row=0, column=0, padx=5, pady=3, sticky="we")
@@ -530,12 +538,14 @@ class App(Tk):
 
         find_button = Button(find_frame, text="Перейти", command=go_to)
         find_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
-        spawn_toplevel_in_center(self, find_frame)
         find_frame.bind_all("<Return>", lambda _: go_to())
         find_frame.bind_all("<Escape>", lambda _: find_frame.destroy())
+        find_frame.deiconify()
+        spawn_toplevel_in_center(self, find_frame)
 
     def statistics_dialog(self):
         statistics_window = Toplevel(self)
+        statistics_window.withdraw()
 
         statistics_window.title("Статистика")
         text_list = (('Добавлено', 'Пропущено', 'Удалено', 'Осталось', "Файл", "Директория сохранения", "Медиа"),
@@ -554,66 +564,32 @@ class App(Tk):
                              relief="ridge")
                 info.grid(column=column_index, row=row_index, sticky="news")
 
+        statistics_window.bind_all("<Escape>", lambda _: statistics_window.destroy())
         statistics_window.update()
         current_frame_width = inner_frame.winfo_width()
         current_frame_height = inner_frame.winfo_height()
         scroll_frame.config(width=min(self.winfo_width(), current_frame_width),
                             height=min(self.winfo_height(), current_frame_height))
         spawn_toplevel_in_center(self, statistics_window)
+        statistics_window.deiconify()
+    
+    def choose_sentence(self, button_index):
+        word = self.get_word()
+        if not word:
+            return
 
-    # def call_second_window(self, window_type):
-    #     """
-    #     :param window_type: call_parser, stat, find, anki
-    #     :return:
-    #     """
-    #     elif window_type == "stat":
-    #         second_window.title("Статистика")
-    #         text_list = (('Добавлено', 'Пропущено', 'Удалено', 'Осталось', "Файл", "Директория сохранения", "Медиа"),
-    #                      (
-    #                      self.ADD_COUNTER, self.SKIPPED_COUNTER, self.DEL_COUNTER, self.CARDS_LEFT, self.WORD_JSON_PATH,
-    #                      self.SAVE_DIR, self.MEDIA_DIR))
-    #
-    #         scroll_frame = ScrolledFrame(second_window, scrollbars="horizontal")
-    #         scroll_frame.pack()
-    #         scroll_frame.bind_scroll_wheel(second_window)
-    #         inner_frame = scroll_frame.display_widget(partial(Frame, bg=self.main_bg))
-    #         for row_index in range(len(text_list[0])):
-    #             for column_index in range(2):
-    #                 info = self.Label(inner_frame, text=text_list[column_index][row_index], anchor="center",
-    #                                   relief="ridge")
-    #                 info.grid(column=column_index, row=row_index, sticky="news")
-    #
-    #         second_window.update()
-    #         current_frame_width = inner_frame.winfo_width()
-    #         current_frame_height = inner_frame.winfo_height()
-    #         scroll_frame.config(width=min(self.winfo_width(), current_frame_width),
-    #                             height=min(self.winfo_height(), current_frame_height))
-    #
-    #     elif window_type == "anki":
-    #         def save_anki_settings_command():
-    #             deck = anki_deck_entry.get().strip()
-    #             field = anki_field_entry.get().strip()
-    #             self.JSON_CONF_FILE["anki"]["anki_deck"] = deck if deck != 'Колода поиска' else ""
-    #             self.JSON_CONF_FILE["anki"]["anki_field"] = field if field != 'Поле поиска' else ""
-    #             second_window.destroy()
-    #
-    #         second_window.title("Настройки Anki")
-    #         anki_deck_entry = self.Entry(second_window, placeholder='Колода поиска')
-    #         anki_deck_entry.insert(0, self.JSON_CONF_FILE["anki"]["anki_deck"])
-    #         anki_field_entry = self.Entry(second_window, placeholder='Поле поиска')
-    #         anki_field_entry.insert(0, self.JSON_CONF_FILE["anki"]["anki_field"])
-    #
-    #         save_anki_settings_button = self.Button(second_window, text="Сохранить", command=save_anki_settings_command)
-    #
-    #         padx = pady = 5
-    #         anki_deck_entry.grid(row=0, column=0, sticky="we", padx=padx, pady=pady)
-    #         anki_field_entry.grid(row=1, column=0, sticky="we", padx=padx, pady=pady)
-    #         save_anki_settings_button.grid(row=2, column=0, sticky="ns", padx=padx)
-    #         second_window.bind("<Return>", lambda event: save_anki_settings_command())
-    #
-    #     spawn_toplevel_in_center(self, second_window)
-    #     second_window.bind("<Escape>", lambda event: second_window.destroy())
+        definition = self.get_definition()
+        sentence_example = self.get_sentence(button_index)
 
+        card_data = self.deck[self.deck.get_pointer_position() - 1].to_dict()
+        card_data[FIELDS.word] = word
+        card_data[FIELDS.definition] = definition
+        card_data[FIELDS.sentences] =  sentence_example
+
+        # TODO: WORK ON AUDIOS AND IMAGES
+        self.saved_cards.append(status=CardStatus.ADD, card_data=card_data)
+        self.refresh()
+    
 
 if __name__ == "__main__":
     root = App()

@@ -121,7 +121,7 @@ class Deck(PointerList):
             with open(self.deck_path, "r", encoding="UTF-8") as f:
                 deck: list[dict[str, Union[str, dict]]] = json.load(f)
             super(Deck, self).__init__(data=deck,
-                                       starting_position=current_deck_pointer,
+                                       starting_position=min(current_deck_pointer, len(deck) - 1),
                                        default_return_value=Card())
         else:
             raise Exception("Invalid _deck path!")
@@ -130,7 +130,7 @@ class Deck(PointerList):
         for i in range(len(self)):
             self._data[i] = Card(self._data[i])
 
-        self._cards_left = len(self) - self._pointer_position
+        self._cards_left = max(0, len(self) - self._pointer_position)
 
     def set_card_generator(self, value: CardGenerator):
         assert (isinstance(value, CardGenerator))
@@ -141,7 +141,7 @@ class Deck(PointerList):
 
     def move(self, n: int) -> None:
         super(Deck, self).move(n)
-        self._cards_left = len(self) - self._pointer_position
+        self._cards_left = max(0, len(self) - self._pointer_position)
 
     def find_card(self, searching_func: Callable[[Card], bool]) -> PointerList:
         move_list = []
@@ -155,14 +155,16 @@ class Deck(PointerList):
 
     def add_card_to_deck(self, query: str, **kwargs) -> int:
         res: list[Card] = self._card_generator.get(query, **kwargs)
+
         self._data = self[:self._pointer_position] + res + self[self._pointer_position:]
+        self._pointer_position = self._pointer_position - 1
+
         self._cards_left += len(res)
         return len(res)
 
     def get_card(self) -> Card:
-        res = self[self._pointer_position]
         self.move(1)
-        return res
+        return self[self._pointer_position]
 
     def get_deck(self) -> list[Card]:
         return self._data

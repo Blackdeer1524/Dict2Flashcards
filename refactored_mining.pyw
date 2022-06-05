@@ -28,6 +28,8 @@ from utils.window_utils import spawn_toplevel_in_center
 class App(Tk):
     def __init__(self, *args, **kwargs):
         super(App, self).__init__(*args, **kwargs)
+        self.withdraw()
+
         self.configurations, error_code = App.load_conf_file()
         if error_code:
             self.destroy()
@@ -224,6 +226,7 @@ class App(Tk):
         self.configure()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.refresh()
+        self.deiconify()
 
     def show_errors(self, *args, **kwargs):
         error_log = create_exception_message()
@@ -413,11 +416,11 @@ class App(Tk):
 
     def add_word_dialog(self):
         def define_word_button():
-            clean_word = add_word_entry.get().strip()
+            clean_word = add_word_entry.get(1.0, "end").strip()
             pattern = re.compile(clean_word)
             word_filter = lambda comparable: re.search(pattern, comparable)
 
-            additional_query = additional_filter_entry.get().strip()
+            additional_query = additional_filter_entry.get(1.0, "end").strip()
             additional_filter = get_card_filter(additional_query) if additional_query else None
 
             if self.deck.add_card_to_deck(query=clean_word, word_filter=word_filter,

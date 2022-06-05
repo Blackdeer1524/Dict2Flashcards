@@ -74,7 +74,7 @@ class App(Tk):
         main_menu.add_cascade(label='Тэги', menu=tag_menu)
 
         main_menu.add_command(label="Добавить", command=self.add_word_dialog)
-        main_menu.add_command(label="Перейти", command=App.func_placeholder)
+        main_menu.add_command(label="Перейти", command=self.find_dialog)
         main_menu.add_command(label="Статистика", command=App.func_placeholder)
 
         theme_menu = Menu(main_menu, tearoff=0)
@@ -451,10 +451,10 @@ class App(Tk):
 
         add_word_entry = Text(add_word_frame, placeholder="Слово", height=1)
         add_word_entry.focus()
-        add_word_entry.grid(row=0, column=0, padx=5, pady=3)
+        add_word_entry.grid(row=0, column=0, padx=5, pady=3, sticky="we")
 
         additional_filter_entry = Text(add_word_frame, placeholder="Дополнительный фильтр", height=5)
-        additional_filter_entry.grid(row=1, column=0, padx=5, pady=3,)
+        additional_filter_entry.grid(row=1, column=0, padx=5, pady=3, sticky="we")
 
         start_parsing_button = Button(add_word_frame, text="Добавить", command=define_word_button)
         start_parsing_button.grid(row=2, column=0, padx=5, pady=3, sticky="ns")
@@ -463,6 +463,77 @@ class App(Tk):
         spawn_toplevel_in_center(master=self, toplevel_widget=add_word_frame,
                                  desired_toplevel_width=self.winfo_width())
 
+    def find_dialog(self):
+        def go_to():
+            find_query = find_entry.get(1.0, "end").strip()
+            if not find_query:
+                messagebox.showerror("Ошибка запроса", "Пустой запрос!")
+                return
+
+            try:
+                searching_filter = get_card_filter(find_query)
+            except ParsingException as e:
+                messagebox.showerror("Ошибка запроса", str(e))
+                find_frame.withdraw()
+                find_frame.deiconify()
+                return
+
+            if (move_list := self.deck.find_card(searching_func=searching_filter)):
+                def rotate(n: int):
+                    nonlocal move_list, found_item_number
+
+                    found_item_number += n
+                    rotate_frame.title(f"{found_item_number}/{len(move_list) + 1}")
+
+                    if n > 0:
+                        current_offset = move_list.get_pointed_item()
+                        move_list.move(n)
+                    else:
+                        move_list.move(n)
+                        current_offset = -move_list.get_pointed_item()
+
+
+                    left["state"] = "disabled" if not move_list.get_pointer_position() else "normal"
+                    right["state"] = "disabled" if move_list.get_pointer_position() == len(move_list) else "normal"
+
+                    self.deck.move(current_offset - 1)
+                    self.saved_cards.move(current_offset)
+                    self.refresh()
+
+                find_frame.destroy()
+
+                found_item_number = 1
+                rotate_frame = Toplevel(self)
+                rotate_frame.title(f"{found_item_number}/{len(move_list) + 1}")
+
+                left = Button(rotate_frame, text="<", command=lambda: rotate(-1))
+                left["state"] = "disabled"
+                left.grid(row=0, column=0)
+
+                right = Button(rotate_frame, text=">", command=lambda: rotate(1))
+                right.grid(row=0, column=2)
+
+                done = Button(rotate_frame, text="Готово", command=lambda: rotate_frame.destroy())
+                done.grid(row=0, column=1)
+                spawn_toplevel_in_center(self, rotate_frame)
+                rotate_frame.bind_all("<Escape>", lambda _: rotate_frame.destroy())
+                return
+            messagebox.showerror("Ошибка запроса", "Ничего не найдено!")
+            find_frame.withdraw()
+            find_frame.deiconify()
+
+        find_frame = Toplevel(self)
+        find_frame.title("Перейти")
+
+        find_entry = Text(find_frame, height=5)
+        find_entry.grid(row=0, column=0, padx=5, pady=3, sticky="we")
+        find_entry.focus()
+
+        find_button = Button(find_frame, text="Перейти", command=go_to)
+        find_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
+        spawn_toplevel_in_center(self, find_frame)
+        find_frame.bind_all("<Return>", lambda _: go_to())
+        find_frame.bind_all("<Escape>", lambda _: find_frame.destroy())
 
     # def call_second_window(self, window_type):
     #     """

@@ -143,12 +143,15 @@ class Deck(PointerList):
         super(Deck, self).move(n)
         self._cards_left = len(self) - self._pointer_position
 
-    def find_card(self, searching_func: Callable[[Card], bool]) -> list[int]:
+    def find_card(self, searching_func: Callable[[Card], bool]) -> PointerList:
         move_list = []
-        for current_index in range(self.get_pointer_position(), len(self)):
+        last_found = self.get_pointer_position()
+        for current_index in range(self.get_pointer_position() + 1, len(self)):
             if searching_func(self[current_index]):
-                move_list.append(current_index - self.get_pointer_position())
-        return move_list
+                move_list.append(current_index - last_found)
+                last_found = current_index
+
+        return PointerList(data=move_list)
 
     def add_card_to_deck(self, query: str, **kwargs) -> int:
         res: list[Card] = self._card_generator.get(query, **kwargs)

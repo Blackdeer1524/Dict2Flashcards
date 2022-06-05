@@ -1,24 +1,21 @@
-import importlib
-import pkgutil
-from tkinter import Button, Menu, IntVar, Entry
-from utils.widgets import TextWithPlaceholder as Text
-from utils.widgets import EntryWithPlaceholder as Entry
+import json
+import re
+from tkinter import Button, Menu, IntVar
+from tkinter import Toplevel
 from tkinter import messagebox
-from tkinterdnd2 import Tk
 from tkinter.filedialog import askopenfilename, askdirectory
 from typing import Any
 
-import parsers.image_parsers
-import parsers.word_parsers.local
-import parsers.word_parsers.web
-import parsers.sentence_parsers
+from tkinterdnd2 import Tk
 
-from consts.paths import *
 from consts.card_fields import FIELDS
-from utils.cards import CardGenerator, Deck, SentenceFetcher, SavedDeck, CardStatus
-from utils.window_utils import get_option_menu
-import json
+from consts.paths import *
+from utils.cards import Deck, SentenceFetcher, SavedDeck, CardStatus
+from utils.plugins import plugins
 from utils.storages import validate_json
+from utils.widgets import EntryWithPlaceholder as Entry
+from utils.widgets import TextWithPlaceholder as Text
+from utils.window_utils import get_option_menu
 
 
 class App(Tk):
@@ -27,33 +24,25 @@ class App(Tk):
         self.configurations, error_code = App.load_conf_file()
         if error_code:
             self.destroy()
+            return
+
         self.save_conf_file()
 
         self.history = App.load_history_file()
         if not self.history.get(self.configurations["directories"]["last_open_file"]):
             self.history[self.configurations["directories"]["last_open_file"]] = 0
-        self.web_word_parsers = App.get_web_word_parsers()
-        self.local_word_parsers = App.get_local_word_parsers()
-        self.web_sent_parsers = App.get_sentence_parsers()
-        self.image_parsers = App.get_image_parsers()
 
         if self.configurations["scrappers"]["word_parser_type"] == "web":
-            cd = CardGenerator(
-                parsing_function=self.web_word_parsers[self.configurations["scrappers"]["word_parser_name"]].define,
-                item_converter=self.web_word_parsers[self.configurations["scrappers"]["word_parser_name"]].translate)
+            cd = plugins.get_web_card_generator(self.configurations["scrappers"]["word_parser_name"])
         elif self.configurations["scrappers"]["word_parser_type"] == "local":
-            cd = CardGenerator(
-                local_dict_path="./media/{}.json".format(
-                    self.web_word_parsers[self.configurations["scrappers"]["word_parser_name"]].DICTIONARY_PATH),
-                item_converter=self.web_word_parsers[self.configurations["scrappers"]["word_parser_name"]].translate)
+            cd = plugins.get_local_card_generator(self.configurations["scrappers"]["word_parser_name"])
         else:
             raise NotImplemented("Unknown word_parser_type: {}!".format(self.configurations["scrappers"]["word_parser_type"]))
 
         self.deck = Deck(deck_path=self.configurations["directories"]["last_open_file"],
                          current_deck_pointer=self.history[self.configurations["directories"]["last_open_file"]],
                          card_generator=cd)
-        self.sentence_parser = self.web_sent_parsers[
-            self.configurations["scrappers"]["base_sentence_parser"]].get_sentence_batch
+        self.sentence_parser = plugins.get_sentence_parser(self.configurations["scrappers"]["base_sentence_parser"])
 
         self.sentence_batch_size = 5
         self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser,
@@ -97,7 +86,7 @@ class App(Tk):
         self.browse_button = Button(self, text="Найти в браузере", command=App.func_placeholder)
         self.configurations_word_parser_button = Button(self, text="Настроить словарь", command=App.func_placeholder)
         self.find_image_button = Button(self, text="Добавить изображение", command=App.func_placeholder)
-        self.image_word_parsers_names = list(self.image_parsers)
+        self.image_word_parsers_names = list(plugins.image_parsers)
         
         self.image_word_parser_name = self.configurations["scrappers"]["base_image_parser"]
         self.image_parser_option_menu = get_option_menu(self,
@@ -112,7 +101,7 @@ class App(Tk):
         self.sentence_word_parser_name = self.configurations["scrappers"]["base_sentence_parser"]
         self.sentence_parser_option_menu = get_option_menu(self,
                                                            init_text=self.sentence_word_parser_name,
-                                                           values=list(self.web_sent_parsers),
+                                                           values=list(plugins.web_sent_parsers),
                                                            command=App.func_placeholder,
                                                            widget_configuration={},
                                                            option_submenu_params={})
@@ -129,7 +118,7 @@ class App(Tk):
             self.sent_text_list[-1].fill_placeholder()
             Buttons_list.append(Button(self, text=f"{i + 1}", command=App.func_placeholder, width=button_width))
 
-        self.delete_button = Button(self, text="Del", command=self.skip_command, width=button_width)
+        self.delete_button = Button(self, text="Del", command=self.delete_command, width=button_width)
         self.prev_button = Button(self, text="Prev", command=self.prev_command, state="disabled", width=button_width)
         self.sound_button = Button(self, text="Play", command=App.func_placeholder, width=button_width)
         self.anki_button = Button(self, text="Anki", command=App.func_placeholder, width=button_width)
@@ -229,7 +218,7 @@ class App(Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.refresh()
 
-    def skip_command(self):
+    def delete_command(self):
         if self.refresh():
             self.saved_cards.append(CardStatus.SKIP)
 
@@ -264,7 +253,8 @@ class App(Tk):
                                             "word_parser_type": "web",
                                             "word_parser_name": "cambridge_US",
                                             "base_image_parser": "google",
-                                            "local_search_type": 0,
+                                            "local_dict_search_type": 0,
+                                            "deck_search_type": 0,
                                             "local_audio": "",
                                             "non_pos_specific_search": False},
                               "tags": {"hierarchical_pref": ""},
@@ -287,7 +277,7 @@ class App(Tk):
         if not conf_file["directories"]["media_dir"] or not os.path.isdir(conf_file["directories"]["media_dir"]):
             conf_file["directories"]["media_dir"] = askdirectory(title="Выберете директорию для медиа файлов",
                                                                  mustexist=True,
-                                                                 initialdir=STANDARD_ANKI_MEDIA)
+                                                                 initialdir=MEDIA_DOWNLOADING_LOCATION)
             if not conf_file["directories"]["media_dir"]:
                 return (conf_file, True)
                         
@@ -295,60 +285,19 @@ class App(Tk):
             conf_file["directories"]["last_open_file"] = askopenfilename(title="Выберете JSON файл со словами",
                                                                          filetypes=(("JSON", ".json"),),
                                                                          initialdir="./")
-            if not conf_file["directories"]["media_dir"]:
+            if not conf_file["directories"]["last_open_file"]:
                 return (conf_file, True)
             
         if not conf_file["directories"]["last_save_dir"] or not os.path.isdir(conf_file["directories"]["media_dir"]):
             conf_file["directories"]["last_save_dir"] = askdirectory(title="Выберете директорию сохранения",
                                                                      mustexist=True,
                                                                      initialdir="./")
-            if not conf_file["directories"]["media_dir"]:
+            if not conf_file["directories"]["last_save_dir"]:
                 return (conf_file, True)
 
         return (conf_file, False)
 
-    @staticmethod
-    def iter_namespace(ns_pkg):
-        # Specifying the second argument (prefix) to iter_modules makes the
-        # returned name an absolute name instead of a relative one. This allows
-        # import_module to work without having to do additional modification to
-        # the name.
-        return pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + ".")
 
-    @staticmethod
-    def get_web_word_parsers() -> dict:
-        web_word_parsers = {}
-        for finder, name, ispkg in App.iter_namespace(parsers.word_parsers.web):
-            parser_trunc_name = name.split(sep=".")[-1]
-            if name.startswith('parsers.word_parsers.web'):
-                web_word_parsers[parser_trunc_name] = importlib.import_module(name)
-        return web_word_parsers
-
-    @staticmethod
-    def get_local_word_parsers() -> dict:
-        local_word_parsers = {}
-        for finder, name, ispkg in App.iter_namespace(parsers.word_parsers.local):
-            parser_trunc_name = name.split(sep=".")[-1]
-            if name.startswith('parsers.word_parsers.local'):
-                local_word_parsers[parser_trunc_name] = importlib.import_module(name)
-        return local_word_parsers
-
-    @staticmethod
-    def get_sentence_parsers() -> dict:
-        web_sent_parsers = {}
-        for finder, name, ispkg in App.iter_namespace(parsers.sentence_parsers):
-            parser_trunc_name = name.split(sep=".")[-1]
-            if name.startswith('parsers.sentence_parsers.web'):
-                web_sent_parsers[parser_trunc_name] = importlib.import_module(name)
-        return web_sent_parsers
-
-    @staticmethod
-    def get_image_parsers() -> dict:
-        image_parsers = {}
-        for finder, name, ispkg in App.iter_namespace(parsers.image_parsers):
-            parser_trunc_name = name.split(sep=".")[-1]
-            image_parsers[parser_trunc_name] = importlib.import_module(name)
-        return image_parsers
 
     def save_files(self):
         """
@@ -361,11 +310,7 @@ class App(Tk):
 
         self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position()
 
-        with open(self.configurations["directories"]["last_open_file"], "w", encoding="utf-8") as new_write_file:
-            json.dump(self.deck.get_deck(), new_write_file, indent=4)
-
-        # self.save_audio_file()
-
+        self.deck.save()
         with open(HISTORY_FILE_PATH, "w") as saving_f:
             json.dump(self.history, saving_f, indent=4)
 
@@ -393,23 +338,16 @@ class App(Tk):
         return self.word_text.get(1.0, "end").strip()
 
     def replace_sentences(self) -> None:
-        prev_local_flag = self.sentence_fetcher.is_local()
         sent_batch, error_message, local_flag = self.sentence_fetcher.get_sentence_batch(self.get_word())
         for text_field in self.sent_text_list:
             text_field.clear()
             text_field.fill_placeholder()
-
         for i in range(len(sent_batch)):
             self.sent_text_list[i].remove_placeholder()
             self.sent_text_list[i].insert(1.0, sent_batch[i])
-
         if error_message:
             messagebox.showerror(title="Replace sentences", message=error_message)
-
-        if not prev_local_flag and local_flag:
-            self.add_sentences_button["text"] = self.sentence_button_text
-        elif prev_local_flag and not local_flag:
-            self.add_sentences_button["text"] = self.sentence_button_text + " +"
+        self.add_sentences_button["text"] = self.sentence_button_text if local_flag else self.sentence_button_text + " +"
 
     def refresh(self) -> bool:
         self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() \
@@ -420,24 +358,20 @@ class App(Tk):
         self.title(f"Поиск предложений для Anki. Осталось: {self.deck.get_n_cards_left()} слов")
 
         self.word_text.clear()
+        self.word_text.insert(1.0, current_card.get(FIELDS.word, ""))
+
         self.meaning_text.clear()
+        self.meaning_text.insert(1.0, current_card.get(FIELDS.definition, ""))
+        self.meaning_text.fill_placeholder()
+
+        self.sentence_fetcher(self.get_word(), current_card.get(FIELDS.sentences, []))
+        self.replace_sentences()
         if not current_card:
             self.find_image_button["text"] = "Добавить изображение"
             if not self.configurations["scrappers"]["local_audio"]:
                 self.sound_button["state"] = "disabled"
-            self.sentence_fetcher("", [])
-            self.replace_sentences()
             return False
         # Обновление поля для слова
-        self.word_text.insert(1.0, current_card.get(FIELDS.word))
-        self.sentence_fetcher(self.get_word(), current_card.get(FIELDS.sentences, []))
-        self.replace_sentences()
-        self.word_text.fill_placeholder()
-
-        # Обновление поля для значения
-        self.meaning_text.insert(1.0, current_card.get(FIELDS.definition))
-        self.meaning_text.fill_placeholder()
-
         alt_terms = " ".join(current_card.get("alt_terms", []))
         self.DICT_IMAGE_LINK = current_card.get("image_link", "")
         if self.DICT_IMAGE_LINK:
@@ -451,6 +385,158 @@ class App(Tk):
         else:
             self.sound_button["state"] = "disabled"
         return True
+
+    def add_word_dialog(self):
+        def define_word_button():
+            clean_word = add_word_entry.get().strip()
+            pattern = re.compile(clean_word)
+            word_filter = lambda comparable, query: re.search(pattern, comparable)
+
+            # if self.deck.add_card_to_deck(query=clean_word, word_filter=):
+            #     add_word_frame.destroy()
+            # else:
+            #     messagebox.showerror(title="Ошибка!", message="Слово не найдено!")
+            #     add_word_frame.withdraw()
+            #     add_word_frame.deiconify()
+
+        add_word_frame = Toplevel(self)
+        add_word_frame.title("Добавить")
+        add_word_entry = Entry(add_word_frame, placeholder="Слово", justify="center")
+        add_word_entry.focus()
+        add_word_entry.bind('<Return>', lambda event: define_word_button())
+
+        # additional_filter_entry =
+
+        add_word_entry.grid(row=0, column=0, padx=5, pady=3, sticky="news")
+        start_parsing_button = Button(add_word_frame, text="Добавить", command=define_word_button)
+        start_parsing_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
+
+
+    # def call_second_window(self, window_type):
+    #     """
+    #     :param window_type: call_parser, stat, find, anki
+    #     :return:
+    #     """
+    #     second_window = Toplevel(self)
+    #     if window_type == "call_parser":
+    #         def define_word_button():
+    #             clean_word = second_window_entry.get().strip()
+    #             if self.deck.add_card_to_deck(query=clean_word):
+    #                 second_window.destroy()
+    #             else:
+    #                 second_window.withdraw()
+    #                 second_window.deiconify()
+    #
+    #         second_window.title("Добавить")
+    #         second_window_entry = Entry(second_window, justify="center")
+    #         second_window_entry.focus()
+    #         second_window_entry.bind('<Return>', lambda event: define_word_button())
+    #
+    #         second_window_entry.grid(row=0, column=0, padx=5, pady=3, sticky="news")
+    #         start_parsing_button = Button(second_window, text="Добавить", command=define_word_button)
+    #         start_parsing_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
+    #
+    #     elif window_type == "find":
+    #         def go_to():
+    #             word = second_window_entry.get().strip()
+    #             if word.startswith("->"):
+    #                 # [3:] чекает кейс с отрицат числами
+    #                 if word[2:].isdigit() or word[3:].isdigit():
+    #                     skip_count = int(word[2:])
+    #                 else:
+    #                     messagebox.showerror("Ошибка", "Неверно задано число перехода!")
+    #                     second_window.withdraw()
+    #                     second_window.deiconify()
+    #                     return
+    #             else:
+    #                 pattern = re.compile(word)
+    #                 for skip_count in range(1, len(self.WORDS) - self.NEXT_ITEM_INDEX + 1):
+    #                     block = self.WORDS[self.NEXT_ITEM_INDEX + skip_count - 1]
+    #                     prepared_word_in_block = block["word"].rstrip().lower()
+    #                     if re_search.get():
+    #                         search_condition = re.search(pattern, prepared_word_in_block)
+    #                     else:
+    #                         search_condition = prepared_word_in_block == word
+    #                     if search_condition:
+    #                         break
+    #                 else:
+    #                     messagebox.showerror("Ошибка", "Слово не найдено!")
+    #                     second_window.withdraw()
+    #                     second_window.deiconify()
+    #                     return
+    #             skip_count = max(-len(self.CARDS_STATUSES), min(skip_count, self.CARDS_LEFT))
+    #             if skip_count >= 0:
+    #                 self.NEXT_ITEM_INDEX = self.NEXT_ITEM_INDEX + skip_count - 1
+    #                 self.CARDS_LEFT = self.CARDS_LEFT - skip_count + 1
+    #                 self.CARDS_STATUSES.extend([App.CardStatus.delete for _ in range(skip_count)])
+    #                 self.DEL_COUNTER += skip_count
+    #                 self.refresh()
+    #             else:
+    #                 self.prev_command(n=-skip_count)
+    #             second_window.destroy()
+    #
+    #         second_window.title("Перейти")
+    #         second_window_entry = self.Entry(second_window, justify="center")
+    #         second_window_entry.focus()
+    #         second_window_entry.bind('<Return>', lambda event: go_to())
+    #
+    #         start_parsing_button = self.Button(second_window, text="Перейти", command=go_to)
+    #
+    #         re_search = BooleanVar()
+    #         re_search.set(False)
+    #         second_window_re = self.Checkbutton(second_window, variable=re_search, text="RegEx search")
+    #
+    #         second_window_entry.grid(row=0, column=0, padx=5, pady=3, sticky="news")
+    #         start_parsing_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
+    #         second_window_re.grid(row=2, column=0, sticky="news")
+    #
+    #     elif window_type == "stat":
+    #         second_window.title("Статистика")
+    #         text_list = (('Добавлено', 'Пропущено', 'Удалено', 'Осталось', "Файл", "Директория сохранения", "Медиа"),
+    #                      (
+    #                      self.ADD_COUNTER, self.SKIPPED_COUNTER, self.DEL_COUNTER, self.CARDS_LEFT, self.WORD_JSON_PATH,
+    #                      self.SAVE_DIR, self.MEDIA_DIR))
+    #
+    #         scroll_frame = ScrolledFrame(second_window, scrollbars="horizontal")
+    #         scroll_frame.pack()
+    #         scroll_frame.bind_scroll_wheel(second_window)
+    #         inner_frame = scroll_frame.display_widget(partial(Frame, bg=self.main_bg))
+    #         for row_index in range(len(text_list[0])):
+    #             for column_index in range(2):
+    #                 info = self.Label(inner_frame, text=text_list[column_index][row_index], anchor="center",
+    #                                   relief="ridge")
+    #                 info.grid(column=column_index, row=row_index, sticky="news")
+    #
+    #         second_window.update()
+    #         current_frame_width = inner_frame.winfo_width()
+    #         current_frame_height = inner_frame.winfo_height()
+    #         scroll_frame.config(width=min(self.winfo_width(), current_frame_width),
+    #                             height=min(self.winfo_height(), current_frame_height))
+    #
+    #     elif window_type == "anki":
+    #         def save_anki_settings_command():
+    #             deck = anki_deck_entry.get().strip()
+    #             field = anki_field_entry.get().strip()
+    #             self.JSON_CONF_FILE["anki"]["anki_deck"] = deck if deck != 'Колода поиска' else ""
+    #             self.JSON_CONF_FILE["anki"]["anki_field"] = field if field != 'Поле поиска' else ""
+    #             second_window.destroy()
+    #
+    #         second_window.title("Настройки Anki")
+    #         anki_deck_entry = self.Entry(second_window, placeholder='Колода поиска')
+    #         anki_deck_entry.insert(0, self.JSON_CONF_FILE["anki"]["anki_deck"])
+    #         anki_field_entry = self.Entry(second_window, placeholder='Поле поиска')
+    #         anki_field_entry.insert(0, self.JSON_CONF_FILE["anki"]["anki_field"])
+    #
+    #         save_anki_settings_button = self.Button(second_window, text="Сохранить", command=save_anki_settings_command)
+    #
+    #         padx = pady = 5
+    #         anki_deck_entry.grid(row=0, column=0, sticky="we", padx=padx, pady=pady)
+    #         anki_field_entry.grid(row=1, column=0, sticky="we", padx=padx, pady=pady)
+    #         save_anki_settings_button.grid(row=2, column=0, sticky="ns", padx=padx)
+    #         second_window.bind("<Return>", lambda event: save_anki_settings_command())
+    #
+    #     spawn_toplevel_in_center(self, second_window)
+    #     second_window.bind("<Escape>", lambda event: second_window.destroy())
 
 
 if __name__ == "__main__":

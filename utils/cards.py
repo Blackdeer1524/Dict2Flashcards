@@ -1,10 +1,11 @@
-from typing import Callable, Iterator, Union, Any
-import os
 import json
-from consts.card_fields import FIELDS
-from enum import Enum
-from utils.storages import PointerList, FrozenDict
+import os
 from abc import ABC, abstractmethod
+from enum import Enum, auto
+from typing import Callable, Iterator, Union, Any
+
+from consts.card_fields import FIELDS
+from utils.storages import PointerList, FrozenDict
 
 
 class Card(FrozenDict):

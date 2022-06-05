@@ -15,11 +15,11 @@ from PIL import Image, ImageTk
 from requests.exceptions import RequestException, ConnectTimeout
 from tkinterdnd2 import DND_FILES, DND_TEXT
 
-from consts.paths import CURRENT_SYSTEM
-from utils.widgets import ScrolledFrame
+from consts.paths import SYSTEM
 from utils.storages import PointerList
+from utils.widgets import ScrolledFrame
 
-if CURRENT_SYSTEM == "Linux":
+if SYSTEM == "Linux":
     import gi
     gi.require_version('Gtk', '3.0')
     from gi.repository import Gtk, Gdk
@@ -199,7 +199,7 @@ class ImageSearch(Toplevel):
             self.img_urls.extendleft(url_batch)
         
     def start(self):
-        if CURRENT_SYSTEM == "Linux":
+        if SYSTEM == "Linux":
             self._cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 
         for custom_image in self._init_images:
@@ -388,7 +388,7 @@ class ImageSearch(Toplevel):
         return event.action
 
     def _paste_image(self):
-        if CURRENT_SYSTEM == "Linux":
+        if SYSTEM == "Linux":
             def pixbuf2image(pix):
                 """Convert gdkpixbuf to PIL image"""
                 data = pix.get_pixels()

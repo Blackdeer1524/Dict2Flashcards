@@ -23,6 +23,7 @@ from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from functools import partial
 from utils.window_utils import spawn_toplevel_in_center
+from utils.search_checker import ParsingException
 
 
 class App(Tk):
@@ -418,17 +419,19 @@ class App(Tk):
             word_filter = lambda comparable: re.search(pattern, comparable)
 
             additional_query = additional_filter_entry.get(1.0, "end").strip()
-            additional_filter = get_card_filter(additional_query) if additional_query else None
-
-            if self.deck.add_card_to_deck(query=clean_word, word_filter=word_filter,
-                                          additional_filter=additional_filter):
-                add_word_frame.destroy()
-                self.refresh()
-            else:
+            try:
+                additional_filter = get_card_filter(additional_query) if additional_query else None
+                if self.deck.add_card_to_deck(query=clean_word, word_filter=word_filter,
+                                              additional_filter=additional_filter):
+                    add_word_frame.destroy()
+                    self.refresh()
+                    return
                 messagebox.showerror(title="Ошибка!", message="Слово не найдено!")
+            except ParsingException as e:
+                messagebox.showerror("Ошибка запроса", str(e))
+            finally:
                 add_word_frame.withdraw()
                 add_word_frame.deiconify()
-
 
         add_word_frame = Toplevel(self)
         add_word_frame.grid_columnconfigure(0, weight=1)

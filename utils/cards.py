@@ -22,9 +22,37 @@ class Card(FrozenDict):
 
         super(Card, self).__init__(data=data)
 
-
     def __repr__(self):
         return f"Card {self._data}"
+
+    def get_str_dict_tags(self, 
+                          prefix: str = "", 
+                          sep: str = "::",
+                          tag_processor: Callable[[str], str] = lambda x: x) -> str:
+        if (dictionary_tags := self.get(FIELDS.dict_tags)) is None:
+            return ""
+
+        def traverse_tags_dict(res_container: list[str], current_item: dict, cur_stage_prefix: str = ""):
+            nonlocal sep
+
+            for key in current_item:
+                cur_prefix = f"{cur_stage_prefix}{tag_processor(key)}{sep}"
+
+                if isinstance((value := current_item[key]), dict):
+                    traverse_tags_dict(res_container, value, cur_prefix)
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            traverse_tags_dict(res_container, item, cur_prefix)
+                        else:
+                            res_container.append(f"{cur_prefix}{tag_processor(item)}")
+                else:
+                    res_container.append(f"{cur_prefix}{tag_processor(value)}")
+
+        tags_container = []
+        p = f"{prefix}{sep}" if prefix else ""
+        traverse_tags_dict(tags_container, dictionary_tags, cur_stage_prefix=p)
+        return " ".join(tags_container)
 
 
 class CardGenerator(ABC):

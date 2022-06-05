@@ -18,7 +18,8 @@ def error_handler(error_processing=None):
                     error_log = create_exception_message()
                     print(error_log)
                 else:
-                    kwargs["__exception"] = e
-                    error_processing(*args, **kwargs)
+                    error_processing(*args, exception=e, **kwargs)
         return method_wrapper
     return error_decorator
+
+

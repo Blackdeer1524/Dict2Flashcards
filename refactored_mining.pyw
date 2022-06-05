@@ -1,6 +1,8 @@
 import json
 import re
 from tkinter import Button, Menu, IntVar
+from tkinter import Frame
+from tkinter import Label
 from tkinter import Toplevel
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename, askdirectory
@@ -11,11 +13,15 @@ from tkinterdnd2 import Tk
 from consts.card_fields import FIELDS
 from consts.paths import *
 from utils.cards import Deck, SentenceFetcher, SavedDeck, CardStatus
+from utils.error_handling import error_handler, create_exception_message
 from utils.plugins import plugins
+from utils.search_checker import get_card_filter
 from utils.storages import validate_json
 from utils.widgets import EntryWithPlaceholder as Entry
+from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
+from functools import partial
 
 
 class App(Tk):
@@ -65,7 +71,7 @@ class App(Tk):
 
         main_menu.add_cascade(label='Тэги', menu=tag_menu)
 
-        main_menu.add_command(label="Добавить", command=App.func_placeholder)
+        main_menu.add_command(label="Добавить", command=self.add_word_dialog)
         main_menu.add_command(label="Перейти", command=App.func_placeholder)
         main_menu.add_command(label="Статистика", command=App.func_placeholder)
 
@@ -218,6 +224,26 @@ class App(Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.refresh()
 
+    def show_errors(self, *args, **kwargs):
+        error_log = create_exception_message()
+
+        error_handler_toplevel = Toplevel(self)
+        error_handler_toplevel.title("Ошибка")
+        sf = ScrolledFrame(error_handler_toplevel, scrollbars="both")
+        sf.pack(side="top", expand=1, fill="both")
+        sf.bind_scroll_wheel(error_handler_toplevel)
+        inner_frame = sf.display_widget(Frame)
+        label = Label(inner_frame, text=error_log, justify="left")
+        label.pack()
+        label.update()
+        sf.config(width=min(1000, label.winfo_width()), height=min(500, label.winfo_height()))
+        error_handler_toplevel.resizable(False, False)
+        error_handler_toplevel.bind("<Escape>", lambda event: error_handler_toplevel.destroy())
+        error_handler_toplevel.grab_set()
+
+        self.clipboard_clear()
+        self.clipboard_append(error_log)
+
     def delete_command(self):
         if self.refresh():
             self.saved_cards.append(CardStatus.SKIP)
@@ -296,8 +322,6 @@ class App(Tk):
                 return (conf_file, True)
 
         return (conf_file, False)
-
-
 
     def save_files(self):
         """
@@ -390,26 +414,35 @@ class App(Tk):
         def define_word_button():
             clean_word = add_word_entry.get().strip()
             pattern = re.compile(clean_word)
-            word_filter = lambda comparable, query: re.search(pattern, comparable)
+            word_filter = lambda comparable: re.search(pattern, comparable)
 
-            # if self.deck.add_card_to_deck(query=clean_word, word_filter=):
-            #     add_word_frame.destroy()
-            # else:
-            #     messagebox.showerror(title="Ошибка!", message="Слово не найдено!")
-            #     add_word_frame.withdraw()
-            #     add_word_frame.deiconify()
+            additional_query = additional_filter_entry.get().strip()
+            additional_filter = get_card_filter(additional_query) if additional_query else None
+
+            if self.deck.add_card_to_deck(query=clean_word, word_filter=word_filter,
+                                          additional_filter=additional_filter):
+                add_word_frame.destroy()
+                self.refresh()
+            else:
+                messagebox.showerror(title="Ошибка!", message="Слово не найдено!")
+                add_word_frame.withdraw()
+                add_word_frame.deiconify()
+
 
         add_word_frame = Toplevel(self)
         add_word_frame.title("Добавить")
+
         add_word_entry = Entry(add_word_frame, placeholder="Слово", justify="center")
         add_word_entry.focus()
-        add_word_entry.bind('<Return>', lambda event: define_word_button())
-
-        # additional_filter_entry =
-
         add_word_entry.grid(row=0, column=0, padx=5, pady=3, sticky="news")
+
+        additional_filter_entry = Entry(add_word_frame, placeholder="Дополнительный фильтр", justify="center")
+        additional_filter_entry.grid(row=1, column=0, padx=5, pady=3, sticky="news")
+
         start_parsing_button = Button(add_word_frame, text="Добавить", command=define_word_button)
-        start_parsing_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
+        start_parsing_button.grid(row=2, column=0, padx=5, pady=3, sticky="ns")
+
+        add_word_frame.bind_all("<Return>", lambda event: define_word_button())
 
 
     # def call_second_window(self, window_type):

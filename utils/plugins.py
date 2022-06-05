@@ -48,7 +48,7 @@ class _PluginLoader:
                                                             for name, module in
                                                             parse_namespace(parsers.word_parsers.web).items()}))
         super().__setattr__("local_word_parsers", FrozenDict({name: {"item_converter": module.translate,
-                                                                     "local_dict_path": LOCAL_MEDIA_DIR / module.DICTIONARY_PATH}
+                                                                     "local_dict_path": LOCAL_MEDIA_DIR / f"{module.DICTIONARY_PATH}.json"}
                                                               for name, module in
                                                               parse_namespace(parsers.word_parsers.local).items()}))
         super().__setattr__("web_sent_parsers", FrozenDict({name: module.get_sentence_batch

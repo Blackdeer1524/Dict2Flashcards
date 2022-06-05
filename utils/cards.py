@@ -35,7 +35,7 @@ class _CardJSONEncoder(json.JSONEncoder):
 
 
 class CardGenerator(ABC):
-    def __init__(self, item_converter: Callable[[(str, dict)], dict]):
+    def __init__(self, item_converter: Callable[[str, dict], dict]):
         self.item_converter = item_converter
 
     @abstractmethod
@@ -49,9 +49,9 @@ class CardGenerator(ABC):
 
         source: list[tuple[str, dict]] = self._get_search_subset(query)
         res: list[Card] = []
-        for card in source:
-            if word_filter(card[0]):
-                for item in self.item_converter(card):
+        for word, word_data in source:
+            if word_filter(word):
+                for item in self.item_converter(word, word_data):
                     if additional_filter(card := Card(item)):
                         res.append(card)
         return res

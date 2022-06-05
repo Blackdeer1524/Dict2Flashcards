@@ -14,6 +14,12 @@ class TextWithPlaceholder(Text):
         self["wrap"] = "word"
         self._is_under_focus = False
         self._placeholder_set_status = False
+        self.fill_placeholder()
+
+    def insert(self, index, chars, *args):
+        if chars:
+            self.remove_placeholder()
+            super(TextWithPlaceholder, self).insert(index, chars, *args)
 
     def get(self, index1, index2=None):
         return "" if self._placeholder_set_status else self.tk.call(self._w, 'get', index1, index2)
@@ -27,12 +33,10 @@ class TextWithPlaceholder(Text):
 
     def fill_placeholder(self, *args):
         if not self.get(1.0).strip() and not self._is_under_focus:
-            self._placeholder_set_status = True
             self.clear()
-            self['foreground'] = self._placeholder_fg_color
             self.insert(1.0, self._placeholder)
-        else:
-            self._placeholder_set_status = False
+            self._placeholder_set_status = True
+            self['foreground'] = self._placeholder_fg_color
 
     def remove_placeholder(self):
         if self._placeholder_set_status:
@@ -56,8 +60,13 @@ class EntryWithPlaceholder(Entry):
         self._is_under_focus = False
         self._placeholder_set_status = False
 
+    def insert(self, index, string: str) -> None:
+        if string:
+            self.remove_placeholder()
+            super(EntryWithPlaceholder, self).insert(index, string)
+
     def get(self):
-        return "" if self["foreground"] == self._placeholder_fg_color else self.tk.call(self._w, 'get')
+        return "" if self._placeholder_set_status else self.tk.call(self._w, 'get')
 
     def clear(self):
         self.delete(0, 'end')
@@ -68,10 +77,10 @@ class EntryWithPlaceholder(Entry):
 
     def fill_placeholder(self, *args):
         if not self.get().strip() and not self._is_under_focus:
-            self._placeholder_set_status = True
             self.clear()
-            self['foreground'] = self._placeholder_fg_color
             self.insert(0, self._placeholder)
+            self._placeholder_set_status = True
+            self['foreground'] = self._placeholder_fg_color
         else:
             self._placeholder_set_status = False
 

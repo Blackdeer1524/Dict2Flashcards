@@ -10,6 +10,7 @@ import parsers.word_parsers.web
 from parsers.return_types import ImageGenerator, SentenceGenerator
 from utils.cards import WebCardGenerator, LocalCardGenerator
 from utils.storages import FrozenDict
+from consts.paths import LOCAL_MEDIA_DIR
 
 
 class PluginError(Exception):
@@ -21,7 +22,7 @@ class UnknownPluginName(PluginError):
 
 
 @dataclass(init=False, frozen=True, repr=False)
-class PluginLoader:
+class _PluginLoader:
     web_word_parsers:   FrozenDict
     local_word_parsers: FrozenDict
     web_sent_parsers:   FrozenDict
@@ -47,7 +48,7 @@ class PluginLoader:
                                                             for name, module in
                                                             parse_namespace(parsers.word_parsers.web).items()}))
         super().__setattr__("local_word_parsers", FrozenDict({name: {"item_converter": module.translate,
-                                                                     "local_dict_path": module.DICTIONARY_PATH}
+                                                                     "local_dict_path": LOCAL_MEDIA_DIR / module.DICTIONARY_PATH}
                                                               for name, module in
                                                               parse_namespace(parsers.word_parsers.local).items()}))
         super().__setattr__("web_sent_parsers", FrozenDict({name: module.get_sentence_batch
@@ -88,4 +89,4 @@ class PluginLoader:
         return gen
 
 
-plugins = PluginLoader()
+plugins = _PluginLoader()

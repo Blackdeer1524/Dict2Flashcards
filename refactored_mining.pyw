@@ -247,8 +247,10 @@ class App(Tk):
         self.clipboard_append(error_log)
 
     def delete_command(self):
-        if self.refresh():
+        if self.deck.get_n_cards_left():
             self.saved_cards.append(CardStatus.SKIP)
+        self.refresh()
+
 
     def prev_command(self):
         self.deck.move(-2)
@@ -334,7 +336,7 @@ class App(Tk):
         self.configurations["tags"]["hierarchical_pref"] = self.tag_prefix_field.get()
         self.save_conf_file()
 
-        self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position()
+        self.history[self.configurations["directories"]["last_open_file"]] = max(self.deck.get_pointer_position() - 1, 0)
 
         self.deck.save()
         with open(HISTORY_FILE_PATH, "w") as saving_f:
@@ -376,6 +378,12 @@ class App(Tk):
         self.add_sentences_button["text"] = self.sentence_button_text if local_flag else self.sentence_button_text + " +"
 
     def refresh(self) -> bool:
+        def fill_dict_tags(text: str):
+            self.dict_tags_field["state"] = "normal"
+            self.dict_tags_field.clear()
+            self.dict_tags_field.insert(1.0, text)
+            self.dict_tags_field["state"] = "disabled"
+
         self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() \
                                              else "disabled"
 
@@ -396,7 +404,10 @@ class App(Tk):
             self.find_image_button["text"] = "Добавить изображение"
             if not self.configurations["scrappers"]["local_audio"]:
                 self.sound_button["state"] = "disabled"
+            fill_dict_tags("")
             return False
+        fill_dict_tags(current_card.get_str_dict_tags())
+
         # Обновление поля для слова
         alt_terms = " ".join(current_card.get("alt_terms", []))
         self.DICT_IMAGE_LINK = current_card.get("image_link", "")
@@ -427,9 +438,10 @@ class App(Tk):
                     self.refresh()
                     return
                 messagebox.showerror(title="Ошибка!", message="Слово не найдено!")
+                add_word_frame.withdraw()
+                add_word_frame.deiconify()
             except ParsingException as e:
                 messagebox.showerror("Ошибка запроса", str(e))
-            finally:
                 add_word_frame.withdraw()
                 add_word_frame.deiconify()
 
@@ -441,7 +453,7 @@ class App(Tk):
         add_word_entry.focus()
         add_word_entry.grid(row=0, column=0, padx=5, pady=3)
 
-        additional_filter_entry = Text(add_word_frame, placeholder="Дополнительный фильтр", height=1)
+        additional_filter_entry = Text(add_word_frame, placeholder="Дополнительный фильтр", height=5)
         additional_filter_entry.grid(row=1, column=0, padx=5, pady=3,)
 
         start_parsing_button = Button(add_word_frame, text="Добавить", command=define_word_button)

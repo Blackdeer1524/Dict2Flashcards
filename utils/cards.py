@@ -157,11 +157,8 @@ class Deck(PointerList):
         return len(res)
 
     def get_card(self) -> Card:
-        cur_card = self[self._pointer_position]
-        if cur_card:
-            self._pointer_position += 1
-            self._cards_left -= 1
-        return cur_card
+        self.move(1)
+        return self[self._pointer_position]
 
     def get_deck(self) -> list[Card]:
         return self._data
@@ -169,7 +166,6 @@ class Deck(PointerList):
     def save(self):
         with open(self.deck_path, "w", encoding="utf-8") as deck_file:
             json.dump(self._data, deck_file, cls=FrozenDictJSONEncoder)
-
     
     
 class CardStatus(Enum):

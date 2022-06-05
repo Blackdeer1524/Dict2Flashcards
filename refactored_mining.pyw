@@ -28,8 +28,6 @@ from utils.window_utils import spawn_toplevel_in_center
 class App(Tk):
     def __init__(self, *args, **kwargs):
         super(App, self).__init__(*args, **kwargs)
-        self.withdraw()
-
         self.configurations, error_code = App.load_conf_file()
         if error_code:
             self.destroy()
@@ -222,11 +220,10 @@ class App(Tk):
         self.bind("<Control-Key-5>", lambda event: self.func_placeholder())
 
         self.minsize(500, 0)
-        self.geometry(self.configurations["app"]["main_window_geometry"])
-        self.configure()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.refresh()
-        self.deiconify()
+        self.geometry(self.configurations["app"]["main_window_geometry"])
+        self.configure()
 
     def show_errors(self, *args, **kwargs):
         error_log = create_exception_message()
@@ -311,14 +308,14 @@ class App(Tk):
             if not conf_file["directories"]["media_dir"]:
                 return (conf_file, True)
                         
-        if not conf_file["directories"]["last_open_file"] or not os.path.isfile(conf_file["directories"]["media_dir"]):
+        if not conf_file["directories"]["last_open_file"] or not os.path.isfile(conf_file["directories"]["last_open_file"]):
             conf_file["directories"]["last_open_file"] = askopenfilename(title="Выберете JSON файл со словами",
                                                                          filetypes=(("JSON", ".json"),),
                                                                          initialdir="./")
             if not conf_file["directories"]["last_open_file"]:
                 return (conf_file, True)
             
-        if not conf_file["directories"]["last_save_dir"] or not os.path.isdir(conf_file["directories"]["media_dir"]):
+        if not conf_file["directories"]["last_save_dir"] or not os.path.isdir(conf_file["directories"]["last_save_dir"]):
             conf_file["directories"]["last_save_dir"] = askdirectory(title="Выберете директорию сохранения",
                                                                      mustexist=True,
                                                                      initialdir="./")

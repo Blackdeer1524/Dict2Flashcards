@@ -1,16 +1,18 @@
-import requests
-import bs4
-import re
 import json
-from typing import Generator, Any
 import os
+import re
+
+import bs4
+import requests
+
+from parsers.return_types import ImageGenerator
 
 
 FILE_PATH = os.path.dirname(__file__)
 
 
-def get_image_links(word: Any) -> Generator[tuple[list[str], str], int, tuple[list[str], str]]:
-    link = f"https://www.google.com/search?tbm=isch&q={word}&safe=active"
+def get_image_links(word: str) -> ImageGenerator:
+    link = f"https://www.google.com/search?tbm=isch&q={word}"
     user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " \
                  "Chrome/70.0.3538.67 Safari/537.36"
     headers = {'User-Agent': user_agent}
@@ -55,7 +57,7 @@ if __name__ == "__main__":
     try:
         next(image_url_gen)
         while True:
-            urls, error_message = image_url_gen.send(1000)
+            urls, error_message = image_url_gen.send(3)
             pprint(urls)
     except StopIteration as exception:
         pprint(exception.value)

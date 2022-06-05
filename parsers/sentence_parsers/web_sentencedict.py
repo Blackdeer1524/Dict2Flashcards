@@ -1,14 +1,15 @@
-import requests
-import bs4
-import re
-from typing import Iterator
 import os
+import re
 
+import bs4
+import requests
+
+from parsers.return_types import SentenceGenerator
 
 FILE_PATH = os.path.dirname(__file__)
 
 
-def get_sentence_batch(word: str, step: int = 5) -> Iterator[tuple[list, str]]:
+def get_sentence_batch(word: str, step: int = 5) -> SentenceGenerator:
     re_pattern = re.compile("^(.?\d+.? )")
     page = requests.get(f"https://sentencedict.com/{word}.html")
     if page.status_code != 200:

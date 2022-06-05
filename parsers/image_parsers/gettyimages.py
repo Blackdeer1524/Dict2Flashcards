@@ -1,13 +1,12 @@
 import requests
 import bs4
-from typing import Generator, Any
 import os
-
+from parsers.return_types import ImageGenerator
 
 FILE_PATH = os.path.dirname(__file__)
 
 
-def get_image_links(word: Any) -> Generator[tuple[list[str], str], int, tuple[list[str], str]]:
+def get_image_links(word: str) -> ImageGenerator:
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'
     headers = {'User-Agent': user_agent}
     link = "https://www.gettyimages.com/photos/{}".format(word)

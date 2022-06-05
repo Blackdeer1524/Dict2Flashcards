@@ -15,5 +15,4 @@ class _CardFields(NamedTuple):
     user_tags: str = "user_tags"
 
 
-
 FIELDS = _CardFields()

@@ -2,7 +2,6 @@ import sys
 from tkinter import Text, Entry, Frame, Canvas, Scrollbar
 
 
-
 class TextWithPlaceholder(Text):
     def __init__(self, master, placeholder="", placeholder_fg_color="grey", *args, **kwargs):
         super(TextWithPlaceholder, self).__init__(master=master, *args, **kwargs)

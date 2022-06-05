@@ -1,3 +1,7 @@
+from consts.card_fields import FIELDS
+from utils.preprocessing import remove_empty_keys
+
+
 DICTIONARY_PATH = "cambridge"
 
 
@@ -15,12 +19,19 @@ def translate(word: str, word_dict: dict):
                                                    word_dict[pos]["usage"],
                                                    word_dict[pos]["image_links"],
                                                    word_dict[pos]["alt_terms"]):
-            # {"word": слово_n, "meaning": значение_n, "Sen_Ex": [пример_1, ..., пример_n]}
-            current_word_dict = {"word": word.strip(), "meaning": definition,
-                                 "Sen_Ex": examples, "domain": domain, "level": level, "region": region,
-                                 "usage": usage, "pos": pos, "audio_link": audio, "image_link": image,
-                                 "alt_terms": alt_terms}
-            current_word_dict = {key: value for key, value in current_word_dict.items() if
-                                 value not in ("", [])}
+            current_word_dict = {FIELDS.word: word.strip(),
+                                 FIELDS.alt_terms: alt_terms,
+                                 FIELDS.definition: definition,
+                                 FIELDS.sentences: examples,
+                                 FIELDS.audio_links: [audio],
+                                 FIELDS.img_links: [image],
+                                 FIELDS.dict_tags: {"domain": domain,
+                                                    "level": level,
+                                                    "region": region,
+                                                    "usage": usage,
+                                                    "pos": pos
+                                                    }
+                                 }
+            remove_empty_keys(current_word_dict)
             word_list.append(current_word_dict)
     return word_list

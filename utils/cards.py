@@ -18,7 +18,9 @@ class Card(FrozenDict):
         for field_name in FIELDS:
             if (field_value := card_fields.get(field_name)) is not None:
                 data[field_name] = field_value
+
         super(Card, self).__init__(data=data)
+
 
     def __repr__(self):
         return f"Card {self._data}"

@@ -1,11 +1,12 @@
 import copy
-from consts.card_fields import FIELDS
-from typing import Optional, Any, Union
-from enum import Enum, auto
 from dataclasses import dataclass, field
-from utils.cards import Card
-from typing import Callable, Sized, ClassVar
+from enum import Enum, auto
 from functools import reduce
+from typing import Callable, Sized, ClassVar
+from typing import Optional, Any, Union
+
+from consts.card_fields import FIELDS
+from utils.cards import Card
 from utils.storages import FrozenDict
 
 
@@ -457,8 +458,6 @@ def get_card_filter(expression: str) -> Callable[[Card], bool]:
 
 
 def main():
-    from pprint import pprint
-
     queries = ("word: test and meaning:\"some meaning\" "
                           "or alt_terms:alt and (sentences : \"some sentences\" or tags : some_tags and (tags[pos] : noun)) "
                           "and (len(sentences) < 5)",

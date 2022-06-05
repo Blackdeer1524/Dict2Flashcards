@@ -1,5 +1,6 @@
 import copy
 import os
+from collections import UserList
 from concurrent.futures import ThreadPoolExecutor
 from enum import IntEnum
 from functools import partial
@@ -8,7 +9,7 @@ from tkinter import Entry, Button
 from tkinter import Frame
 from tkinter import Toplevel
 from tkinter import messagebox
-from typing import Callable, Generator, Any, TypeVar, Union
+from typing import Callable, Generator, Any
 
 import requests
 from PIL import Image, ImageTk
@@ -16,7 +17,6 @@ from requests.exceptions import RequestException, ConnectTimeout
 from tkinterdnd2 import DND_FILES, DND_TEXT
 
 from consts.paths import SYSTEM
-from utils.storages import PointerList
 from utils.widgets import ScrolledFrame
 
 if SYSTEM == "Linux":
@@ -27,39 +27,26 @@ else:
     from PIL import ImageGrab
 
 
-_T = TypeVar("_T")
 
-class Deque(PointerList):
-    def __init__(self, data: list[_T] = None):
-        super(Deque, self).__init__(data=data)
+class _UrlDeque(UserList):
+    def __init__(self, data=None):
+        """
+        :param collection: iterable
+        """
+        super(_UrlDeque, self).__init__(data)
 
-    def items_left(self):
-        return len(self) - self.get_pointer_position()
+    def pop(self, n=1) -> list:
+        return [self.data.pop() for _ in range(min(n, len(self.data)))]
 
-    def popleft(self, n=1) -> list[_T]:
-        return [self.get_pointed_item() for _ in range(min(n, self.items_left()))]
-
-    def get_pointed_item(self) -> Union[_T, None]:
-        res = self[self.get_pointer_position()]
-        self.move(1)
-        return res
-
-    def append(self, item):
-        self._data.append(item)
+    def popleft(self, n=1) -> list:
+        return [self.data.pop(0) for _ in range(min(n, len(self.data)))]
 
     def appendleft(self, item):
-        self._data.insert(self.get_pointer_position(), item)
+        self.data.insert(0, item)
 
-    def extend(self, collection: list[_T]):
-        self._data.extend(collection)
-
-    def extendleft(self, collection: list[_T]):
+    def extendleft(self, collection):
         for i in range(len(collection) - 1, -1, -1):
             self.appendleft(collection[i])
-
-    def clear(self):
-        self._pointer_position = 0
-        self._data.clear()
 
 
 class ImageSearch(Toplevel):
@@ -96,7 +83,9 @@ class ImageSearch(Toplevel):
         on_close_action(**kwargs): additional action performed on closing.
         """
         self.search_term: str = search_term
-        self.img_urls: Deque = Deque(kwargs.get("init_urls", []))
+        self._img_urls: _UrlDeque = _UrlDeque(kwargs.get("init_urls", []))
+        self._init_local_img_paths: list[str] = [image_path for image_path in kwargs.get("local_images", []) if
+                                                 os.path.isfile(image_path)]
         self._init_images = kwargs.get("init_images", [])
         self._url_scrapper: Callable[[Any], Generator[tuple[list[str], str], int, tuple[list[str], str]]] = \
             kwargs.get("url_scrapper")
@@ -124,6 +113,7 @@ class ImageSearch(Toplevel):
         self._pool: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=self._n_images_per_cycle)
 
         self.saving_images: list[Image] = []
+        self.saved_urls: list[str] = []
         self.working_state: list[bool] = []  # indices of picked buttons
         self.button_list: list[Button] = []
 
@@ -196,11 +186,14 @@ class ImageSearch(Toplevel):
                 self._scrapper_stop_flag = True
             if error_message:
                 messagebox.showerror(error_message)
-            self.img_urls.extendleft(url_batch)
+            self._img_urls.extend(url_batch)
         
     def start(self):
         if SYSTEM == "Linux":
             self._cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+
+        for image_path in self._init_local_img_paths:
+            self._process_single_image(Image.open(image_path))
 
         for custom_image in self._init_images:
             self._process_single_image(custom_image)
@@ -220,7 +213,7 @@ class ImageSearch(Toplevel):
         self._image_url_gen = self._url_scrapper(self.search_term) if self._url_scrapper is not None else None
         self._start_url_generator()
         self._inner_frame = self._sf.display_widget(partial(Frame, bg=self._window_bg))
-        self.img_urls.clear()
+        self._img_urls.clear()
 
         left_indent = 0
         for i in range(len(self.working_state)):
@@ -335,12 +328,12 @@ class ImageSearch(Toplevel):
         def add_fetching_to_queue():
             nonlocal n_retries
             self._generate_urls(1)
-            if self.img_urls.items_left() and n_retries < self._max_request_tries:
-                image_fetching_futures.append(self._pool.submit(self.fetch_image, self.img_urls.popleft()[0]))
+            if len(self._img_urls) and n_retries < self._max_request_tries:
+                image_fetching_futures.append(self._pool.submit(self.fetch_image, self._img_urls.popleft()[0]))
                 n_retries += 1
 
         self._generate_urls(batch_size)
-        url_batch = self.img_urls.popleft(batch_size)
+        url_batch = self._img_urls.popleft(batch_size)
         button_images_batch = []
         image_fetching_futures = self._schedule_batch_fetching(url_batch)
         while image_fetching_futures:
@@ -350,10 +343,11 @@ class ImageSearch(Toplevel):
                 if processing_status == ImageSearch.StatusCodes.NORMAL:
                     button_images_batch.append(button_img)
                     self.saving_images.append(img)
+                    self.saved_urls.append(url)
                 else:
                     add_fetching_to_queue()
             elif fetching_status == ImageSearch.StatusCodes.RETRIABLE_FETCHING_ERROR:
-                self.img_urls.append(url)
+                self._img_urls.append(url)
                 add_fetching_to_queue()
             else:
                 add_fetching_to_queue()
@@ -364,7 +358,7 @@ class ImageSearch(Toplevel):
         self._show_more_button["state"] = "normal"
         while True:
             self._process_batch(self._n_images_per_cycle - len(self.working_state) % self._n_images_in_row)
-            if self._scrapper_stop_flag and not self.img_urls.items_left():
+            if self._scrapper_stop_flag and not len(self._img_urls):
                 break
             yield
         self._show_more_button["state"] = "disabled"
@@ -373,7 +367,9 @@ class ImageSearch(Toplevel):
     def _process_single_image(self, img: Image.Image):
         button_img_batch = [ImageTk.PhotoImage(
             self.preprocess_image(img, width=self.optimal_visual_width, height=self.optimal_visual_height))]
+        
         self.saving_images.append(img)
+        self.saved_urls.append("")
         self._place_buttons(button_img_batch)
 
     def _drop(self, event):
@@ -383,7 +379,7 @@ class ImageSearch(Toplevel):
                 img = Image.open(data_path)
                 self._process_single_image(img)
             elif data_path.startswith("http"):
-                self.img_urls.appendleft(data_path)
+                self._img_urls.appendleft(data_path)
                 self._process_batch(batch_size=1, n_retries=self._max_request_tries)
         return event.action
 
@@ -434,11 +430,13 @@ if __name__ == "__main__":
         res = []
         for i in range(len(instance.working_state)):
             if instance.working_state[i]:
-                res.append(instance.img_urls[i])
+                res.append(instance.saved_urls[i])
         assert len(res) == sum(instance.working_state)
         pprint(res)
 
 
-    root.after(0, start_image_search("test", root, url_scrapper=get_image_links, show_image_width=300,
+    root.after(0, start_image_search("test", root,
+                                     local_images=["/home/blackdeer/Desktop/conv_2.png"],
+                                     url_scrapper=get_image_links, show_image_width=300,
                                      on_closing_action=get_chosen_urls, timeout=0.2, max_request_tries=1))
     root.mainloop()

@@ -22,6 +22,7 @@ from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from functools import partial
+from utils.window_utils import spawn_toplevel_in_center
 
 
 class App(Tk):
@@ -430,19 +431,22 @@ class App(Tk):
 
 
         add_word_frame = Toplevel(self)
+        add_word_frame.grid_columnconfigure(0, weight=1)
         add_word_frame.title("Добавить")
 
-        add_word_entry = Entry(add_word_frame, placeholder="Слово", justify="center")
+        add_word_entry = Text(add_word_frame, placeholder="Слово", height=1)
         add_word_entry.focus()
-        add_word_entry.grid(row=0, column=0, padx=5, pady=3, sticky="news")
+        add_word_entry.grid(row=0, column=0, padx=5, pady=3)
 
-        additional_filter_entry = Entry(add_word_frame, placeholder="Дополнительный фильтр", justify="center")
-        additional_filter_entry.grid(row=1, column=0, padx=5, pady=3, sticky="news")
+        additional_filter_entry = Text(add_word_frame, placeholder="Дополнительный фильтр", height=1)
+        additional_filter_entry.grid(row=1, column=0, padx=5, pady=3,)
 
         start_parsing_button = Button(add_word_frame, text="Добавить", command=define_word_button)
         start_parsing_button.grid(row=2, column=0, padx=5, pady=3, sticky="ns")
 
         add_word_frame.bind_all("<Return>", lambda event: define_word_button())
+        spawn_toplevel_in_center(master=self, toplevel_widget=add_word_frame,
+                                 desired_toplevel_width=self.winfo_width())
 
 
     # def call_second_window(self, window_type):

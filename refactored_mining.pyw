@@ -13,17 +13,16 @@ from tkinterdnd2 import Tk
 from consts.card_fields import FIELDS
 from consts.paths import *
 from utils.cards import Deck, SentenceFetcher, SavedDeck, CardStatus
-from utils.error_handling import error_handler, create_exception_message
+from utils.error_handling import create_exception_message
 from utils.plugins import plugins
+from utils.search_checker import ParsingException
 from utils.search_checker import get_card_filter
 from utils.storages import validate_json
 from utils.widgets import EntryWithPlaceholder as Entry
 from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
-from functools import partial
 from utils.window_utils import spawn_toplevel_in_center
-from utils.search_checker import ParsingException
 
 
 class App(Tk):
@@ -75,7 +74,7 @@ class App(Tk):
 
         main_menu.add_command(label="Добавить", command=self.add_word_dialog)
         main_menu.add_command(label="Перейти", command=self.find_dialog)
-        main_menu.add_command(label="Статистика", command=App.func_placeholder)
+        main_menu.add_command(label="Статистика", command=self.statistics_dialog)
 
         theme_menu = Menu(main_menu, tearoff=0)
         self.index2theme_map = {0: "white",
@@ -207,13 +206,13 @@ class App(Tk):
 
         self.bind("<Escape>", lambda event: self.on_closing())
         self.bind("<Control-Key-0>", lambda event: self.geometry("+0+0"))
-        self.bind("<Control-d>", lambda event: self.func_placeholder())
+        self.bind("<Control-d>", lambda event: self.delete_command())
         self.bind("<Control-q>", lambda event: self.func_placeholder())
         self.bind("<Control-s>", lambda event: self.save_button())
-        self.bind("<Control-f>", lambda event: self.func_placeholder())
-        self.bind("<Control-e>", lambda event: self.func_placeholder())
-        self.bind("<Control-Shift_L><A>", lambda event: self.func_placeholder())
-        self.bind("<Control-z>", lambda event: self.func_placeholder())
+        self.bind("<Control-f>", lambda event: self.find_dialog())
+        self.bind("<Control-e>", lambda event: self.statistics_dialog())
+        self.bind("<Control-Shift_L><A>", lambda event: self.add_word_dialog())
+        self.bind("<Control-z>", lambda event: self.prev_command())
         self.bind("<Control-Key-1>", lambda event: self.func_placeholder())
         self.bind("<Control-Key-2>", lambda event: self.func_placeholder())
         self.bind("<Control-Key-3>", lambda event: self.func_placeholder())
@@ -248,9 +247,8 @@ class App(Tk):
 
     def delete_command(self):
         if self.deck.get_n_cards_left():
-            self.saved_cards.append(CardStatus.SKIP)
+            self.saved_cards.append(CardStatus.DELETE)
         self.refresh()
-
 
     def prev_command(self):
         self.deck.move(-2)
@@ -336,7 +334,7 @@ class App(Tk):
         self.configurations["tags"]["hierarchical_pref"] = self.tag_prefix_field.get()
         self.save_conf_file()
 
-        self.history[self.configurations["directories"]["last_open_file"]] = max(self.deck.get_pointer_position() - 1, 0)
+        self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position()
 
         self.deck.save()
         with open(HISTORY_FILE_PATH, "w") as saving_f:
@@ -459,6 +457,7 @@ class App(Tk):
         start_parsing_button = Button(add_word_frame, text="Добавить", command=define_word_button)
         start_parsing_button.grid(row=2, column=0, padx=5, pady=3, sticky="ns")
 
+        add_word_frame.bind_all("<Escape>", lambda event: add_word_frame.destroy())
         add_word_frame.bind_all("<Return>", lambda event: define_word_button())
         spawn_toplevel_in_center(master=self, toplevel_widget=add_word_frame,
                                  desired_toplevel_width=self.winfo_width())
@@ -535,84 +534,38 @@ class App(Tk):
         find_frame.bind_all("<Return>", lambda _: go_to())
         find_frame.bind_all("<Escape>", lambda _: find_frame.destroy())
 
+    def statistics_dialog(self):
+        statistics_window = Toplevel(self)
+
+        statistics_window.title("Статистика")
+        text_list = (('Добавлено', 'Пропущено', 'Удалено', 'Осталось', "Файл", "Директория сохранения", "Медиа"),
+                     (self.saved_cards.get_n_added(), self.saved_cards.get_n_buried(), self.saved_cards.get_n_deleted(),
+                      self.deck.get_n_cards_left(), self.deck.deck_path,
+                      self.configurations["directories"]["last_save_dir"],
+                      self.configurations["directories"]["media_dir"]))
+
+        scroll_frame = ScrolledFrame(statistics_window, scrollbars="horizontal")
+        scroll_frame.pack()
+        scroll_frame.bind_scroll_wheel(statistics_window)
+        inner_frame = scroll_frame.display_widget(Frame)
+        for row_index in range(len(text_list[0])):
+            for column_index in range(2):
+                info = Label(inner_frame, text=text_list[column_index][row_index], anchor="center",
+                             relief="ridge")
+                info.grid(column=column_index, row=row_index, sticky="news")
+
+        statistics_window.update()
+        current_frame_width = inner_frame.winfo_width()
+        current_frame_height = inner_frame.winfo_height()
+        scroll_frame.config(width=min(self.winfo_width(), current_frame_width),
+                            height=min(self.winfo_height(), current_frame_height))
+        spawn_toplevel_in_center(self, statistics_window)
+
     # def call_second_window(self, window_type):
     #     """
     #     :param window_type: call_parser, stat, find, anki
     #     :return:
     #     """
-    #     second_window = Toplevel(self)
-    #     if window_type == "call_parser":
-    #         def define_word_button():
-    #             clean_word = second_window_entry.get().strip()
-    #             if self.deck.add_card_to_deck(query=clean_word):
-    #                 second_window.destroy()
-    #             else:
-    #                 second_window.withdraw()
-    #                 second_window.deiconify()
-    #
-    #         second_window.title("Добавить")
-    #         second_window_entry = Entry(second_window, justify="center")
-    #         second_window_entry.focus()
-    #         second_window_entry.bind('<Return>', lambda event: define_word_button())
-    #
-    #         second_window_entry.grid(row=0, column=0, padx=5, pady=3, sticky="news")
-    #         start_parsing_button = Button(second_window, text="Добавить", command=define_word_button)
-    #         start_parsing_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
-    #
-    #     elif window_type == "find":
-    #         def go_to():
-    #             word = second_window_entry.get().strip()
-    #             if word.startswith("->"):
-    #                 # [3:] чекает кейс с отрицат числами
-    #                 if word[2:].isdigit() or word[3:].isdigit():
-    #                     skip_count = int(word[2:])
-    #                 else:
-    #                     messagebox.showerror("Ошибка", "Неверно задано число перехода!")
-    #                     second_window.withdraw()
-    #                     second_window.deiconify()
-    #                     return
-    #             else:
-    #                 pattern = re.compile(word)
-    #                 for skip_count in range(1, len(self.WORDS) - self.NEXT_ITEM_INDEX + 1):
-    #                     block = self.WORDS[self.NEXT_ITEM_INDEX + skip_count - 1]
-    #                     prepared_word_in_block = block["word"].rstrip().lower()
-    #                     if re_search.get():
-    #                         search_condition = re.search(pattern, prepared_word_in_block)
-    #                     else:
-    #                         search_condition = prepared_word_in_block == word
-    #                     if search_condition:
-    #                         break
-    #                 else:
-    #                     messagebox.showerror("Ошибка", "Слово не найдено!")
-    #                     second_window.withdraw()
-    #                     second_window.deiconify()
-    #                     return
-    #             skip_count = max(-len(self.CARDS_STATUSES), min(skip_count, self.CARDS_LEFT))
-    #             if skip_count >= 0:
-    #                 self.NEXT_ITEM_INDEX = self.NEXT_ITEM_INDEX + skip_count - 1
-    #                 self.CARDS_LEFT = self.CARDS_LEFT - skip_count + 1
-    #                 self.CARDS_STATUSES.extend([App.CardStatus.delete for _ in range(skip_count)])
-    #                 self.DEL_COUNTER += skip_count
-    #                 self.refresh()
-    #             else:
-    #                 self.prev_command(n=-skip_count)
-    #             second_window.destroy()
-    #
-    #         second_window.title("Перейти")
-    #         second_window_entry = self.Entry(second_window, justify="center")
-    #         second_window_entry.focus()
-    #         second_window_entry.bind('<Return>', lambda event: go_to())
-    #
-    #         start_parsing_button = self.Button(second_window, text="Перейти", command=go_to)
-    #
-    #         re_search = BooleanVar()
-    #         re_search.set(False)
-    #         second_window_re = self.Checkbutton(second_window, variable=re_search, text="RegEx search")
-    #
-    #         second_window_entry.grid(row=0, column=0, padx=5, pady=3, sticky="news")
-    #         start_parsing_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
-    #         second_window_re.grid(row=2, column=0, sticky="news")
-    #
     #     elif window_type == "stat":
     #         second_window.title("Статистика")
     #         text_list = (('Добавлено', 'Пропущено', 'Удалено', 'Осталось', "Файл", "Директория сохранения", "Медиа"),

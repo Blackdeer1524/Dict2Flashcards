@@ -115,7 +115,7 @@ class PointerList:
         return self[self._pointer_position]
 
     def move(self, n: int):
-        self._pointer_position = min(max(self._pointer_position + n, 0), len(self))
+        self._pointer_position = min(max(self._pointer_position + n, self.get_starting_position()), len(self))
 
     def save(self, *args, **kwargs):
         raise NotImplementedError

@@ -126,11 +126,11 @@ class Deck(PointerList):
         else:
             raise Exception("Invalid _deck path!")
 
+        self._card_generator: CardGenerator = card_generator
         for i in range(len(self)):
             self._data[i] = Card(self._data[i])
 
         self._cards_left = len(self) - self._pointer_position
-        self._card_generator: CardGenerator = card_generator
 
     def set_card_generator(self, value: CardGenerator):
         assert (isinstance(value, CardGenerator))
@@ -160,8 +160,9 @@ class Deck(PointerList):
         return len(res)
 
     def get_card(self) -> Card:
+        res = self[self._pointer_position]
         self.move(1)
-        return self[self._pointer_position]
+        return res
 
     def get_deck(self) -> list[Card]:
         return self._data
@@ -173,32 +174,51 @@ class Deck(PointerList):
     
 class CardStatus(Enum):
     ADD = 0
-    SKIP = 1
+    DELETE = 1
     BURY = 2
 
 
 class SavedDeck(PointerList):
+    CARD_STATUS = "status"
+    CARD_DATA = "card"
+    IMAGES_DATA = "local_images"
+
     def __init__(self):
         super(SavedDeck, self).__init__()
+        self._statistics = [0, 0, 0]
+    
+    def get_n_added(self):
+        return self._statistics[CardStatus.ADD.value]
 
-    def append(self, status: CardStatus, kwargs: dict[str, Union[str, list[str]]] = None):
-        if kwargs is None:
-            kwargs = {}
-        res = {"status": status}
-        if status != CardStatus.SKIP:
-            saving_card = Card(kwargs)
-            res["card"] = saving_card
-        self._data.append(res)
+    def get_n_deleted(self):
+        return self._statistics[CardStatus.DELETE.value]
+
+    def get_n_buried(self):
+        return self._statistics[CardStatus.BURY.value]
+
+    def append(self, status: CardStatus, card_data: dict[str, Union[str, list[str]]] = None):
+        if card_data is None:
+            card_data = {}
+        res = {SavedDeck.CARD_STATUS: status}
+        if status != CardStatus.DELETE:
+            saving_card = Card(card_data)
+            res[SavedDeck.CARD_DATA] = saving_card
+            if (local_images := card_data.get(SavedDeck.IMAGES_DATA)) is not None:
+                res[SavedDeck.IMAGES_DATA] = local_images
+        self._data.append(FrozenDict(res))
         self._pointer_position += 1
+        self._statistics[status.value] += 1
 
     def move(self, n: int) -> None:
         super(SavedDeck, self).move(n)
-        del self._data[self._pointer_position:]
+        for i in range(self.get_pointer_position(), len(self)):
+            self._statistics[self[i][SavedDeck.CARD_STATUS].value] -= 1
+        del self._data[self.get_pointer_position():]
     
     def save(self, saving_path: str):
         with open(saving_path, "w", encoding="utf-8") as deck_file:
             json.dump(self._data, deck_file, cls=FrozenDictJSONEncoder)
-            
+
 
 class SentenceFetcher:
     def __init__(self,

@@ -1,7 +1,7 @@
 import copy
 from collections.abc import Mapping
 from json import JSONEncoder
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Optional
 
 
 class _FrozenDictNode(Mapping):
@@ -113,7 +113,7 @@ class PointerList:
     def get_pointed_item(self) -> Any:
         return self[self._pointer_position]
 
-    def move(self, n: int):
+    def move(self, n: int) -> None:
         self._pointer_position = min(max(self._pointer_position + n, self.get_starting_position()), len(self))
 
     def save(self, *args, **kwargs):

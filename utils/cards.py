@@ -2,7 +2,7 @@ import json
 import os
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Callable, Iterator, Union, Any
+from typing import Callable, Iterator, Union, Any, Optional
 
 from consts.card_fields import FIELDS
 from utils.storages import FrozenDictJSONEncoder
@@ -162,6 +162,10 @@ class Deck(PointerList):
         self._cards_left += len(res)
         return len(res)
 
+    def append(self, card: Card):
+        self._data = self[:self._pointer_position] + [card] + self[self._pointer_position:]
+        self.move(1)
+
     def get_card(self) -> Card:
         self.move(1)
         return self[self._pointer_position]
@@ -216,7 +220,7 @@ class SavedDeck(PointerList):
         for i in range(self.get_pointer_position(), len(self)):
             self._statistics[self[i][SavedDeck.CARD_STATUS].value] -= 1
         del self._data[self.get_pointer_position():]
-    
+
     def save(self, saving_path: str):
         with open(saving_path, "w", encoding="utf-8") as deck_file:
             json.dump(self._data, deck_file, cls=FrozenDictJSONEncoder)

@@ -23,7 +23,7 @@ from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
-
+from utils.cards import Card
 
 class App(Tk):
     def __init__(self, *args, **kwargs):
@@ -49,7 +49,9 @@ class App(Tk):
         self.deck = Deck(deck_path=self.configurations["directories"]["last_open_file"],
                          current_deck_pointer=self.history[self.configurations["directories"]["last_open_file"]],
                          card_generator=cd)
+        self.dict_card_data: dict = {}
         self.sentence_parser = plugins.get_sentence_parser(self.configurations["scrappers"]["base_sentence_parser"])
+        self.image_parser = plugins.get_image_parser(self.configurations["scrappers"]["base_image_parser"])
 
         self.sentence_batch_size = 5
         self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser,
@@ -115,12 +117,15 @@ class App(Tk):
         self.definition_text = Text(self, placeholder="Значение")
 
         self.sent_text_list = []
-        Buttons_list = []
+        self.sent_button_list = []
         button_width = 3
         for i in range(5):
             self.sent_text_list.append(Text(self, placeholder=f"Предложение {i + 1}"))
             self.sent_text_list[-1].fill_placeholder()
-            Buttons_list.append(Button(self, text=f"{i + 1}", command=App.func_placeholder, width=button_width))
+            self.sent_button_list.append(Button(self,
+                                                text=f"{i + 1}",
+                                                command=lambda x=i: self.choose_sentence(x),
+                                                width=button_width))
 
         self.delete_button = Button(self, text="Del", command=self.delete_command, width=button_width)
         self.prev_button = Button(self, text="Prev", command=self.prev_command, state="disabled", width=button_width)
@@ -159,7 +164,7 @@ class App(Tk):
         for i in range(5):
             c_pady = Text_pady if i % 2 else 0
             self.sent_text_list[i].grid(row=6 + i, column=0, columnspan=6, padx=Text_padx, pady=c_pady, sticky="news")
-            Buttons_list[i].grid(row=6 + i, column=6, padx=0, pady=c_pady, sticky="ns")
+            self.sent_button_list[i].grid(row=6 + i, column=6, padx=0, pady=c_pady, sticky="ns")
 
         self.delete_button.grid(row=6, column=7, padx=Text_padx, pady=0, sticky="ns")
         self.prev_button.grid(row=7, column=7, padx=Text_padx, pady=Text_pady, sticky="ns")
@@ -192,7 +197,7 @@ class App(Tk):
 
         self.new_order = [self.browse_button, self.word_text, self.find_image_button, self.definition_text,
                           self.add_sentences_button] + self.sent_text_list + \
-                         [self.user_tags_field] + Buttons_list + [self.delete_button, self.prev_button,
+                         [self.user_tags_field] + self.sent_button_list + [self.delete_button, self.prev_button,
                                                                        self.anki_button, self.bury_button,
                                                                        self.tag_prefix_field]
 
@@ -210,11 +215,11 @@ class App(Tk):
         self.bind("<Control-e>", lambda event: self.statistics_dialog())
         self.bind("<Control-Shift_L><A>", lambda event: self.add_word_dialog())
         self.bind("<Control-z>", lambda event: self.prev_command())
-        self.bind("<Control-Key-1>", lambda event: self.func_placeholder())
-        self.bind("<Control-Key-2>", lambda event: self.func_placeholder())
-        self.bind("<Control-Key-3>", lambda event: self.func_placeholder())
-        self.bind("<Control-Key-4>", lambda event: self.func_placeholder())
-        self.bind("<Control-Key-5>", lambda event: self.func_placeholder())
+        self.bind("<Control-Key-1>", lambda event: self.choose_sentence(0))
+        self.bind("<Control-Key-2>", lambda event: self.choose_sentence(1))
+        self.bind("<Control-Key-3>", lambda event: self.choose_sentence(2))
+        self.bind("<Control-Key-4>", lambda event: self.choose_sentence(3))
+        self.bind("<Control-Key-5>", lambda event: self.choose_sentence(4))
 
         self.minsize(500, 0)
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -386,6 +391,7 @@ class App(Tk):
             self.dict_tags_field["state"] = "disabled"
 
         current_card = self.deck.get_card()
+        self.dict_card_data = current_card.to_dict()
         self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() + 1 \
                                              else "disabled"
 
@@ -572,7 +578,16 @@ class App(Tk):
                             height=min(self.winfo_height(), current_frame_height))
         spawn_toplevel_in_center(self, statistics_window)
         statistics_window.deiconify()
-    
+
+    def choose_sentence(self, sentence_number: int):
+        self.dict_card_data[FIELDS.word] = self.get_word()
+        self.dict_card_data[FIELDS.definition] = self.get_definition()
+        self.dict_card_data[FIELDS.sentences] = [self.get_sentence(sentence_number)]
+        self.saved_cards.append(status=CardStatus.ADD, card_data=self.dict_card_data)
+        if not self.deck.get_n_cards_left():
+            self.deck.append(Card(self.dict_card_data))
+        self.refresh()
+
     # def start_image_search(self):
     #     def connect_images_to_card(instance):
     #         nonlocal word
@@ -597,19 +612,23 @@ class App(Tk):
     #
     #     button_pady = button_padx = 10
     #     height_lim = self.winfo_height() * 7 // 8
-    #     image_finder = ImageSearch(master=self, search_term=word, saving_dir=self.MEDIA_DIR,
+    #     image_finder = ImageSearch(master=self,
+    #                                search_term=word,
+    #                                saving_dir=self.configurations["directories"]["media_dir"],
     #                                url_scrapper=self.image_parser, init_urls=[self.DICT_IMAGE_LINK],
-    #                                headers=self.headers,
+    #                                # headers=self.headers,
     #                                on_close_action=connect_images_to_card,
     #                                show_image_width=show_image_width,
     #                                saving_image_width=300, image_saving_name_pattern=name_pattern,
     #                                button_padx=button_padx, button_pady=button_pady,
-    #                                window_height_limit=height_lim, window_bg=self.main_bg,
-    #                                command_button_params=self.button_cfg,
-    #                                entry_params=self.entry_cfg)
+    #                                window_height_limit=height_lim,
+    #                                #window_bg=self.main_bg,
+    #                                #command_button_params=self.button_cfg,
+    #                                #entry_params=self.entry_cfg
+    #                                )
     #     image_finder.focus()
     #     image_finder.grab_set()
-    #     image_finder.geometry(self.JSON_CONF_FILE["app"]["image_search_position"])
+    #     image_finder.geometry(self.configurations["app"]["image_search_position"])
     #     image_finder.start()
 
 

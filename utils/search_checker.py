@@ -50,7 +50,9 @@ BIN_LOGIC_SET  = reduce(lambda x, y: x | y, BIN_LOGIC_PRECEDENCE)
 
 def logic_factory(operator: str) -> Union[Callable[[bool], bool],
                                           Callable[[bool, bool], bool]]:
-    if operator == "and":
+    if operator == "not":
+        return lambda x: not x
+    elif operator == "and":
         return lambda x, y: x and y
     elif operator == "or":
         return lambda x, y: x or y
@@ -431,44 +433,44 @@ class LogicTree:
         self._expressions = copy.deepcopy(expressions)
 
     def construct(self, start: int = 0):
-        highest = BIN_LOGIC_PRECEDENCE[0]
         current_index = start
         while current_index < len(self._expressions) - 1:
-            left_operand = self._expressions[current_index]
-            if isinstance(left_operand, Token):
-                if left_operand.type in (Token_T.LOGIC_RP, Token_T.END):
-                    break
-                elif left_operand.type == Token_T.LOGIC_LP:
-                    self._expressions.pop(current_index)
-                    self.construct(current_index)
+            operator = self._expressions[current_index]
+            if not isinstance(operator, Token):
+                current_index += 1
+                continue
 
-            operator = self._expressions[current_index + 1]
-            if operator.type == Token_T.LOGIC_RP or operator.type == Token_T.END:
+            if operator.type == Token_T.LOGIC_LP:
+                self._expressions.pop(current_index)
+                self.construct(current_index)
+                current_index += 1
+                continue
+
+            if operator.value not in UNARY_LOGIC:
+                current_index += 1
+                continue
+
+            operand = self._expressions[current_index + 1]
+            if isinstance(operand, Token) and operand.type == Token_T.LOGIC_LP:
+                self._expressions.pop(current_index + 1)
+                self.construct(current_index + 1)
+
+            if isinstance(operand, Token) and operator.type in (Token_T.LOGIC_RP, Token_T.END):
                 break
 
-            right_operand = self._expressions[current_index + 2]
-            if isinstance(right_operand, Token) and right_operand.type == Token_T.LOGIC_LP:
-                self._expressions.pop(current_index + 2)
-                self.construct(current_index + 2)
-
-            if operator.value in highest:
-                left_operand = self._expressions.pop(current_index)
-                self._expressions.pop(current_index)
-                right_operand = self._expressions.pop(current_index)
-                self._expressions.insert(current_index, EvalNode(left=left_operand, right=right_operand,
-                                                                 operator=operator.value))
-            else:
-                current_index += 2
+            self._expressions.pop(current_index)
+            operand = self._expressions.pop(current_index)
+            self._expressions.insert(current_index, EvalNode(left=operand, operator=operator.value))
 
         done_once = False
-        for cur_BIN_LOGIC_PRECEDENCE in BIN_LOGIC_PRECEDENCE[1:]:
+        for current_logic_set in BIN_LOGIC_PRECEDENCE:
             current_index = start
             while current_index < len(self._expressions) - 1:
                 operator = self._expressions[current_index + 1]
                 if operator.type == Token_T.LOGIC_RP or operator.type == Token_T.END:
                     break
 
-                if operator.value in cur_BIN_LOGIC_PRECEDENCE:
+                if operator.value in current_logic_set:
                     left_operand = self._expressions.pop(current_index)
                     self._expressions.pop(current_index)
                     right_operand = self._expressions.pop(current_index)
@@ -513,7 +515,7 @@ def main():
     # for query in queries:
     #     root = get_card_filter(query)
 
-    query = "not (B2 in level) and pos: verb"
+    query = "not C2 in level and pos: verb or word:test"
     # query = ""
     card_filter = get_card_filter(query)
     test_card = {

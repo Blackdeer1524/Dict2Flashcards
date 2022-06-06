@@ -11,6 +11,8 @@ from consts.card_fields import FIELDS
 from utils.cards import Card
 from utils.storages import FrozenDict
 from functools import partial
+from abc import ABC, abstractmethod
+
 
 class ParsingException(Exception):
     pass
@@ -26,6 +28,7 @@ class WrongMethodError(ParsingException):
 
 class WrongKeywordError(ParsingException):
     pass
+
 
 class WrongTokenError(ParsingException):
     pass
@@ -115,8 +118,15 @@ class Token_T(Enum):
 STRING_PLACEHOLDER = "*"
 END_PLACEHOLDER = "END"
 
+
+class Expression(ABC):
+    @abstractmethod
+    def compute(self, card: Card):
+        pass
+
+
 @dataclass(frozen=True)
-class Token:
+class Token(Expression):
     un_logic_deduction: ClassVar[FrozenDict] = FrozenDict({logic_operator: Token_T.UN_LOGIC_OP for logic_operator in UNARY_LOGIC})
     bin_logic_deduction: ClassVar[FrozenDict] = FrozenDict({logic_operator: Token_T.BIN_LOGIC_OP for logic_operator in BIN_LOGIC_SET})
     keyword_deduction: ClassVar[FrozenDict] = FrozenDict({keyword_name: Token_T.KEYWORD for keyword_name in KEYWORDS})
@@ -131,7 +141,7 @@ class Token:
                                  ")": Token_T.LOGIC_RP,
                                  END_PLACEHOLDER: Token_T.END} | bin_logic_deduction.to_dict() | keyword_deduction.to_dict(),
          
-         Token_T.KEYWORD:    {STRING_PLACEHOLDER: Token_T.QUERY_STRING},
+         Token_T.KEYWORD:       {STRING_PLACEHOLDER: Token_T.QUERY_STRING},
         
          Token_T.SEP:           {STRING_PLACEHOLDER: Token_T.QUERY_STRING},
 
@@ -188,6 +198,13 @@ class Token:
             super().__setattr__("type", str_type)
             return
         super().__setattr__("type", deduced_type)
+
+    def compute(self, card: Card):
+        if self.type != Token_T.STRING:
+            raise WrongTokenError("Can't compute non-STRING token!")
+        if not self.value.isdecimal():
+            raise WrongTokenError("Can't compute non-decimal STRING token!")
+        return float(self.value)
 
 
 class Tokenizer:
@@ -315,12 +332,6 @@ class _CardFieldData:
 
 
 @dataclass(frozen=True)
-class Expression:
-    def compute(self, card: Card):
-        raise NotImplementedError(f"<compute> method was not implemented for {self.__class__.__name__}!")
-
-
-@dataclass(frozen=True)
 class FieldExpression(Expression):
     card_field_data: _CardFieldData
 
@@ -405,7 +416,7 @@ class TokenParser:
 
 
 @dataclass(frozen=True)
-class EvalNode:
+class EvalNode(Expression):
     operator: str
     left: Optional[Union[Expression, Token]] = None
     right: Optional[Union[Expression, Token]] = None
@@ -419,10 +430,6 @@ class EvalNode:
 
     def compute(self, card: Card) -> bool:
         if self.left is not None and self.right is not None:
-            if isinstance(self.left, Token):
-                return self.operation(float(self.left.value), self.right.compute(card))
-            elif isinstance(self.right, Token):
-                return self.operation(self.left.compute(card), float(self.right.value))
             return self.operation(self.left.compute(card), self.right.compute(card))
         elif self.left is not None:
             return self.operation(self.left.compute(card))
@@ -431,6 +438,8 @@ class EvalNode:
 
 class LogicTree:
     def __init__(self, expressions):
+        if len(expressions) == 1:
+            raise TreeBuildingError("Couldn't build from an empty query!")
         self._expressions = copy.deepcopy(expressions)
 
     def construct(self, start: int = 0):
@@ -509,10 +518,10 @@ def main():
                "len(\"meaning [  test  ][tag]\") == 2 or len(meaning[test][tag]) != 2")
 
 
-    for query in queries:
-        get_card_filter(query)
+    # for query in queries:
+    #     get_card_filter(query)
 
-    query = "not B2 in level and ((pos: verb)) or word:test"
+    query = "1 == len(Sen_Ex)"
     # query = ""
     card_filter = get_card_filter(query)
     test_card = {

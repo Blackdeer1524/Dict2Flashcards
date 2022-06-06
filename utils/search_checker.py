@@ -2,13 +2,15 @@ import copy
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import reduce
+from re import Pattern, search, compile
 from typing import Callable, Sized, ClassVar
+from typing import Iterable
 from typing import Optional, Any, Union
 
 from consts.card_fields import FIELDS
 from utils.cards import Card
 from utils.storages import FrozenDict
-
+from functools import partial
 
 class ParsingException(Exception):
     pass
@@ -20,7 +22,10 @@ class LogicOperatorError(ParsingException):
 
 class WrongMethodError(ParsingException):
     pass
-    
+
+
+class WrongKeywordError(ParsingException):
+    pass
 
 class WrongTokenError(ParsingException):
     pass
@@ -34,11 +39,13 @@ class TreeBuildingError(ParsingException):
     pass
 
 
+KEYWORDS = frozenset(("in", ))
 LOGIC_HIGH = frozenset(("<", "<=", ">", ">=", "==", "!="))
 LOGIC_MID = frozenset(("and", ))
 LOGIC_LOW  = frozenset(("or", ))
 LOGIC_PRECEDENCE = (LOGIC_HIGH, LOGIC_MID, LOGIC_LOW)
 LOGIC_SET  = reduce(lambda x, y: x | y, LOGIC_PRECEDENCE)
+
 
 
 def logic_factory(operator: str) -> Union[Callable[[bool], bool],
@@ -68,10 +75,21 @@ def method_factory(method_name: str) -> Callable[[Any], int]:
             try:
                 return len(x)
             except TypeError:
-                return 0
+                return False
         return field_length
     raise WrongMethodError(f"Unknown method name: {method_name}")
-    
+
+
+def keyword_factory(keyword_name: str) -> Callable[[Any], int]:
+    if keyword_name == "in":
+        def field_contains(collection: Iterable, item: Any):
+            try:
+                return item in collection
+            except TypeError:
+                return False
+        return field_contains
+    raise WrongKeywordError(f"Unknown keyword: {keyword_name}")
+
 
 FIELD_VAL_SEP = ":"
 FIELD_NAMES_SET = frozenset(FIELDS)
@@ -80,6 +98,7 @@ FIELD_NAMES_SET = frozenset(FIELDS)
 class Token_T(Enum):
     START = auto()
     STRING = auto()
+    KEYWORD = auto()
     SEP = auto()
     QUERY_STRING = auto()
     LOGIC = auto()
@@ -96,6 +115,8 @@ END_PLACEHOLDER = "END"
 @dataclass(frozen=True)
 class Token:
     logic_deduction: ClassVar[FrozenDict] = FrozenDict({logic_statement: Token_T.LOGIC for logic_statement in LOGIC_SET})
+    keyword_deduction: ClassVar[FrozenDict] = FrozenDict({keyword_name: Token_T.KEYWORD for keyword_name in KEYWORDS})
+
     next_expected: ClassVar[FrozenDict] = FrozenDict(
         {Token_T.START:         {"(": Token_T.LOGIC_LP,
                                  STRING_PLACEHOLDER: Token_T.STRING,
@@ -104,8 +125,10 @@ class Token:
          Token_T.STRING:        {FIELD_VAL_SEP: Token_T.SEP,
                                  "(": Token_T.METHOD_LP,
                                  ")": Token_T.LOGIC_RP,
-                                 END_PLACEHOLDER: Token_T.END} | logic_deduction.to_dict(),
-
+                                 END_PLACEHOLDER: Token_T.END} | logic_deduction.to_dict() | keyword_deduction.to_dict(),
+         
+         Token_T.KEYWORD:    {STRING_PLACEHOLDER: Token_T.QUERY_STRING},
+        
          Token_T.SEP:           {STRING_PLACEHOLDER: Token_T.QUERY_STRING},
 
          Token_T.QUERY_STRING:  {")": Token_T.LOGIC_RP,
@@ -297,10 +320,16 @@ class FieldExpression(Expression):
 @dataclass(frozen=True)
 class FieldCheck(FieldExpression):
     query: str
-
+    compiled_query: Pattern = field(init=False, repr=False)
+    
+    def __post_init__(self):
+        super().__setattr__("compiled_query", compile(self.query))
+    
     def compute(self, card: Card) -> bool:
         field_data = self.card_field_data.get_field_data(card)
-        return self.query in field_data if field_data is not None else False
+        if not isinstance(field_data, str):
+            return False
+        return search(self.compiled_query, field_data) is not None         
 
 
 @dataclass(frozen=True)
@@ -310,7 +339,7 @@ class Method(FieldExpression):
     def compute(self, card: Card) -> int:
         field_data = self.card_field_data.get_field_data(card)
         return self.method(self.card_field_data.get_field_data(card)) if field_data is not None else 0
-    
+
 
 class TokenParser:
     def __init__(self, tokens: list[Token]):
@@ -331,7 +360,14 @@ class TokenParser:
            self._tokens[index + 3].type == Token_T.METHOD_RP:
             return Method(_CardFieldData(self._tokens[index + 2].value), method_factory(self._tokens[index].value)), 3
         return None, 0
-
+    
+    def get_keyword(self, index: int):
+        if self._tokens[index + 1].type == Token_T.KEYWORD and \
+           self._tokens[index + 2].type == Token_T.QUERY_STRING:
+            return Method(_CardFieldData(self._tokens[index + 2].value),
+                          partial(keyword_factory(self._tokens[index + 1].value), item=self._tokens[index].value)), 2
+        return None, 0
+        
     def _promote_to_expressions(self):
         i = 0
         while i < len(self._tokens):
@@ -339,6 +375,10 @@ class TokenParser:
                 res, offset = self.get_field_check(i)
                 if res is None:
                     res, offset = self.get_method(i)
+
+                if res is None:
+                    res, offset = self.get_keyword(i)
+
                 if res is None:
                     if not self._tokens[i].value.isdecimal():
                         raise WrongTokenError(f"Decimal type expected, \"{self._tokens[i].value}\" was given!")
@@ -468,8 +508,8 @@ def main():
     # for query in queries:
     #     root = get_card_filter(query)
 
-    # query = "word: test and pos: verb and len(Sen_Ex)"
-    query = ""
+    query = "fenjmk in word and pos: verb"
+    # query = ""
     card_filter = get_card_filter(query)
     test_card = {
         "word": "test",

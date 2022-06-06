@@ -151,7 +151,8 @@ class Token:
          Token_T.METHOD_RP:     {")": Token_T.LOGIC_RP,
                                  END_PLACEHOLDER: Token_T.END} | bin_logic_deduction.to_dict(),
 
-         Token_T.LOGIC_LP:      {STRING_PLACEHOLDER: Token_T.STRING} | un_logic_deduction.to_dict(),
+         Token_T.LOGIC_LP:      {STRING_PLACEHOLDER: Token_T.STRING,
+                                 "(": Token_T.LOGIC_LP} | un_logic_deduction.to_dict(),
 
          Token_T.LOGIC_RP:      {END_PLACEHOLDER: Token_T.END,
                                  ")": Token_T.LOGIC_RP} | bin_logic_deduction.to_dict(),
@@ -445,29 +446,30 @@ class LogicTree:
                 self.construct(current_index)
                 current_index += 1
                 continue
+            elif operator.type == Token_T.LOGIC_RP:
+                break
 
             if operator.value not in UNARY_LOGIC:
                 current_index += 1
                 continue
 
             operand = self._expressions[current_index + 1]
-            if isinstance(operand, Token) and operand.type == Token_T.LOGIC_LP:
-                self._expressions.pop(current_index + 1)
-                self.construct(current_index + 1)
-
-            if isinstance(operand, Token) and operator.type in (Token_T.LOGIC_RP, Token_T.END):
-                break
+            if isinstance(operand, Token):
+                if operand.type == Token_T.LOGIC_LP:
+                    self._expressions.pop(current_index + 1)
+                    self.construct(current_index + 1)
+                elif operator.type == Token_T.END:
+                    break
 
             self._expressions.pop(current_index)
             operand = self._expressions.pop(current_index)
             self._expressions.insert(current_index, EvalNode(left=operand, operator=operator.value))
 
-        done_once = False
         for current_logic_set in BIN_LOGIC_PRECEDENCE:
             current_index = start
             while current_index < len(self._expressions) - 1:
                 operator = self._expressions[current_index + 1]
-                if operator.type == Token_T.LOGIC_RP or operator.type == Token_T.END:
+                if operator.type in (Token_T.LOGIC_RP, Token_T.END):
                     break
 
                 if operator.value in current_logic_set:
@@ -478,12 +480,7 @@ class LogicTree:
                                                                      operator=operator.value))
                 else:
                     current_index += 2
-            else:
-                continue
-            done_once = True
-
-        if done_once:
-            self._expressions.pop(current_index + 1)
+        self._expressions.pop(start + 1)
 
     def get_master_node(self):
         if len(self._expressions) != 1:
@@ -512,10 +509,10 @@ def main():
                "len(\"meaning [  test  ][tag]\") == 2 or len(meaning[test][tag]) != 2")
 
 
-    # for query in queries:
-    #     root = get_card_filter(query)
+    for query in queries:
+        get_card_filter(query)
 
-    query = "not C2 in level and pos: verb or word:test"
+    query = "not B2 in level and ((pos: verb)) or word:test"
     # query = ""
     card_filter = get_card_filter(query)
     test_card = {

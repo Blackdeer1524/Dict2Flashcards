@@ -12,6 +12,7 @@ from utils.cards import Card
 from utils.storages import FrozenDict
 from functools import partial
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 
 
 class ParsingException(Exception):
@@ -325,6 +326,9 @@ class _CardFieldData:
         """query_chain: chain of keys"""
         current_entry = card
         for key in self.query_chain:
+            if not isinstance(current_entry, Mapping):
+                return None
+
             current_entry = current_entry.get(key)
             if current_entry is None:
                 return None
@@ -521,8 +525,8 @@ def main():
     # for query in queries:
     #     get_card_filter(query)
 
-    query = "1 == len(Sen_Ex)"
-    # query = ""
+    # query = "1 == len(Sen_Ex)"
+    query = "len(\"meaning [  test  ][tag]\") == 2 or len(meaning[test][tag]) != 2"
     card_filter = get_card_filter(query)
     test_card = {
         "word": "test",

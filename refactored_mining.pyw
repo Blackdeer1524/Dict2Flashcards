@@ -573,23 +573,45 @@ class App(Tk):
         spawn_toplevel_in_center(self, statistics_window)
         statistics_window.deiconify()
     
-    def choose_sentence(self, button_index):
-        word = self.get_word()
-        if not word:
-            return
+    # def start_image_search(self):
+    #     def connect_images_to_card(instance):
+    #         nonlocal word
+    #
+    #         card_pattern = "<img src='{}.png'/>"
+    #         saving_images_names = getattr(instance, "saving_images_names", [])
+    #         saving_images_indices = getattr(instance, "saving_indices", [])
+    #
+    #         for img_index in saving_images_indices:
+    #             self.IMAGES.append(card_pattern.format(saving_images_names[img_index]))
+    #
+    #         # получение координат на экране через instance.winfo_rootx(), instance.winfo_rooty() даёт некоторое смещение
+    #         image_search_x = instance.winfo_rootx()
+    #         image_search_y = instance.winfo_rooty() - 37  # compensate for title height
+    #         self.JSON_CONF_FILE["app"]["image_search_position"] = f"+{image_search_x}+{image_search_y}"
+    #
+    #     word = self.word_text.get(1.0, "end").strip()
+    #     clean_word = remove_special_chars(word, sep='-')
+    #
+    #     show_image_width = 250
+    #     name_pattern = f"mined-{clean_word}" + "-{}"
+    #
+    #     button_pady = button_padx = 10
+    #     height_lim = self.winfo_height() * 7 // 8
+    #     image_finder = ImageSearch(master=self, search_term=word, saving_dir=self.MEDIA_DIR,
+    #                                url_scrapper=self.image_parser, init_urls=[self.DICT_IMAGE_LINK],
+    #                                headers=self.headers,
+    #                                on_close_action=connect_images_to_card,
+    #                                show_image_width=show_image_width,
+    #                                saving_image_width=300, image_saving_name_pattern=name_pattern,
+    #                                button_padx=button_padx, button_pady=button_pady,
+    #                                window_height_limit=height_lim, window_bg=self.main_bg,
+    #                                command_button_params=self.button_cfg,
+    #                                entry_params=self.entry_cfg)
+    #     image_finder.focus()
+    #     image_finder.grab_set()
+    #     image_finder.geometry(self.JSON_CONF_FILE["app"]["image_search_position"])
+    #     image_finder.start()
 
-        definition = self.get_definition()
-        sentence_example = self.get_sentence(button_index)
-
-        card_data = self.deck[self.deck.get_pointer_position() - 1].to_dict()
-        card_data[FIELDS.word] = word
-        card_data[FIELDS.definition] = definition
-        card_data[FIELDS.sentences] =  sentence_example
-
-        # TODO: WORK ON AUDIOS AND IMAGES
-        self.saved_cards.append(status=CardStatus.ADD, card_data=card_data)
-        self.refresh()
-    
 
 if __name__ == "__main__":
     root = App()

@@ -40,12 +40,12 @@ class TreeBuildingError(ParsingException):
 
 
 KEYWORDS = frozenset(("in", ))
-LOGIC_HIGH = frozenset(("<", "<=", ">", ">=", "==", "!="))
-LOGIC_MID = frozenset(("and", ))
-LOGIC_LOW  = frozenset(("or", ))
-LOGIC_PRECEDENCE = (LOGIC_HIGH, LOGIC_MID, LOGIC_LOW)
-LOGIC_SET  = reduce(lambda x, y: x | y, LOGIC_PRECEDENCE)
-
+UNARY_LOGIC = frozenset(("not", ))
+BIN_LOGIC_HIGH = frozenset(("<", "<=", ">", ">=", "==", "!="))
+BIN_LOGIC_MID = frozenset(("and", ))
+BIN_LOGIC_LOW  = frozenset(("or", ))
+BIN_LOGIC_PRECEDENCE = (BIN_LOGIC_HIGH, BIN_LOGIC_MID, BIN_LOGIC_LOW)
+BIN_LOGIC_SET  = reduce(lambda x, y: x | y, BIN_LOGIC_PRECEDENCE)
 
 
 def logic_factory(operator: str) -> Union[Callable[[bool], bool],
@@ -101,7 +101,8 @@ class Token_T(Enum):
     KEYWORD = auto()
     SEP = auto()
     QUERY_STRING = auto()
-    LOGIC = auto()
+    UN_LOGIC_OP = auto()
+    BIN_LOGIC_OP = auto()
     METHOD_LP = auto()
     METHOD_STRING = auto()
     METHOD_RP = auto()
@@ -114,40 +115,44 @@ END_PLACEHOLDER = "END"
 
 @dataclass(frozen=True)
 class Token:
-    logic_deduction: ClassVar[FrozenDict] = FrozenDict({logic_statement: Token_T.LOGIC for logic_statement in LOGIC_SET})
+    un_logic_deduction: ClassVar[FrozenDict] = FrozenDict({logic_operator: Token_T.UN_LOGIC_OP for logic_operator in UNARY_LOGIC})
+    bin_logic_deduction: ClassVar[FrozenDict] = FrozenDict({logic_operator: Token_T.BIN_LOGIC_OP for logic_operator in BIN_LOGIC_SET})
     keyword_deduction: ClassVar[FrozenDict] = FrozenDict({keyword_name: Token_T.KEYWORD for keyword_name in KEYWORDS})
-
+    
     next_expected: ClassVar[FrozenDict] = FrozenDict(
         {Token_T.START:         {"(": Token_T.LOGIC_LP,
                                  STRING_PLACEHOLDER: Token_T.STRING,
-                                 END_PLACEHOLDER: Token_T.END},
+                                 END_PLACEHOLDER: Token_T.END} | un_logic_deduction.to_dict(),
 
          Token_T.STRING:        {FIELD_VAL_SEP: Token_T.SEP,
                                  "(": Token_T.METHOD_LP,
                                  ")": Token_T.LOGIC_RP,
-                                 END_PLACEHOLDER: Token_T.END} | logic_deduction.to_dict() | keyword_deduction.to_dict(),
+                                 END_PLACEHOLDER: Token_T.END} | bin_logic_deduction.to_dict() | keyword_deduction.to_dict(),
          
          Token_T.KEYWORD:    {STRING_PLACEHOLDER: Token_T.QUERY_STRING},
         
          Token_T.SEP:           {STRING_PLACEHOLDER: Token_T.QUERY_STRING},
 
          Token_T.QUERY_STRING:  {")": Token_T.LOGIC_RP,
-                                 END_PLACEHOLDER: Token_T.END} | logic_deduction.to_dict(),
+                                 END_PLACEHOLDER: Token_T.END} | bin_logic_deduction.to_dict(),
 
-         Token_T.LOGIC:         {STRING_PLACEHOLDER: Token_T.STRING,
+         Token_T.UN_LOGIC_OP:   {STRING_PLACEHOLDER: Token_T.STRING,
                                  "(": Token_T.LOGIC_LP},
+
+         Token_T.BIN_LOGIC_OP:  {STRING_PLACEHOLDER: Token_T.STRING,
+                                 "(": Token_T.LOGIC_LP} | un_logic_deduction.to_dict(),
 
          Token_T.METHOD_LP:     {STRING_PLACEHOLDER: Token_T.METHOD_STRING},
 
          Token_T.METHOD_STRING: {")": Token_T.METHOD_RP},
 
          Token_T.METHOD_RP:     {")": Token_T.LOGIC_RP,
-                                 END_PLACEHOLDER: Token_T.END} | logic_deduction.to_dict(),
+                                 END_PLACEHOLDER: Token_T.END} | bin_logic_deduction.to_dict(),
 
-         Token_T.LOGIC_LP:      {STRING_PLACEHOLDER: Token_T.STRING},
+         Token_T.LOGIC_LP:      {STRING_PLACEHOLDER: Token_T.STRING} | un_logic_deduction.to_dict(),
 
          Token_T.LOGIC_RP:      {END_PLACEHOLDER: Token_T.END,
-                                 ")": Token_T.LOGIC_RP} | logic_deduction.to_dict(),
+                                 ")": Token_T.LOGIC_RP} | bin_logic_deduction.to_dict(),
 
          Token_T.END:           {}
          })
@@ -188,8 +193,8 @@ class Tokenizer:
     next_expected = FrozenDict({Token_T.START: all_token_types,
                                 Token_T.END: frozenset(),
                                 Token_T.SEP: frozenset((Token_T.QUERY_STRING, )),
-                                Token_T.QUERY_STRING: frozenset((Token_T.LOGIC, Token_T.LOGIC_RP, Token_T.END)),
-                                Token_T.STRING: frozenset((Token_T.METHOD_LP, Token_T.METHOD_RP, Token_T.LOGIC, Token_T.SEP, Token_T.END)),
+                                Token_T.QUERY_STRING: frozenset((Token_T.BIN_LOGIC_OP, Token_T.LOGIC_RP, Token_T.END)),
+                                Token_T.STRING: frozenset((Token_T.METHOD_LP, Token_T.METHOD_RP, Token_T.BIN_LOGIC_OP, Token_T.SEP, Token_T.END)),
                                 })
     
     def __init__(self, exp: str):
@@ -426,7 +431,7 @@ class LogicTree:
         self._expressions = copy.deepcopy(expressions)
 
     def construct(self, start: int = 0):
-        highest = LOGIC_PRECEDENCE[0]
+        highest = BIN_LOGIC_PRECEDENCE[0]
         current_index = start
         while current_index < len(self._expressions) - 1:
             left_operand = self._expressions[current_index]
@@ -456,14 +461,14 @@ class LogicTree:
                 current_index += 2
 
         done_once = False
-        for cur_logic_precedence in LOGIC_PRECEDENCE[1:]:
+        for cur_BIN_LOGIC_PRECEDENCE in BIN_LOGIC_PRECEDENCE[1:]:
             current_index = start
             while current_index < len(self._expressions) - 1:
                 operator = self._expressions[current_index + 1]
                 if operator.type == Token_T.LOGIC_RP or operator.type == Token_T.END:
                     break
 
-                if operator.value in cur_logic_precedence:
+                if operator.value in cur_BIN_LOGIC_PRECEDENCE:
                     left_operand = self._expressions.pop(current_index)
                     self._expressions.pop(current_index)
                     right_operand = self._expressions.pop(current_index)
@@ -508,7 +513,7 @@ def main():
     # for query in queries:
     #     root = get_card_filter(query)
 
-    query = "fenjmk in word and pos: verb"
+    query = "not (B2 in level) and pos: verb"
     # query = ""
     card_filter = get_card_filter(query)
     test_card = {

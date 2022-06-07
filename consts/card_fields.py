@@ -11,7 +11,7 @@ class _CardFields(NamedTuple):
     sentences: str = "Sen_Ex"
     img_links: str = "image_link"
     audio_links: str = "audio_link"
-    dict_tags: str = "dict_tags"
+    dict_tags: dict = "dict_tags"
     user_tags: str = "user_tags"
 
 

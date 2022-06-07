@@ -60,7 +60,11 @@ class App(Tk):
         self.sentence_batch_size = 5
         self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser,
                                                 sentence_batch_size=self.sentence_batch_size)
-        self.saved_cards = SavedDeck()
+
+
+        deck_name = os.path.basename(self.configurations["directories"]["last_open_file"]).split(sep=".")[0]
+        saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name + ".csv")
+        self.saved_cards = SavedDeck(saving_path=saving_path)
 
         main_menu = Menu(self)
         filemenu = Menu(main_menu, tearoff=0)
@@ -602,7 +606,9 @@ class App(Tk):
             names: list[str] = []
             for i in range(len(instance.working_state)):
                 if instance.working_state[i]:
-                    saving_name = name_pattern.format(hash(instance.images_source[i]))
+                    saving_name = "{}/{}"\
+                        .format(self.configurations["directories"]["media_dir"],
+                                name_pattern.format(hash(instance.images_source[i])))
                     instance.saving_images[i].save(saving_name)
                     names.append(saving_name)
 

@@ -2,11 +2,14 @@ import json
 import os
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Callable, Iterator, Union, Any, Optional
+from typing import Callable, Union, Any
 
 from consts.card_fields import FIELDS
+from parsers.return_types import SentenceGenerator
 from utils.storages import FrozenDictJSONEncoder
 from utils.storages import PointerList, FrozenDict
+from pathlib import Path
+import csv
 
 
 class Card(FrozenDict):
@@ -188,11 +191,20 @@ class SavedDeck(PointerList):
     CARD_STATUS = "status"
     CARD_DATA = "card"
     IMAGES_DATA = "local_images"
+    AUDIO_DATA = "local_audios"
+    USER_TAGS_DATA = "user_tags"
 
-    def __init__(self):
+    def __init__(self, saving_path: str,
+                 image_name_wrapper: Callable[[str], str] = lambda name: name,
+                 audio_name_wrapper: Callable[[str], str] = lambda name: name,
+                 ):
         super(SavedDeck, self).__init__()
         self._statistics = [0, 0, 0]
-    
+        self.saving_path = Path(saving_path)
+        self.saving_extension = self.saving_path.suffix
+        self.image_name_wrapper = image_name_wrapper
+        self.audio_name_wrapper = audio_name_wrapper
+
     def get_n_added(self):
         return self._statistics[CardStatus.ADD.value]
 
@@ -221,21 +233,52 @@ class SavedDeck(PointerList):
             self._statistics[self[i][SavedDeck.CARD_STATUS].value] -= 1
         del self._data[self.get_pointer_position():]
 
-    def save(self, saving_path: str):
-        with open(saving_path, "w", encoding="utf-8") as deck_file:
-            json.dump(self._data, deck_file, cls=FrozenDictJSONEncoder)
+    def save(self):
+        if self.saving_extension == ".json":
+            saving_object = []
+            for saved_card in self:
+                if saved_card[SavedDeck.CARD_STATUS] == CardStatus.DELETE:
+                    continue
+                saving_object.append(saved_card[SavedDeck.CARD_DATA])
+
+            with open(self.saving_path, "w", encoding="utf-8") as deck_file:
+                json.dump(saving_object, deck_file, cls=FrozenDictJSONEncoder)
+        elif self.saving_extension in (".txt", ".csv"):
+            csv_file = open(self.saving_path, 'w', encoding="UTF-8", newline='')
+            cards_writer = csv.writer(csv_file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+            for card_page in self:
+                if card_page[SavedDeck.CARD_STATUS] == CardStatus.DELETE:
+                    continue
+                card_data = card_page[SavedDeck.CARD_DATA]
+
+                sentence_example = card_data.get(FIELDS.sentences, [""])[0]
+                saving_word = card_data.get(FIELDS.word, "")
+                definition = card_data.get(FIELDS.definition, "")
+                dict_tags = card_data.get_str_dict_tags()
+
+                user_tags = card_data.get(SavedDeck.USER_TAGS_DATA, "")
+                tags = f"{dict_tags} {user_tags}"
+
+                images = " ".join([self.image_name_wrapper(name) for name in card_page.get(FIELDS.IMAGES_DATA, [])])
+                audios = " ".join([self.audio_name_wrapper(name) for name in card_page.get(FIELDS.AUDIO_DATA,  [])])
+
+                cards_writer.writerow([sentence_example, saving_word, definition, images, audios, tags])
+            csv_file.close()
+        else:
+            raise NotImplemented(f"Don't know how to save deck to {self.saving_extension} file!")
 
 
 class SentenceFetcher:
     def __init__(self,
-                 sent_fetcher: Callable[[str, int], Iterator[tuple[list[str], str]]] = lambda *_: [[], True],
+                 sent_fetcher: Callable[[str, int], SentenceGenerator] = lambda *_: [[], True],
                  sentence_batch_size=5):
         self._word: str = ""
         self._sentences: list[str] = []
-        self._sentence_fetcher: Callable[[str, int], Iterator[tuple[list[str], str]]] = sent_fetcher
+        self._sentence_fetcher: Callable[[str, int], SentenceGenerator] = sent_fetcher
         self._batch_size: int = sentence_batch_size
         self._sentence_pointer: int = 0
-        self._sent_batch_generator: Iterator[tuple[list[str], str]] = self._get_sent_batch_generator()
+        self._sent_batch_generator: SentenceGenerator = self._get_sent_batch_generator()
         self._local_sentences_flag: bool = True
         self._update_status: bool = False
 
@@ -254,7 +297,7 @@ class SentenceFetcher:
             self._word = new_word
             self._update_status = True
 
-    def _get_sent_batch_generator(self) -> Iterator[tuple[list[str], str]]:
+    def _get_sent_batch_generator(self) -> SentenceGenerator:
         """
         Yields: Sentence_batch, error_message
         """

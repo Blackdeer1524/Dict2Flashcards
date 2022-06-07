@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from tkinter import Button, Menu, IntVar
 from tkinter import Frame
@@ -24,6 +25,9 @@ from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
 from utils.cards import Card
+from utils.image_utils import ImageSearch
+from utils.string_utils import remove_special_chars
+
 
 class App(Tk):
     def __init__(self, *args, **kwargs):
@@ -91,7 +95,7 @@ class App(Tk):
 
         self.browse_button = Button(self, text="Найти в браузере", command=App.func_placeholder)
         self.configurations_word_parser_button = Button(self, text="Настроить словарь", command=App.func_placeholder)
-        self.find_image_button = Button(self, text="Добавить изображение", command=App.func_placeholder)
+        self.find_image_button = Button(self, text="Добавить изображение", command=self.start_image_search)
         self.image_word_parsers_names = list(plugins.image_parsers)
         
         self.image_word_parser_name = self.configurations["scrappers"]["base_image_parser"]
@@ -332,7 +336,7 @@ class App(Tk):
         Сохраняет файлы если они не пустые или есть изменения
         """
         # получение координат на экране через self.winfo_rootx(), self.winfo_rooty() даёт некоторое смещение
-        self.configurations["app"]["main_window_geometry"] = self.winfo_geometry()
+        self.configurations["app"]["main_window_geometry"] = self.geometry()
         self.configurations["tags"]["hierarchical_pref"] = self.tag_prefix_field.get()
         self.save_conf_file()
 
@@ -588,48 +592,59 @@ class App(Tk):
             self.deck.append(Card(self.dict_card_data))
         self.refresh()
 
-    # def start_image_search(self):
-    #     def connect_images_to_card(instance):
-    #         nonlocal word
-    #
-    #         card_pattern = "<img src='{}.png'/>"
-    #         saving_images_names = getattr(instance, "saving_images_names", [])
-    #         saving_images_indices = getattr(instance, "saving_indices", [])
-    #
-    #         for img_index in saving_images_indices:
-    #             self.IMAGES.append(card_pattern.format(saving_images_names[img_index]))
-    #
-    #         # получение координат на экране через instance.winfo_rootx(), instance.winfo_rooty() даёт некоторое смещение
-    #         image_search_x = instance.winfo_rootx()
-    #         image_search_y = instance.winfo_rooty() - 37  # compensate for title height
-    #         self.JSON_CONF_FILE["app"]["image_search_position"] = f"+{image_search_x}+{image_search_y}"
-    #
-    #     word = self.word_text.get(1.0, "end").strip()
-    #     clean_word = remove_special_chars(word, sep='-')
-    #
-    #     show_image_width = 250
-    #     name_pattern = f"mined-{clean_word}" + "-{}"
-    #
-    #     button_pady = button_padx = 10
-    #     height_lim = self.winfo_height() * 7 // 8
-    #     image_finder = ImageSearch(master=self,
-    #                                search_term=word,
-    #                                saving_dir=self.configurations["directories"]["media_dir"],
-    #                                url_scrapper=self.image_parser, init_urls=[self.DICT_IMAGE_LINK],
-    #                                # headers=self.headers,
-    #                                on_close_action=connect_images_to_card,
-    #                                show_image_width=show_image_width,
-    #                                saving_image_width=300, image_saving_name_pattern=name_pattern,
-    #                                button_padx=button_padx, button_pady=button_pady,
-    #                                window_height_limit=height_lim,
-    #                                #window_bg=self.main_bg,
-    #                                #command_button_params=self.button_cfg,
-    #                                #entry_params=self.entry_cfg
-    #                                )
-    #     image_finder.focus()
-    #     image_finder.grab_set()
-    #     image_finder.geometry(self.configurations["app"]["image_search_position"])
-    #     image_finder.start()
+    def start_image_search(self):
+        def connect_images_to_card(instance: ImageSearch):
+            nonlocal word
+
+            clean_word = remove_special_chars(word, sep='-')
+            name_pattern = f"mined-{clean_word}" + "-{}.png"
+
+            names: list[str] = []
+            for i in range(len(instance.working_state)):
+                if instance.working_state[i]:
+                    saving_name = name_pattern.format(hash(instance.images_source[i]))
+                    instance.saving_images[i].save(saving_name)
+                    names.append(saving_name)
+
+            if (paths := self.dict_card_data.get(self.saved_cards.IMAGES_DATA)) is not None:
+                for path in paths:
+                    if os.path.isfile(path):
+                        os.remove(path)
+
+            if names:
+                self.dict_card_data[self.saved_cards.IMAGES_DATA] = names
+
+            x, y = instance.geometry().split(sep="+")[1:]
+            self.configurations["app"]["image_search_position"] = f"+{x}+{y}"
+
+        word = self.get_word()
+
+        show_image_width = 250
+
+
+        button_pady = button_padx = 10
+        height_lim = self.winfo_height() * 7 // 8
+        image_finder = ImageSearch(master=self,
+                                   search_term=word,
+                                   saving_dir=self.configurations["directories"]["media_dir"],
+                                   url_scrapper=self.image_parser,
+                                   init_urls=self.dict_card_data.get(FIELDS.img_links, []),
+                                   local_images=self.dict_card_data.get(self.saved_cards.IMAGES_DATA, []),
+                                   # headers=self.headers,
+                                   on_close_action=connect_images_to_card,
+                                   show_image_width=show_image_width,
+                                   saving_image_width=300,
+                                   button_padx=button_padx, button_pady=button_pady,
+                                   window_height_limit=height_lim,
+                                   on_closing_action=connect_images_to_card,
+                                   #window_bg=self.main_bg,
+                                   #command_button_params=self.button_cfg,
+                                   #entry_params=self.entry_cfg
+                                   )
+        image_finder.focus()
+        image_finder.grab_set()
+        image_finder.geometry(self.configurations["app"]["image_search_position"])
+        image_finder.start()
 
 
 if __name__ == "__main__":

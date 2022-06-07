@@ -1,5 +1,6 @@
 import copy
 import os
+import time
 from collections import UserList
 from concurrent.futures import ThreadPoolExecutor
 from enum import IntEnum
@@ -70,7 +71,6 @@ class ImageSearch(Toplevel):
         show_image_height: maximum image display height\n
         saving_image_width: maximum image saving width\n
         saving_image_height: maximum image saving height\n
-        image_saving_name_pattern: modifies saving name. example: "this_image_{}"\n
         n_images_in_row: \n
         n_rows: \n
         button_padx: \n
@@ -113,7 +113,7 @@ class ImageSearch(Toplevel):
         self._pool: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=self._n_images_per_cycle)
 
         self.saving_images: list[Image] = []
-        self.saved_urls: list[str] = []
+        self.images_source: list[str] = []
         self.working_state: list[bool] = []  # indices of picked buttons
         self.button_list: list[Button] = []
 
@@ -193,10 +193,10 @@ class ImageSearch(Toplevel):
             self._cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 
         for image_path in self._init_local_img_paths:
-            self._process_single_image(Image.open(image_path))
+            self._process_single_image(Image.open(image_path), image_path)
 
-        for custom_image in self._init_images:
-            self._process_single_image(custom_image)
+        for index, custom_image in enumerate(self._init_images):
+            self._process_single_image(custom_image, f"init-image-{index}")
             self.working_state[-1] = True
             self.button_list[-1]["bg"] = self._choose_color
 
@@ -218,6 +218,7 @@ class ImageSearch(Toplevel):
         left_indent = 0
         for i in range(len(self.working_state)):
             if self.working_state[i]:
+                self.images_source[left_indent] = self.images_source[i]
                 self.working_state[left_indent] = True
                 self.saving_images[left_indent] = copy.deepcopy(self.saving_images[i])
 
@@ -234,7 +235,8 @@ class ImageSearch(Toplevel):
                        padx=self._button_padx, pady=self._button_pady, sticky="news")
                 self.button_list[left_indent] = b
                 left_indent += 1
-        
+
+        del self.images_source[left_indent:]
         del self.button_list[left_indent:]
         del self.working_state[left_indent:]
         del self.saving_images[left_indent:]
@@ -343,7 +345,7 @@ class ImageSearch(Toplevel):
                 if processing_status == ImageSearch.StatusCodes.NORMAL:
                     button_images_batch.append(button_img)
                     self.saving_images.append(img)
-                    self.saved_urls.append(url)
+                    self.images_source.append(url)
                 else:
                     add_fetching_to_queue()
             elif fetching_status == ImageSearch.StatusCodes.RETRIABLE_FETCHING_ERROR:
@@ -364,12 +366,12 @@ class ImageSearch(Toplevel):
         self._show_more_button["state"] = "disabled"
         yield
 
-    def _process_single_image(self, img: Image.Image):
+    def _process_single_image(self, img: Image.Image, img_src: str):
         button_img_batch = [ImageTk.PhotoImage(
             self.preprocess_image(img, width=self.optimal_visual_width, height=self.optimal_visual_height))]
         
         self.saving_images.append(img)
-        self.saved_urls.append("")
+        self.images_source.append(img_src)
         self._place_buttons(button_img_batch)
 
     def _drop(self, event):
@@ -377,13 +379,14 @@ class ImageSearch(Toplevel):
             data_path = event.data
             if os.path.exists(data_path):
                 img = Image.open(data_path)
-                self._process_single_image(img)
+                self._process_single_image(img, data_path)
             elif data_path.startswith("http"):
                 self._img_urls.appendleft(data_path)
                 self._process_batch(batch_size=1, n_retries=self._max_request_tries)
         return event.action
 
     def _paste_image(self):
+        img_src = f"clipboard-{time.time()}"
         if SYSTEM == "Linux":
             def pixbuf2image(pix):
                 """Convert gdkpixbuf to PIL image"""
@@ -399,9 +402,9 @@ class ImageSearch(Toplevel):
 
             if self._cb.wait_is_image_available():
                 pixbuf = self._cb.wait_for_image()
-                self._process_single_image(pixbuf2image(pixbuf))
+                self._process_single_image(pixbuf2image(pixbuf), img_src=img_src)
         else:
-            self._process_single_image(ImageGrab.grabclipboard())
+            self._process_single_image(ImageGrab.grabclipboard(), img_src=img_src)
 
 
 if __name__ == "__main__":

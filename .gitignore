@@ -1,4 +1,5 @@
 **
+!/plugins/**
 !/consts/**
 !/parsers/**
 !/utils/**

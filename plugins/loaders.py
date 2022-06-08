@@ -1,16 +1,22 @@
 import importlib
 import pkgutil
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable
+from typing import Protocol
 
 import parsers.image_parsers
 import parsers.sentence_parsers
 import parsers.word_parsers.local
 import parsers.word_parsers.web
+from consts.paths import LOCAL_MEDIA_DIR
 from parsers.return_types import ImageGenerator, SentenceGenerator
+from plugins.containers import ImageParserContainer
+from plugins.containers import LocalWordParserContainer
+from plugins.containers import WebSentenceParserContainer
+from plugins.containers import WebWordParserContainer
 from utils.cards import WebCardGenerator, LocalCardGenerator
 from utils.storages import FrozenDict
-from consts.paths import LOCAL_MEDIA_DIR
 
 
 class PluginError(Exception):
@@ -21,6 +27,111 @@ class UnknownPluginName(PluginError):
     pass
 
 
+def parse_namespace(namespace) -> dict:
+    def iter_namespace(ns_pkg):
+        # Specifying the second argument (prefix) to iter_modules makes the
+        # returned name an absolute name instead of a relative one. This allows
+        # import_module to work without having to do additional modification to
+        # the name.
+        return pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + ".")
+
+    res = {}
+    for finder, name, ispkg in iter_namespace(namespace):
+        parser_trunc_name = name.split(sep=".")[-1]
+        res[parser_trunc_name] = importlib.import_module(name)
+    return res
+
+
+class ABCPluginLoader(ABC):
+    @abstractmethod
+    def load(self, callback: Callable[[Exception], None]) -> None:
+        pass
+
+    @abstractmethod
+    def get(self, name: str) -> Protocol:
+        pass
+
+
+class WebWordParsersLoader(ABCPluginLoader):
+    web_word_parsers: dict[str, WebWordParserContainer]
+
+    def __init__(self):
+        self.web_word_parsers = {}
+
+    def load(self, callback: Callable[[Exception], None]) -> None:
+        for name, module in parse_namespace(parsers.word_parsers.web).items():
+            try:
+                self.web_word_parsers[name] = \
+                    WebWordParserContainer(module)
+            except AttributeError as e:
+                callback(e)
+
+    def get(self, name: str) -> WebWordParserContainer:
+        if value := self.web_word_parsers.get(name) is not None:
+            return value
+        raise UnknownPluginName(f"Unknown web word parser: {name}")
+
+
+class LocalWordParsersLoader(ABCPluginLoader):
+    local_word_parsers: dict[str, LocalWordParserContainer]
+
+    def __init__(self):
+        self.local_word_parsers = {}
+
+    def load(self, callback: Callable[[Exception], None]) -> None:
+        for name, module in parse_namespace(parsers.word_parsers.local).items():
+            try:
+                self.local_word_parsers[name] = LocalWordParserContainer(module)
+            except AttributeError as e:
+                callback(e)
+
+    def get(self, name: str) -> LocalWordParserContainer:
+        if value := self.local_word_parsers.get(name) is not None:
+            return value
+        raise UnknownPluginName(f"Unknown local word parser: {name}")
+
+
+class WebSentenceParsersLoader(ABCPluginLoader):
+    web_sentence_parsers: dict[str, WebSentenceParserContainer]
+
+    def __init__(self):
+        self.web_sentence_parsers = {}
+
+    def load(self, callback: Callable[[Exception], None]) -> None:
+        for name, module in parse_namespace(parsers.sentence_parsers).items():
+            try:
+                self.web_sentence_parsers[name] = \
+                    WebSentenceParserContainer(module)
+            except AttributeError as e:
+                callback(e)
+
+    def get(self, name: str) -> WebSentenceParserContainer:
+        if value := self.web_sentence_parsers.get(name) is not None:
+            return value
+        raise UnknownPluginName(f"Unknown web sentence parser: {name}")
+
+
+class ImageParsersLoader(ABCPluginLoader):
+    image_parsers: dict[str, ImageParserContainer]
+
+    def __init__(self):
+        self.image_parsers = {}
+
+    def load(self, callback: Callable[[Exception], None]) -> None:
+        for name, module in parse_namespace(parsers.image_parsers).items():
+            try:
+                self.image_parsers[name] = \
+                    ImageParserContainer(module)
+            except AttributeError as e:
+                callback(e)
+
+    def get(self, name: str) -> ImageParserContainer:
+        if value := self.image_parsers.get(name) is not None:
+            return value
+        raise UnknownPluginName(f"Unknown image parser: {name}")
+
+
+
 @dataclass(init=False, frozen=True, repr=False)
 class _PluginLoader:
     web_word_parsers:   FrozenDict
@@ -29,19 +140,7 @@ class _PluginLoader:
     image_parsers:      FrozenDict
 
     def __init__(self):
-        def parse_namespace(namespace) -> dict:
-            def iter_namespace(ns_pkg):
-                # Specifying the second argument (prefix) to iter_modules makes the
-                # returned name an absolute name instead of a relative one. This allows
-                # import_module to work without having to do additional modification to
-                # the name.
-                return pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + ".")
 
-            res = {}
-            for finder, name, ispkg in iter_namespace(namespace):
-                parser_trunc_name = name.split(sep=".")[-1]
-                res[parser_trunc_name] = importlib.import_module(name)
-            return res
 
         super().__setattr__("web_word_parsers", FrozenDict({name: {"item_converter": module.translate,
                                                                    "parsing_function": module.define}

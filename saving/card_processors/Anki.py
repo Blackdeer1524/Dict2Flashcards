@@ -14,7 +14,7 @@ def get_card_image_name(saved_image_path: str) -> str:
     return f"<img src='{os.path.split(saved_image_path)[-1]}.png'/>"
 
 
-def get_save_audio_name(word: str, dict_tags: dict, word_parser_name: str) -> str:
+def get_save_audio_name(word: str, word_parser_name: str, dict_tags: dict) -> str:
     word = word.strip().lower()
     pos = dict_tags.get("pos")
 
@@ -30,5 +30,5 @@ def get_card_audio_name(saved_audio_path: str) -> str:
     return f"[sound:{os.path.split(saved_audio_path)[-1]}]"
 
 
-def process_dict_tags(tags: dict) -> dict:
-    return tags
+def process_card(card: dict) -> None:
+    return

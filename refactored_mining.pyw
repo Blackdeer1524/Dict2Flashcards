@@ -1,5 +1,4 @@
 import json
-import os
 import re
 from tkinter import Button, Menu, IntVar
 from tkinter import Frame
@@ -13,21 +12,22 @@ from tkinterdnd2 import Tk
 
 from consts.card_fields import FIELDS
 from consts.paths import *
+from utils.cards import Card
 from utils.cards import Deck, SentenceFetcher, SavedDeck, CardStatus
 from utils.error_handling import create_exception_message
-from utils.plugins import plugins
-from utils.search_checker import ParsingException
+from utils.image_utils import ImageSearch
+from plugins.factory import plugins
+from utils.search_checker import ParsingException, FieldCheck
 from utils.search_checker import get_card_filter
 from utils.storages import validate_json
+from utils.string_utils import remove_special_chars
 from utils.widgets import EntryWithPlaceholder as Entry
 from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
-from utils.cards import Card
-from utils.image_utils import ImageSearch
-from utils.string_utils import remove_special_chars
-
+from playsound import playsound
+from utils.audio_utils import get_local_audio_path, get_save_audio_name, AudioDownloader
 
 class App(Tk):
     def __init__(self, *args, **kwargs):
@@ -43,24 +43,31 @@ class App(Tk):
         if not self.history.get(self.configurations["directories"]["last_open_file"]):
             self.history[self.configurations["directories"]["last_open_file"]] = 0
 
-        if self.configurations["scrappers"]["word_parser_type"] == "web":
-            cd = plugins.get_web_card_generator(self.configurations["scrappers"]["word_parser_name"])
-        elif self.configurations["scrappers"]["word_parser_type"] == "local":
-            cd = plugins.get_local_card_generator(self.configurations["scrappers"]["word_parser_name"])
+        wp_name = self.configurations["scrappers"]["word_parser_name"]
+        if (wp_type := self.configurations["scrappers"]["word_parser_type"]) == "web":
+            cd = plugins.get_web_card_generator(wp_name)
+        elif wp_type == "local":
+            cd = plugins.get_local_card_generator(wp_name)
         else:
             raise NotImplemented("Unknown word_parser_type: {}!".format(self.configurations["scrappers"]["word_parser_type"]))
+        self.typed_word_parser_name = f"{wp_type} {wp_name}"
 
         self.deck = Deck(deck_path=self.configurations["directories"]["last_open_file"],
                          current_deck_pointer=self.history[self.configurations["directories"]["last_open_file"]],
                          card_generator=cd)
+        self.card_processor = plugins.get_card_processor("Anki")
         self.dict_card_data: dict = {}
         self.sentence_parser = plugins.get_sentence_parser(self.configurations["scrappers"]["base_sentence_parser"])
         self.image_parser = plugins.get_image_parser(self.configurations["scrappers"]["base_image_parser"])
 
+        if (local_audio_getter_name := self.configurations["scrappers"]["local_audio"]):
+            self.local_audio_getter = plugins.get_local_audio_getter(local_audio_getter_name)
+        else:
+            self.local_audio_getter = None
+
         self.sentence_batch_size = 5
         self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser,
                                                 sentence_batch_size=self.sentence_batch_size)
-
 
         deck_name = os.path.basename(self.configurations["directories"]["last_open_file"]).split(sep=".")[0]
         saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name + ".csv")
@@ -100,8 +107,8 @@ class App(Tk):
         self.browse_button = Button(self, text="Найти в браузере", command=App.func_placeholder)
         self.configurations_word_parser_button = Button(self, text="Настроить словарь", command=App.func_placeholder)
         self.find_image_button = Button(self, text="Добавить изображение", command=self.start_image_search)
-        self.image_word_parsers_names = list(plugins.image_parsers)
-        
+        self.image_word_parsers_names = plugins.image_parsers.loaded
+
         self.image_word_parser_name = self.configurations["scrappers"]["base_image_parser"]
         self.image_parser_option_menu = get_option_menu(self,
                                                         init_text=self.image_word_parser_name,
@@ -115,7 +122,7 @@ class App(Tk):
         self.sentence_word_parser_name = self.configurations["scrappers"]["base_sentence_parser"]
         self.sentence_parser_option_menu = get_option_menu(self,
                                                            init_text=self.sentence_word_parser_name,
-                                                           values=list(plugins.web_sent_parsers),
+                                                           values=plugins.web_sent_parsers.loaded,
                                                            command=App.func_placeholder,
                                                            widget_configuration={},
                                                            option_submenu_params={})
@@ -137,7 +144,7 @@ class App(Tk):
 
         self.delete_button = Button(self, text="Del", command=self.delete_command, width=button_width)
         self.prev_button = Button(self, text="Prev", command=self.prev_command, state="disabled", width=button_width)
-        self.sound_button = Button(self, text="Play", command=App.func_placeholder, width=button_width)
+        self.sound_button = Button(self, text="Play", command=self.play_sound, width=button_width)
         self.anki_button = Button(self, text="Anki", command=App.func_placeholder, width=button_width)
         self.bury_button = Button(self, text="Bury", command=App.func_placeholder, width=button_width)
 
@@ -318,14 +325,14 @@ class App(Tk):
                                                                  initialdir=MEDIA_DOWNLOADING_LOCATION)
             if not conf_file["directories"]["media_dir"]:
                 return (conf_file, True)
-                        
+
         if not conf_file["directories"]["last_open_file"] or not os.path.isfile(conf_file["directories"]["last_open_file"]):
             conf_file["directories"]["last_open_file"] = askopenfilename(title="Выберете JSON файл со словами",
                                                                          filetypes=(("JSON", ".json"),),
                                                                          initialdir="./")
             if not conf_file["directories"]["last_open_file"]:
                 return (conf_file, True)
-            
+
         if not conf_file["directories"]["last_save_dir"] or not os.path.isdir(conf_file["directories"]["last_save_dir"]):
             conf_file["directories"]["last_save_dir"] = askdirectory(title="Выберете директорию сохранения",
                                                                      mustexist=True,
@@ -352,7 +359,7 @@ class App(Tk):
 
         # if self.SKIPPED_FILE:
         #     self.save_skip_file()
-    
+
     def on_closing(self):
         """
         Закрытие программы
@@ -372,13 +379,13 @@ class App(Tk):
 
     def get_word(self):
         return self.word_text.get(1.0, "end").strip()
-    
+
     def get_definition(self):
         return self.definition_text.get(1.0, "end").rstrip()
-    
+
     def get_sentence(self, n: int):
         return self.sent_text_list[n].get(1.0, "end").rstrip()
-    
+
     def replace_sentences(self) -> None:
         sent_batch, error_message, local_flag = self.sentence_fetcher.get_sentence_batch(self.get_word())
         for text_field in self.sent_text_list:
@@ -398,39 +405,40 @@ class App(Tk):
             self.dict_tags_field.insert(1.0, text)
             self.dict_tags_field["state"] = "disabled"
 
-        current_card = self.deck.get_card()
-        self.dict_card_data = current_card.to_dict()
+        self.dict_card_data = self.deck.get_card().to_dict()
+        self.card_processor.process_card(self.dict_card_data)
+
         self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() + 1 \
                                              else "disabled"
 
         self.title(f"Поиск предложений для Anki. Осталось: {self.deck.get_n_cards_left()} слов")
 
         self.word_text.clear()
-        self.word_text.insert(1.0, current_card.get(FIELDS.word, ""))
+        self.word_text.insert(1.0, self.dict_card_data.get(FIELDS.word, ""))
         self.word_text.focus()
 
         self.definition_text.clear()
-        self.definition_text.insert(1.0, current_card.get(FIELDS.definition, ""))
+        self.definition_text.insert(1.0, self.dict_card_data.get(FIELDS.definition, ""))
         self.definition_text.fill_placeholder()
 
-        self.sentence_fetcher(self.get_word(), current_card.get(FIELDS.sentences, []))
+        self.sentence_fetcher(self.get_word(), self.dict_card_data.get(FIELDS.sentences, []))
         self.replace_sentences()
-        if not current_card:
+        if not self.dict_card_data:
             self.find_image_button["text"] = "Добавить изображение"
             if not self.configurations["scrappers"]["local_audio"]:
                 self.sound_button["state"] = "disabled"
             fill_dict_tags("")
             return False
-        fill_dict_tags(current_card.get_str_dict_tags())
+        fill_dict_tags(Card.get_str_dict_tags(self.dict_card_data))
 
         # Обновление поля для слова
-        alt_terms = " ".join(current_card.get("alt_terms", []))
-        self.DICT_IMAGE_LINK = current_card.get("image_link", "")
+        alt_terms = " ".join(self.dict_card_data.get("alt_terms", []))
+        self.DICT_IMAGE_LINK = self.dict_card_data.get("image_link", "")
         if self.DICT_IMAGE_LINK:
             self.find_image_button["text"] = "Добавить изображение ★"
         else:
             self.find_image_button["text"] = "Добавить изображение"
-        self.CURRENT_AUDIO_LINK = current_card.get("audio_link", "")
+        self.CURRENT_AUDIO_LINK = self.dict_card_data.get("audio_link", "")
 
         if self.configurations["scrappers"]["local_audio"] or self.CURRENT_AUDIO_LINK:
             self.sound_button["state"] = "normal"
@@ -441,7 +449,12 @@ class App(Tk):
     def add_word_dialog(self):
         def define_word_button():
             clean_word = add_word_entry.get().strip()
-            pattern = re.compile(clean_word)
+            try:
+                pattern = re.compile(clean_word)
+            except re.error:
+                messagebox.showerror("Неверно задано регулярное выражение для слова!")
+                return
+
             word_filter = lambda comparable: re.search(pattern, comparable)
 
             additional_query = additional_filter_entry.get(1.0, "end").strip()
@@ -595,6 +608,39 @@ class App(Tk):
         if not self.deck.get_n_cards_left():
             self.deck.append(Card(self.dict_card_data))
         self.refresh()
+
+    def play_sound(self):
+        def show_download_error(exc):
+            messagebox.showerror(message=f"Ошибка получения звука\n{exc}")
+
+        word = self.get_word()
+        dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
+        if self.configurations["scrappers"]["local_audio"]:
+            audio_file_path = self.local_audio_getter.get_local_audio_path(word, dict_tags)
+            if audio_file_path:
+                playsound(audio_file_path, block=True)
+                return
+            messagebox.showerror(message="Ошибка получения звука\nЛокальный файл не найден")
+            return
+
+        if (audio_file_url := self.dict_card_data.get(FIELDS.audio_links)[0]) is None:
+            messagebox.showerror(message="Ошибка получения звука\nНе откуда брать аудио!")
+            return
+
+        audio_name = self.card_processor.get_save_audio_name(word,
+                                                             self.typed_word_parser_name,
+                                                             dict_tags)
+
+        temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name)
+        success = True
+        if not os.path.exists(temp_audio_path):
+            success = AudioDownloader.fetch_audio(url=audio_file_url,
+                                                  save_path=temp_audio_path,
+                                                  timeout=5,
+                                                  headers={'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'},
+                                                  exception_action=lambda exc: show_download_error(exc))
+        if success:
+            playsound(temp_audio_path)
 
     def start_image_search(self):
         def connect_images_to_card(instance: ImageSearch):

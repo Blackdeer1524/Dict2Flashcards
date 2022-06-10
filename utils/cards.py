@@ -28,11 +28,12 @@ class Card(FrozenDict):
     def __repr__(self):
         return f"Card {self._data}"
 
-    def get_str_dict_tags(self, 
-                          prefix: str = "", 
+    @staticmethod
+    def get_str_dict_tags(card_data: Union[dict, "Card"],
+                          prefix: str = "",
                           sep: str = "::",
                           tag_processor: Callable[[str], str] = lambda x: x) -> str:
-        if (dictionary_tags := self.get(FIELDS.dict_tags)) is None:
+        if (dictionary_tags := card_data.get(FIELDS.dict_tags)) is None:
             return ""
 
         def traverse_tags_dict(res_container: list[str], current_item: dict, cur_stage_prefix: str = ""):
@@ -190,20 +191,16 @@ class CardStatus(Enum):
 class SavedDeck(PointerList):
     CARD_STATUS = "status"
     CARD_DATA = "card"
+    ADDITIONAL_DATA = "additional"
     IMAGES_DATA = "local_images"
     AUDIO_DATA = "local_audios"
-    USER_TAGS_DATA = "user_tags"
+    USER_TAGS = "user_tags"
 
-    def __init__(self, saving_path: str,
-                 image_name_wrapper: Callable[[str], str] = lambda name: name,
-                 audio_name_wrapper: Callable[[str], str] = lambda name: name,
-                 ):
+    def __init__(self, saving_path: str):
         super(SavedDeck, self).__init__()
         self._statistics = [0, 0, 0]
         self.saving_path = Path(saving_path)
         self.saving_extension = self.saving_path.suffix
-        self.image_name_wrapper = image_name_wrapper
-        self.audio_name_wrapper = audio_name_wrapper
 
     def get_n_added(self):
         return self._statistics[CardStatus.ADD.value]
@@ -217,12 +214,23 @@ class SavedDeck(PointerList):
     def append(self, status: CardStatus, card_data: dict[str, Union[str, list[str]]] = None):
         if card_data is None:
             card_data = {}
+
         res = {SavedDeck.CARD_STATUS: status}
         if status != CardStatus.DELETE:
             saving_card = Card(card_data)
             res[SavedDeck.CARD_DATA] = saving_card
-            if (local_images := card_data.get(SavedDeck.IMAGES_DATA)) is not None:
-                res[SavedDeck.IMAGES_DATA] = local_images
+
+            additional_data = {}
+            if (image_data := card_data.get(SavedDeck.IMAGES_DATA)) is not None:
+                additional_data[SavedDeck.IMAGES_DATA] = image_data
+            if (audio_data := card_data.get(SavedDeck.AUDIO_DATA)) is not None:
+                additional_data[SavedDeck.AUDIO_DATA] = audio_data
+            if (user_tags := card_data.get(SavedDeck.USER_TAGS)) is not None:
+                additional_data[SavedDeck.USER_TAGS] = user_tags
+
+            if additional_data:
+                res[SavedDeck.ADDITIONAL_DATA] = additional_data
+        
         self._data.append(FrozenDict(res))
         self._pointer_position += 1
         self._statistics[status.value] += 1
@@ -233,13 +241,13 @@ class SavedDeck(PointerList):
             self._statistics[self[i][SavedDeck.CARD_STATUS].value] -= 1
         del self._data[self.get_pointer_position():]
 
-    def save(self):
+    def save(self, card_page_wrapper: Callable[[FrozenDict], dict] = lambda x: x):
         if self.saving_extension == ".json":
             saving_object = []
-            for saved_card in self:
-                if saved_card[SavedDeck.CARD_STATUS] == CardStatus.DELETE:
+            for card_page in self:
+                if card_page[SavedDeck.CARD_STATUS] == CardStatus.DELETE:
                     continue
-                saving_object.append(saved_card[SavedDeck.CARD_DATA])
+                saving_object.append(card_page_wrapper(card_page))
 
             with open(self.saving_path, "w", encoding="utf-8") as deck_file:
                 json.dump(saving_object, deck_file, cls=FrozenDictJSONEncoder)
@@ -250,18 +258,22 @@ class SavedDeck(PointerList):
             for card_page in self:
                 if card_page[SavedDeck.CARD_STATUS] == CardStatus.DELETE:
                     continue
-                card_data = card_page[SavedDeck.CARD_DATA]
+                processed_card = card_page_wrapper(card_page)
+                card_data = processed_card[SavedDeck.CARD_DATA]
 
                 sentence_example = card_data.get(FIELDS.sentences, [""])[0]
                 saving_word = card_data.get(FIELDS.word, "")
                 definition = card_data.get(FIELDS.definition, "")
                 dict_tags = card_data.get_str_dict_tags()
 
-                user_tags = card_data.get(SavedDeck.USER_TAGS_DATA, "")
+                user_tags = card_data.get(SavedDeck.USER_TAGS, "")
                 tags = f"{dict_tags} {user_tags}"
 
-                images = " ".join([self.image_name_wrapper(name) for name in card_page.get(FIELDS.IMAGES_DATA, [])])
-                audios = " ".join([self.audio_name_wrapper(name) for name in card_page.get(FIELDS.AUDIO_DATA,  [])])
+                images = ""
+                audios = ""
+                if (additional := processed_card.get(SavedDeck.ADDITIONAL_DATA)) is not None:
+                    images = " ".join([name for name in additional.get(SavedDeck.IMAGES_DATA, [])])
+                    audios = " ".join([name for name in additional.get(SavedDeck.AUDIO_DATA,  [])])
 
                 cards_writer.writerow([sentence_example, saving_word, definition, images, audios, tags])
             csv_file.close()

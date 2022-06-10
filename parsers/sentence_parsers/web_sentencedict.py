@@ -9,7 +9,7 @@ from parsers.return_types import SentenceGenerator
 FILE_PATH = os.path.dirname(__file__)
 
 
-def get_sentence_batch(word: str, step: int = 5) -> SentenceGenerator:
+def get_sentence_batch(word: str, size: int = 5) -> SentenceGenerator:
     re_pattern = re.compile("^(.?\d+.? )")
     page = requests.get(f"https://sentencedict.com/{word}.html")
     if page.status_code != 200:
@@ -32,5 +32,5 @@ def get_sentence_batch(word: str, step: int = 5) -> SentenceGenerator:
                 sentences.append(text)
 
     sentences.sort(key=len)
-    for i in range(0, len(sentences), step):
-        yield sentences[i:i + step], ""
+    for i in range(0, len(sentences), size):
+        yield sentences[i:i + size], ""

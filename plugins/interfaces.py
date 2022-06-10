@@ -1,6 +1,5 @@
 from typing import Protocol
 from parsers.return_types import SentenceGenerator, ImageGenerator
-from utils.storages import FrozenDict
 
 
 class WebWordParserInterface(Protocol):
@@ -33,7 +32,7 @@ class ImageParserInterface(Protocol):
         ...
 
 
-class CardProcessingInterface(Protocol):
+class CardProcessorInterface(Protocol):
     @staticmethod
     def get_saving_image_name(word: str, image_source: str, dict_tags: dict) -> str:
         ...
@@ -43,7 +42,7 @@ class CardProcessingInterface(Protocol):
         ...
 
     @staticmethod
-    def get_save_audio_name(word: str, dict_tags: dict, word_parser_name: str) -> str:
+    def get_save_audio_name(word: str, word_parser_name: str, dict_tags: dict) -> str:
         ...
 
     @staticmethod
@@ -51,6 +50,13 @@ class CardProcessingInterface(Protocol):
         ...
 
     @staticmethod
-    def process_dict_tags(tags: dict) -> dict:
+    def process_card(card: dict) -> None:
         ...
 
+
+class LocalAudioGetterInterface(Protocol):
+    AUDIO_FOLDER: str
+
+    @staticmethod
+    def get_local_audio_path(word: str, dict_tags: dict):
+        ...

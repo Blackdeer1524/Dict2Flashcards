@@ -8,9 +8,9 @@ from plugins.interfaces import WebSentenceParserInterface
 from plugins.interfaces import WebWordParserInterface
 
 
-@dataclass(init=False, slots=True, repr=False, frozen=True, eq=False, order=False)
+@dataclass(init=False, repr=False, frozen=True, eq=False, order=False)
 class WebWordParserContainer:
-    define: Callable[[str], dict] = field(init=False)
+    define: Callable[[str], list[(str, dict)]] = field(init=False)
     translate: Callable[[str, dict], dict] = field(init=False)
 
     def __init__(self, source_module: WebWordParserInterface):
@@ -18,7 +18,7 @@ class WebWordParserContainer:
         super().__setattr__("translate", source_module.translate)
 
 
-@dataclass(init=False, slots=True, repr=False, frozen=True, eq=False, order=False)
+@dataclass(init=False, repr=False, frozen=True, eq=False, order=False)
 class LocalWordParserContainer:
     local_dict_name: str = field(init=False)
     translate: Callable[[str], dict] = field(init=False)
@@ -28,7 +28,7 @@ class LocalWordParserContainer:
         super().__setattr__("translate", source_module.translate)
 
 
-@dataclass(init=False, slots=True, repr=False, frozen=True, eq=False, order=False)
+@dataclass(init=False, repr=False, frozen=True, eq=False, order=False)
 class WebSentenceParserContainer:
     get_sentence_batch: Callable[[str, int], SentenceGenerator] = field(init=False)
 
@@ -36,9 +36,9 @@ class WebSentenceParserContainer:
         super().__setattr__("get_sentence_batch", source_module.get_sentence_batch)
 
 
-@dataclass(init=False, slots=True, repr=False, frozen=True, eq=False, order=False)
+@dataclass(init=False, repr=False, frozen=True, eq=False, order=False)
 class ImageParserContainer:
     get_image_links: Callable[[str], ImageGenerator] = field(init=False)
 
     def __init__(self, source_module: ImageParserInterface):
-        super().__setattr__("get_sentence_batch", source_module.get_image_links)
+        super().__setattr__("get_image_links", source_module.get_image_links)

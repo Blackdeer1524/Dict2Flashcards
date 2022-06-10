@@ -1,7 +1,6 @@
 import copy
-from collections.abc import Mapping
 from json import JSONEncoder
-from typing import Any, TypeVar, Optional
+from typing import Any, TypeVar, Mapping
 
 
 class _FrozenDictNode(Mapping):

@@ -91,7 +91,7 @@ class LocalCardGenerator(CardGenerator):
         """
         super(LocalCardGenerator, self).__init__(item_converter)
         if not os.path.isfile(local_dict_path):
-            raise Exception(f"Local dictionary with path {local_dict_path} doesn't exist")
+            raise Exception(f"Local dictionary with path \"{local_dict_path}\" doesn't exist")
 
         with open(local_dict_path, "r", encoding="UTF-8") as f:
             self.local_dictionary: list[(str, dict)] = json.load(f)

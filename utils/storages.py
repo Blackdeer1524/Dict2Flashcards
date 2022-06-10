@@ -86,6 +86,9 @@ class PointerList:
         elif isinstance(item, slice):
             return self._data[item]
 
+    def __iter__(self):
+        return iter(self._data)
+
     def __repr__(self):
         res = f"Name: {self.__class__.__name__}\n" \
               f"Length: {len(self)}\n" \

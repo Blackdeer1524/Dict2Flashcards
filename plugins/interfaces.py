@@ -1,5 +1,6 @@
 from typing import Protocol
 from parsers.return_types import SentenceGenerator, ImageGenerator
+from utils.cards import SavedDeck, CardStatus
 
 
 class WebWordParserInterface(Protocol):
@@ -51,6 +52,12 @@ class CardProcessorInterface(Protocol):
 
     @staticmethod
     def process_card(card: dict) -> None:
+        ...
+
+
+class DeckSavingFormatInterface(Protocol):
+    @staticmethod
+    def save(deck: SavedDeck, saving_card_status: CardStatus, saving_path: str):
         ...
 
 

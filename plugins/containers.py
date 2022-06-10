@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Callable
 
+from utils.cards import SavedDeck
 from parsers.return_types import SentenceGenerator, ImageGenerator
 from plugins.interfaces import ImageParserInterface
 from plugins.interfaces import LocalWordParserInterface
@@ -8,6 +9,7 @@ from plugins.interfaces import WebSentenceParserInterface
 from plugins.interfaces import WebWordParserInterface
 from plugins.interfaces import CardProcessorInterface
 from plugins.interfaces import LocalAudioGetterInterface
+from plugins.interfaces import DeckSavingFormatInterface
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False)
@@ -60,6 +62,13 @@ class CardProcessorContainer(PluginContainer):
         super().__setattr__("get_save_audio_name",   source_module.get_save_audio_name)
         super().__setattr__("get_card_audio_name",   source_module.get_card_audio_name)
         super().__setattr__("process_card",          source_module.process_card)
+
+
+class DeckSavingFormatContainer(PluginContainer):
+    save: Callable[[SavedDeck], None]
+
+    def __init__(self, source_module: DeckSavingFormatInterface):
+        super().__setattr__("save", source_module.save)
 
 
 class LocalAudioGetterContainer(PluginContainer):

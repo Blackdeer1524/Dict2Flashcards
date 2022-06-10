@@ -196,11 +196,9 @@ class SavedDeck(PointerList):
     AUDIO_DATA = "local_audios"
     USER_TAGS = "user_tags"
 
-    def __init__(self, saving_path: str):
+    def __init__(self):
         super(SavedDeck, self).__init__()
         self._statistics = [0, 0, 0]
-        self.saving_path = Path(saving_path)
-        self.saving_extension = self.saving_path.suffix
 
     def get_n_added(self):
         return self._statistics[CardStatus.ADD.value]
@@ -240,45 +238,6 @@ class SavedDeck(PointerList):
         for i in range(self.get_pointer_position(), len(self)):
             self._statistics[self[i][SavedDeck.CARD_STATUS].value] -= 1
         del self._data[self.get_pointer_position():]
-
-    def save(self, card_page_wrapper: Callable[[FrozenDict], dict] = lambda x: x):
-        if self.saving_extension == ".json":
-            saving_object = []
-            for card_page in self:
-                if card_page[SavedDeck.CARD_STATUS] == CardStatus.DELETE:
-                    continue
-                saving_object.append(card_page_wrapper(card_page))
-
-            with open(self.saving_path, "w", encoding="utf-8") as deck_file:
-                json.dump(saving_object, deck_file, cls=FrozenDictJSONEncoder)
-        elif self.saving_extension in (".txt", ".csv"):
-            csv_file = open(self.saving_path, 'w', encoding="UTF-8", newline='')
-            cards_writer = csv.writer(csv_file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-
-            for card_page in self:
-                if card_page[SavedDeck.CARD_STATUS] == CardStatus.DELETE:
-                    continue
-                processed_card = card_page_wrapper(card_page)
-                card_data = processed_card[SavedDeck.CARD_DATA]
-
-                sentence_example = card_data.get(FIELDS.sentences, [""])[0]
-                saving_word = card_data.get(FIELDS.word, "")
-                definition = card_data.get(FIELDS.definition, "")
-                dict_tags = card_data.get_str_dict_tags()
-
-                user_tags = card_data.get(SavedDeck.USER_TAGS, "")
-                tags = f"{dict_tags} {user_tags}"
-
-                images = ""
-                audios = ""
-                if (additional := processed_card.get(SavedDeck.ADDITIONAL_DATA)) is not None:
-                    images = " ".join([name for name in additional.get(SavedDeck.IMAGES_DATA, [])])
-                    audios = " ".join([name for name in additional.get(SavedDeck.AUDIO_DATA,  [])])
-
-                cards_writer.writerow([sentence_example, saving_word, definition, images, audios, tags])
-            csv_file.close()
-        else:
-            raise NotImplemented(f"Don't know how to save deck to {self.saving_extension} file!")
 
 
 class SentenceFetcher:

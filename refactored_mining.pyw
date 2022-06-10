@@ -8,16 +8,18 @@ from tkinter import messagebox
 from tkinter.filedialog import askopenfilename, askdirectory
 from typing import Any
 
+from playsound import playsound
 from tkinterdnd2 import Tk
 
 from consts.card_fields import FIELDS
 from consts.paths import *
+from plugins.factory import plugins
+from utils.audio_utils import AudioDownloader
 from utils.cards import Card
 from utils.cards import Deck, SentenceFetcher, SavedDeck, CardStatus
 from utils.error_handling import create_exception_message
 from utils.image_utils import ImageSearch
-from plugins.factory import plugins
-from utils.search_checker import ParsingException, FieldCheck
+from utils.search_checker import ParsingException
 from utils.search_checker import get_card_filter
 from utils.storages import validate_json
 from utils.string_utils import remove_special_chars
@@ -26,8 +28,7 @@ from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
-from playsound import playsound
-from utils.audio_utils import get_local_audio_path, get_save_audio_name, AudioDownloader
+
 
 class App(Tk):
     def __init__(self, *args, **kwargs):
@@ -69,9 +70,8 @@ class App(Tk):
         self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser,
                                                 sentence_batch_size=self.sentence_batch_size)
 
-        deck_name = os.path.basename(self.configurations["directories"]["last_open_file"]).split(sep=".")[0]
-        saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name + ".csv")
-        self.saved_cards = SavedDeck(saving_path=saving_path)
+        self.saved_cards = SavedDeck()
+        self.deck_saver = plugins.get_deck_saving_formats(self.configurations["deck"]["saving_format"])
 
         main_menu = Menu(self)
         filemenu = Menu(main_menu, tearoff=0)
@@ -294,14 +294,13 @@ class App(Tk):
         standard_conf_file = {"app": {"theme": "dark",
                                       "main_window_geometry": "500x800+0+0",
                                       "image_search_position": "+0+0"},
+                              "deck": {"saving_format": "csv"},
                               "scrappers": {"base_sentence_parser": "web_sentencedict",
                                             "word_parser_type": "web",
                                             "word_parser_name": "cambridge_US",
                                             "base_image_parser": "google",
-                                            "local_dict_search_type": 0,
-                                            "deck_search_type": 0,
-                                            "local_audio": "",
-                                            "non_pos_specific_search": False},
+                                            "local_audio": ""
+                                            },
                               "tags": {"hierarchical_pref": ""},
                               "directories": {"media_dir": "",
                                               "last_open_file": "",
@@ -356,6 +355,11 @@ class App(Tk):
         self.deck.save()
         with open(HISTORY_FILE_PATH, "w") as saving_f:
             json.dump(self.history, saving_f, indent=4)
+
+
+        deck_name = os.path.basename(self.configurations["directories"]["last_open_file"]).split(sep=".")[0]
+        saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name)
+        self.deck_saver.save(self.saved_cards, CardStatus.ADD, saving_path)
 
         # if self.SKIPPED_FILE:
         #     self.save_skip_file()
@@ -456,7 +460,6 @@ class App(Tk):
                 return
 
             word_filter = lambda comparable: re.search(pattern, comparable)
-
             additional_query = additional_filter_entry.get(1.0, "end").strip()
             try:
                 additional_filter = get_card_filter(additional_query) if additional_query else None

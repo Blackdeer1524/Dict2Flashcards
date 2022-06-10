@@ -7,20 +7,22 @@ from typing import Callable
 from typing import ClassVar
 from typing import TypeVar, Generic
 
-import parsers.local_audio_getters
-import saving.card_processors
 import parsers.image_parsers
+import parsers.local_audio_getters
 import parsers.sentence_parsers
 import parsers.word_parsers.local
 import parsers.word_parsers.web
+import saving.card_processors
+import saving.format_processors
 from consts.paths import LOCAL_MEDIA_DIR
 from parsers.return_types import SentenceGenerator, ImageGenerator
+from plugins.containers import CardProcessorContainer
+from plugins.containers import DeckSavingFormatContainer
 from plugins.containers import ImageParserContainer
+from plugins.containers import LocalAudioGetterContainer
 from plugins.containers import LocalWordParserContainer
 from plugins.containers import WebSentenceParserContainer
 from plugins.containers import WebWordParserContainer
-from plugins.containers import CardProcessorContainer
-from plugins.containers import LocalAudioGetterContainer
 from plugins.exceptions import LoaderError
 from plugins.exceptions import UnknownPluginName
 from utils.cards import WebCardGenerator, LocalCardGenerator
@@ -91,6 +93,7 @@ class PluginFactory:
     web_sent_parsers:    PluginLoader[WebSentenceParserContainer]
     image_parsers:       PluginLoader[ImageParserContainer]
     card_processors:     PluginLoader[CardProcessorContainer]
+    deck_saving_formats:  PluginLoader[DeckSavingFormatContainer]
     local_audio_getters: PluginLoader[LocalAudioGetterContainer]
 
     def __init__(self):
@@ -108,6 +111,8 @@ class PluginFactory:
                             PluginLoader("web image parser",    parsers.image_parsers,       ImageParserContainer))
         super().__setattr__("card_processors",
                             PluginLoader("card processor",      saving.card_processors,      CardProcessorContainer))
+        super().__setattr__("deck_saving_formats",
+                            PluginLoader("deck saving format",  saving.format_processors,    DeckSavingFormatContainer))
         super().__setattr__("local_audio_getters",
                             PluginLoader("local audio getter",  parsers.local_audio_getters, LocalAudioGetterContainer))
 
@@ -133,14 +138,21 @@ class PluginFactory:
             raise UnknownPluginName(f"Unknown image parser: {name}")
         return gen.get_image_links
 
-    def get_card_processor(self, name: str):
+    def get_card_processor(self, name: str) -> CardProcessorContainer:
         if (proc := self.card_processors.get(name)) is None:
             raise UnknownPluginName(f"Unknown card processor: {name}")
         return proc
-
-    def get_local_audio_getter(self, name: str):
+    
+    def get_deck_saving_formats(self, name: str) -> DeckSavingFormatContainer:
+        if (saving_format := self.deck_saving_formats.get(name)) is None:
+            raise UnknownPluginName(f"Unknown deck saving format: {name}")
+        return saving_format
+    
+    def get_local_audio_getter(self, name: str) -> LocalAudioGetterContainer:
         if (getter := self.local_audio_getters.get(name)) is None:
             raise UnknownPluginName(f"Unknown local audio getter: {name}")
         return getter
-
+    
+        
+    
 plugins = PluginFactory()

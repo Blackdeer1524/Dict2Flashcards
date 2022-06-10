@@ -360,9 +360,12 @@ class App(Tk):
 
         deck_name = os.path.basename(self.configurations["directories"]["last_open_file"]).split(sep=".")[0]
         saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name)
-        self.deck_saver.save(self.saved_cards, CardStatus.ADD, f"{saving_path}_{self.srt_session_start}")
-        self.deck_saver.save(self.saved_cards, CardStatus.BURY, f"{saving_path}_{self.srt_session_start}_buried")
-
+        self.deck_saver.save(self.saved_cards, CardStatus.ADD,
+                             f"{saving_path}_{self.srt_session_start}",
+                             self.card_processor.get_card_image_name)
+        self.deck_saver.save(self.saved_cards, CardStatus.BURY,
+                             f"{saving_path}_{self.srt_session_start}_buried",
+                             self.card_processor.get_card_image_name)
 
     def on_closing(self):
         """
@@ -380,18 +383,20 @@ class App(Tk):
     def save_button(self):
         messagebox.showinfo(message="Файлы сохранены")
         self.save_files()
-
-    def get_word(self):
+    
+    @property
+    def word(self):
         return self.word_text.get(1.0, "end").strip()
 
-    def get_definition(self):
+    @property
+    def definition(self):
         return self.definition_text.get(1.0, "end").rstrip()
-
+    
     def get_sentence(self, n: int):
         return self.sent_text_list[n].get(1.0, "end").rstrip()
 
     def replace_sentences(self) -> None:
-        sent_batch, error_message, local_flag = self.sentence_fetcher.get_sentence_batch(self.get_word())
+        sent_batch, error_message, local_flag = self.sentence_fetcher.get_sentence_batch(self.word)
         for text_field in self.sent_text_list:
             text_field.clear()
             text_field.fill_placeholder()
@@ -425,7 +430,7 @@ class App(Tk):
         self.definition_text.insert(1.0, self.dict_card_data.get(FIELDS.definition, ""))
         self.definition_text.fill_placeholder()
 
-        self.sentence_fetcher(self.get_word(), self.dict_card_data.get(FIELDS.sentences, []))
+        self.sentence_fetcher(self.word, self.dict_card_data.get(FIELDS.sentences, []))
         self.replace_sentences()
         if not self.dict_card_data:
             self.find_image_button["text"] = "Добавить изображение"
@@ -612,9 +617,14 @@ class App(Tk):
         statistics_window.deiconify()
 
     def choose_sentence(self, sentence_number: int):
-        self.dict_card_data[FIELDS.word] = self.get_word()
-        self.dict_card_data[FIELDS.definition] = self.get_definition()
-        self.dict_card_data[FIELDS.sentences] = [self.get_sentence(sentence_number)]
+        self.dict_card_data[FIELDS.word] = self.word
+        self.dict_card_data[FIELDS.definition] = self.definition
+
+        picked_sentence = self.get_sentence(sentence_number)
+        if not picked_sentence:
+            picked_sentence = self.dict_card_data[FIELDS.word]
+
+        self.dict_card_data[FIELDS.sentences] = [picked_sentence]
         self.saved_cards.append(status=CardStatus.ADD, card_data=self.dict_card_data)
         if not self.deck.get_n_cards_left():
             self.deck.append(Card(self.dict_card_data))
@@ -624,7 +634,7 @@ class App(Tk):
         def show_download_error(exc):
             messagebox.showerror(message=f"Ошибка получения звука\n{exc}")
 
-        word = self.get_word()
+        word = self.word
         dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
         if self.configurations["scrappers"]["local_audio"]:
             audio_file_path = self.local_audio_getter.get_local_audio_path(word, dict_tags)
@@ -657,15 +667,18 @@ class App(Tk):
         def connect_images_to_card(instance: ImageSearch):
             nonlocal word
 
-            clean_word = remove_special_chars(word, sep='-')
-            name_pattern = f"mined-{clean_word}" + "-{}.png"
+            dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
 
             names: list[str] = []
             for i in range(len(instance.working_state)):
                 if instance.working_state[i]:
                     saving_name = "{}/{}"\
                         .format(self.configurations["directories"]["media_dir"],
-                                name_pattern.format(hash(instance.images_source[i])))
+                                self.card_processor
+                                .get_save_image_name(word,
+                                                     instance.images_source[i],
+                                                     self.configurations["scrappers"]["base_image_parser"],
+                                                     dict_tags))
                     instance.saving_images[i].save(saving_name)
                     names.append(saving_name)
 
@@ -680,11 +693,8 @@ class App(Tk):
             x, y = instance.geometry().split(sep="+")[1:]
             self.configurations["app"]["image_search_position"] = f"+{x}+{y}"
 
-        word = self.get_word()
-
+        word = self.word
         show_image_width = 250
-
-
         button_pady = button_padx = 10
         height_lim = self.winfo_height() * 7 // 8
         image_finder = ImageSearch(master=self,

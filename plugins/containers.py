@@ -50,14 +50,14 @@ class ImageParserContainer(PluginContainer):
 
 
 class CardProcessorContainer(PluginContainer):
-    get_saving_image_name: Callable[[str, str, dict], str]
+    get_save_image_name: Callable[[str, str, dict], str]
     get_card_image_name:   Callable[[str], str]
     get_save_audio_name:   Callable[[str, str, dict], str]
     get_card_audio_name:   Callable[[str], str]
     process_card:          Callable[[dict], None]
 
     def __init__(self, source_module: CardProcessorInterface):
-        super().__setattr__("get_saving_image_name", source_module.get_saving_image_name)
+        super().__setattr__("get_save_image_name", source_module.get_save_image_name)
         super().__setattr__("get_card_image_name",   source_module.get_card_image_name)
         super().__setattr__("get_save_audio_name",   source_module.get_save_audio_name)
         super().__setattr__("get_card_audio_name",   source_module.get_card_audio_name)

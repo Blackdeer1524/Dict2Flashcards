@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Protocol, Callable
 from parsers.return_types import SentenceGenerator, ImageGenerator
 from utils.cards import SavedDeck, CardStatus
 
@@ -35,7 +35,7 @@ class ImageParserInterface(Protocol):
 
 class CardProcessorInterface(Protocol):
     @staticmethod
-    def get_saving_image_name(word: str, image_source: str, dict_tags: dict) -> str:
+    def get_save_image_name(word: str, image_source: str, image_parser_name: str, dict_tags: dict) -> str:
         ...
 
     @staticmethod
@@ -57,7 +57,8 @@ class CardProcessorInterface(Protocol):
 
 class DeckSavingFormatInterface(Protocol):
     @staticmethod
-    def save(deck: SavedDeck, saving_card_status: CardStatus, saving_path: str):
+    def save(deck: SavedDeck, saving_card_status: CardStatus, saving_path: str,
+             image_names_wrapper: Callable[[str], str]):
         ...
 
 

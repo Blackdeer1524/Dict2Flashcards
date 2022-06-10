@@ -3,15 +3,15 @@ import os.path
 from utils.string_utils import remove_special_chars
 
 
-def get_saving_image_name(word: str,
-                          image_source: str,
-                          dict_tags: dict,
-                          image_parser_name: str) -> str:
-    return f"mined-{remove_special_chars(word, sep='-')}-{hash(image_source)}.png"
+def get_save_image_name(word: str,
+                        image_source: str,
+                        image_parser_name: str,
+                        dict_tags: dict) -> str:
+    return f"mined-{image_parser_name}-{remove_special_chars(word, sep='-')}-{hash(image_source)}.png"
 
 
 def get_card_image_name(saved_image_path: str) -> str:
-    return f"<img src='{os.path.split(saved_image_path)[-1]}.png'/>"
+    return f"<img src='{os.path.split(saved_image_path)[-1]}'/>"
 
 
 def get_save_audio_name(word: str, word_parser_name: str, dict_tags: dict) -> str:

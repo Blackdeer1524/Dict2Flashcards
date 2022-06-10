@@ -28,6 +28,7 @@ from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
+from datetime import datetime
 
 
 class App(Tk):
@@ -37,8 +38,10 @@ class App(Tk):
         if error_code:
             self.destroy()
             return
-
         self.save_conf_file()
+
+        self.session_start = datetime.now()
+        self.srt_session_start = self.session_start.strftime("%d-%m-%Y-%H-%M-%S")
 
         self.history = App.load_history_file()
         if not self.history.get(self.configurations["directories"]["last_open_file"]):
@@ -143,7 +146,8 @@ class App(Tk):
                                                 width=button_width))
 
         self.delete_button = Button(self, text="Del", command=self.delete_command, width=button_width)
-        self.prev_button = Button(self, text="Prev", command=self.prev_command, state="disabled", width=button_width)
+        self.prev_button = Button(self, text="Prev", command=lambda x=-1: self.replace_decks_pointers(x),
+                                  state="disabled", width=button_width)
         self.sound_button = Button(self, text="Play", command=self.play_sound, width=button_width)
         self.anki_button = Button(self, text="Anki", command=App.func_placeholder, width=button_width)
         self.bury_button = Button(self, text="Bury", command=App.func_placeholder, width=button_width)
@@ -229,7 +233,7 @@ class App(Tk):
         self.bind("<Control-f>", lambda event: self.find_dialog())
         self.bind("<Control-e>", lambda event: self.statistics_dialog())
         self.bind("<Control-Shift_L><A>", lambda event: self.add_word_dialog())
-        self.bind("<Control-z>", lambda event: self.prev_command())
+        self.bind("<Control-z>", lambda event: self.replace_decks_pointers(-1))
         self.bind("<Control-Key-1>", lambda event: self.choose_sentence(0))
         self.bind("<Control-Key-2>", lambda event: self.choose_sentence(1))
         self.bind("<Control-Key-3>", lambda event: self.choose_sentence(2))
@@ -267,9 +271,9 @@ class App(Tk):
             self.saved_cards.append(CardStatus.DELETE)
         self.refresh()
 
-    def prev_command(self):
-        self.deck.move(-2)
-        self.saved_cards.move(-1)
+    def replace_decks_pointers(self, n: int):
+        self.deck.move(n - 1)
+        self.saved_cards.move(n)
         self.refresh()
 
     @staticmethod
@@ -342,9 +346,6 @@ class App(Tk):
         return (conf_file, False)
 
     def save_files(self):
-        """
-        Сохраняет файлы если они не пустые или есть изменения
-        """
         # получение координат на экране через self.winfo_rootx(), self.winfo_rooty() даёт некоторое смещение
         self.configurations["app"]["main_window_geometry"] = self.geometry()
         self.configurations["tags"]["hierarchical_pref"] = self.tag_prefix_field.get()
@@ -359,10 +360,9 @@ class App(Tk):
 
         deck_name = os.path.basename(self.configurations["directories"]["last_open_file"]).split(sep=".")[0]
         saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name)
-        self.deck_saver.save(self.saved_cards, CardStatus.ADD, saving_path)
+        self.deck_saver.save(self.saved_cards, CardStatus.ADD, f"{saving_path}_{self.srt_session_start}")
+        self.deck_saver.save(self.saved_cards, CardStatus.BURY, f"{saving_path}_{self.srt_session_start}_buried")
 
-        # if self.SKIPPED_FILE:
-        #     self.save_skip_file()
 
     def on_closing(self):
         """
@@ -497,14 +497,22 @@ class App(Tk):
         add_word_frame.deiconify()
         spawn_toplevel_in_center(master=self, toplevel_widget=add_word_frame,
                                  desired_toplevel_width=self.winfo_width())
-
+    
     def find_dialog(self):
         def go_to():
             find_query = find_entry.get(1.0, "end").strip()
             if not find_query:
                 messagebox.showerror("Ошибка запроса", "Пустой запрос!")
                 return
-
+            
+            if find_query.startswith("->"):
+                if not (move_quotient := find_query[2:]).lstrip("-").isdigit():
+                    messagebox.showerror("Ошибка запроса", "Неверно задан переход!")
+                else:
+                    self.replace_decks_pointers(int(move_quotient))
+                find_frame.destroy()
+                return 
+            
             try:
                 searching_filter = get_card_filter(find_query)
             except ParsingException as e:

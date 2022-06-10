@@ -1,20 +1,22 @@
 import json
 import re
+from datetime import datetime
 from tkinter import Button, Menu, IntVar
+from tkinter import Canvas
 from tkinter import Frame
 from tkinter import Label
 from tkinter import Toplevel
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename, askdirectory
+from tkinter.ttk import Scrollbar
 from typing import Any
+from typing import Callable
 
-from playsound import playsound
 from tkinterdnd2 import Tk
 
 from consts.card_fields import FIELDS
 from consts.paths import *
 from plugins.factory import plugins
-from utils.audio_utils import AudioDownloader
 from utils.cards import Card
 from utils.cards import Deck, SentenceFetcher, SavedDeck, CardStatus
 from utils.error_handling import create_exception_message
@@ -22,13 +24,11 @@ from utils.image_utils import ImageSearch
 from utils.search_checker import ParsingException
 from utils.search_checker import get_card_filter
 from utils.storages import validate_json
-from utils.string_utils import remove_special_chars
 from utils.widgets import EntryWithPlaceholder as Entry
 from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
-from datetime import datetime
 
 
 class App(Tk):
@@ -70,11 +70,12 @@ class App(Tk):
             self.local_audio_getter = None
 
         self.sentence_batch_size = 5
-        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser,
+        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch,
                                                 sentence_batch_size=self.sentence_batch_size)
 
         self.saved_cards = SavedDeck()
         self.deck_saver = plugins.get_deck_saving_formats(self.configurations["deck"]["saving_format"])
+        self.buried_saver = plugins.get_deck_saving_formats("json_deck")
 
         main_menu = Menu(self)
         filemenu = Menu(main_menu, tearoff=0)
@@ -112,9 +113,8 @@ class App(Tk):
         self.find_image_button = Button(self, text="Добавить изображение", command=self.start_image_search)
         self.image_word_parsers_names = plugins.image_parsers.loaded
 
-        self.image_word_parser_name = self.configurations["scrappers"]["base_image_parser"]
         self.image_parser_option_menu = get_option_menu(self,
-                                                        init_text=self.image_word_parser_name,
+                                                        init_text=self.image_parser.name,
                                                         values=self.image_word_parsers_names,
                                                         command=App.func_placeholder,
                                                         widget_configuration={},
@@ -122,9 +122,9 @@ class App(Tk):
         self.sentence_button_text = "Добавить предложения"
         self.add_sentences_button = Button(self, text=self.sentence_button_text,
                                            command=self.replace_sentences)
-        self.sentence_word_parser_name = self.configurations["scrappers"]["base_sentence_parser"]
+
         self.sentence_parser_option_menu = get_option_menu(self,
-                                                           init_text=self.sentence_word_parser_name,
+                                                           init_text=self.sentence_parser.name,
                                                            values=plugins.web_sent_parsers.loaded,
                                                            command=App.func_placeholder,
                                                            widget_configuration={},
@@ -299,7 +299,7 @@ class App(Tk):
                                       "main_window_geometry": "500x800+0+0",
                                       "image_search_position": "+0+0"},
                               "deck": {"saving_format": "csv"},
-                              "scrappers": {"base_sentence_parser": "web_sentencedict",
+                              "scrappers": {"base_sentence_parser": "sentencedict",
                                             "word_parser_type": "web",
                                             "word_parser_name": "cambridge_US",
                                             "base_image_parser": "google",
@@ -362,10 +362,13 @@ class App(Tk):
         saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name)
         self.deck_saver.save(self.saved_cards, CardStatus.ADD,
                              f"{saving_path}_{self.srt_session_start}",
-                             self.card_processor.get_card_image_name)
-        self.deck_saver.save(self.saved_cards, CardStatus.BURY,
-                             f"{saving_path}_{self.srt_session_start}_buried",
-                             self.card_processor.get_card_image_name)
+                             self.card_processor.get_card_image_name,
+                             self.card_processor.get_card_audio_name)
+
+        self.buried_saver.save(self.saved_cards, CardStatus.BURY,
+                               f"{saving_path}_{self.srt_session_start}_buried",
+                               self.card_processor.get_card_image_name,
+                               self.card_processor.get_card_audio_name)
 
     def on_closing(self):
         """
@@ -381,8 +384,8 @@ class App(Tk):
             self.destroy()
 
     def save_button(self):
-        messagebox.showinfo(message="Файлы сохранены")
         self.save_files()
+        messagebox.showinfo(message="Файлы сохранены")
     
     @property
     def word(self):
@@ -619,25 +622,84 @@ class App(Tk):
     def choose_sentence(self, sentence_number: int):
         self.dict_card_data[FIELDS.word] = self.word
         self.dict_card_data[FIELDS.definition] = self.definition
+        self.dict_card_data[SavedDeck.WORD_PARSER_NAME] = self.typed_word_parser_name
 
         picked_sentence = self.get_sentence(sentence_number)
         if not picked_sentence:
             picked_sentence = self.dict_card_data[FIELDS.word]
 
         self.dict_card_data[FIELDS.sentences] = [picked_sentence]
+
+        if self.local_audio_getter is None and self.dict_card_data.get(FIELDS.img_links, []) or \
+            self.local_audio_getter is not None and self.local_audio_getter.get_local_audio_path():
+            self.dict_card_data[SavedDeck.AUDIO_DATA] = [
+                self.card_processor.get_save_audio_name(self.word,
+                                                        self.typed_word_parser_name,
+                                                        self.dict_card_data.get(FIELDS.dict_tags, {}))
+            ]
+
         self.saved_cards.append(status=CardStatus.ADD, card_data=self.dict_card_data)
         if not self.deck.get_n_cards_left():
             self.deck.append(Card(self.dict_card_data))
         self.refresh()
 
     def play_sound(self):
+        def sound_dialog(audio_src: list[str], info: list[str], play_command: Callable[[str, int], None]):
+            assert len(audio_src) == len(info)
+
+            playsound_toplevel = Toplevel(self)
+            playsound_toplevel.withdraw()
+            playsound_toplevel.title("Аудио")
+
+            scroll_frame = ScrolledFrame(playsound_toplevel, scrollbars="both")
+            scroll_frame.pack()
+            scroll_frame.bind_scroll_wheel(playsound_toplevel)
+            inner_frame = scroll_frame.display_widget(Frame)
+            for i in range(len(audio_src)):
+                label = Label(inner_frame, text=info[i], anchor="center",
+                              relief="ridge")
+                label.grid(row=i, column=0, sticky="news")
+                b = Button(inner_frame, text="Play", command=lambda src=audio_src[i]: play_command(src, i))
+                b.grid(row=i, column=3, sticky="e")
+
+            playsound_toplevel.bind_all("<Escape>", lambda _: playsound_toplevel.destroy())
+            playsound_toplevel.update()
+            current_frame_width = inner_frame.winfo_width()
+            current_frame_height = inner_frame.winfo_height()
+            scroll_frame.config(width=min(self.winfo_width(), current_frame_width),
+                                height=min(self.winfo_height(), current_frame_height))
+            spawn_toplevel_in_center(self, playsound_toplevel)
+            playsound_toplevel.deiconify()
+
         def show_download_error(exc):
             messagebox.showerror(message=f"Ошибка получения звука\n{exc}")
+
+        def web_playsound(src: str, postfix: str = ""):
+            audio_name = self.card_processor.get_save_audio_name(word,
+                                                                 self.typed_word_parser_name,
+                                                                 dict_tags)
+
+            temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name + postfix)
+            success = True
+            if not os.path.exists(temp_audio_path):
+                success = AudioDownloader.fetch_audio(url=src,
+                                                      save_path=temp_audio_path,
+                                                      timeout=5,
+                                                      headers={
+                                                          'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'},
+                                                      exception_action=lambda exc: show_download_error(exc))
+            if success:
+                playsound(temp_audio_path)
+
+        def local_playsound(src: str, postfix: str = ""):
+            playsound(src)
+
 
         word = self.word
         dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
         if self.configurations["scrappers"]["local_audio"]:
             audio_file_path = self.local_audio_getter.get_local_audio_path(word, dict_tags)
+
             if audio_file_path:
                 playsound(audio_file_path, block=True)
                 return
@@ -682,13 +744,13 @@ class App(Tk):
                     instance.saving_images[i].save(saving_name)
                     names.append(saving_name)
 
-            if (paths := self.dict_card_data.get(self.saved_cards.IMAGES_DATA)) is not None:
+            if (paths := self.dict_card_data.get(self.saved_cards.SAVED_IMAGES_PATHS)) is not None:
                 for path in paths:
                     if os.path.isfile(path):
                         os.remove(path)
 
             if names:
-                self.dict_card_data[self.saved_cards.IMAGES_DATA] = names
+                self.dict_card_data[self.saved_cards.SAVED_IMAGES_PATHS] = names
 
             x, y = instance.geometry().split(sep="+")[1:]
             self.configurations["app"]["image_search_position"] = f"+{x}+{y}"
@@ -700,9 +762,9 @@ class App(Tk):
         image_finder = ImageSearch(master=self,
                                    search_term=word,
                                    saving_dir=self.configurations["directories"]["media_dir"],
-                                   url_scrapper=self.image_parser,
+                                   url_scrapper=self.image_parser.get_image_links,
                                    init_urls=self.dict_card_data.get(FIELDS.img_links, []),
-                                   local_images=self.dict_card_data.get(self.saved_cards.IMAGES_DATA, []),
+                                   local_images=self.dict_card_data.get(self.saved_cards.SAVED_IMAGES_PATHS, []),
                                    # headers=self.headers,
                                    on_close_action=connect_images_to_card,
                                    show_image_width=show_image_width,

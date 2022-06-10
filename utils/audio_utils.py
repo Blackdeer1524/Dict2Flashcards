@@ -7,41 +7,7 @@ from tkinter import ttk
 
 import requests
 
-from .string_utils import remove_special_chars, LETTERS
-from .window_utils import spawn_toplevel_in_center
-
-AUDIO_NAME_SPEC_CHARS = '/\\:*?\"<>| '
-
-
-def get_save_audio_name(word: str, pos: str, wp_name: str) -> str:
-    word = word.strip().lower()
-    if pos:
-        raw_audio_name = f"{remove_special_chars(word, sep='-')}-{remove_special_chars(pos, sep='-')}"
-    else:
-        raw_audio_name = remove_special_chars(word, sep='-')
-    prepared_word_parser_name = remove_special_chars(wp_name, sep='-')
-    audio_name = f"mined-{raw_audio_name}-{prepared_word_parser_name}.mp3"
-    return audio_name
-
-
-def get_local_audio_path(word, pos="", local_audio_folder_path="./", with_pos=True):
-    word = word.strip().lower()
-    if not word:
-        return ""
-
-    letter_group = word[0] if word[0] in LETTERS else "0-9"
-    name = f"{remove_special_chars(word.lower(), '-', AUDIO_NAME_SPEC_CHARS)}.mp3"
-    search_root = os.path.join(local_audio_folder_path, letter_group)
-    if with_pos:
-        pos = remove_special_chars(pos.lower(), '-', AUDIO_NAME_SPEC_CHARS)
-        res = os.path.join(search_root, pos, name)
-    else:
-        res = ""
-        for current_dir_path, dirs, files in os.walk(search_root):
-            if name in files:
-                res = os.path.join(current_dir_path, name)
-                break
-    return res if os.path.exists(res) else ""
+from utils.window_utils import spawn_toplevel_in_center
 
 
 class AudioDownloader(Toplevel):

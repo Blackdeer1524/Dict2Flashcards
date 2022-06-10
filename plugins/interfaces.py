@@ -58,7 +58,8 @@ class CardProcessorInterface(Protocol):
 class DeckSavingFormatInterface(Protocol):
     @staticmethod
     def save(deck: SavedDeck, saving_card_status: CardStatus, saving_path: str,
-             image_names_wrapper: Callable[[str], str]):
+             image_names_wrapper: Callable[[str], str],
+             audio_names_wrapper: Callable[[str], str]):
         ...
 
 

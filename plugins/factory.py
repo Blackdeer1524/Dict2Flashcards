@@ -15,7 +15,6 @@ import parsers.word_parsers.web
 import saving.card_processors
 import saving.format_processors
 from consts.paths import LOCAL_MEDIA_DIR
-from parsers.return_types import SentenceGenerator, ImageGenerator
 from plugins.containers import CardProcessorContainer
 from plugins.containers import DeckSavingFormatContainer
 from plugins.containers import ImageParserContainer
@@ -59,6 +58,7 @@ class PluginLoader(Generic[PluginContainer]):
                  plugin_type: str,
                  module: ModuleType,
                  container_type: PluginContainer,
+                 plugin_name_prefix: str = "",
                  error_callback: Callable[[Exception, str], None] = lambda *_: None):
         if (module_name := module.__name__) in PluginLoader._already_initialized:
             raise LoaderError(f"{module_name} loader was created earlier!")
@@ -68,7 +68,7 @@ class PluginLoader(Generic[PluginContainer]):
         _loaded_plugin_data = {}
         for name, module in parse_namespace(module).items():
             try:
-                _loaded_plugin_data[name] = container_type(module)
+                _loaded_plugin_data[name] = container_type(f"{plugin_name_prefix}{name}", module)
             except AttributeError as e:
                 error_callback(e, name)
                 self.not_loaded.append(name)
@@ -102,11 +102,11 @@ class PluginFactory:
         PluginFactory._is_initialized = True
 
         super().__setattr__("web_word_parsers",
-                            PluginLoader("web word parser",     parsers.word_parsers.web,    WebWordParserContainer))
+                            PluginLoader("web word parser",     parsers.word_parsers.web,    WebWordParserContainer, "web_"))
         super().__setattr__("local_word_parsers",
-                            PluginLoader("local word parser",   parsers.word_parsers.local,  LocalWordParserContainer))
+                            PluginLoader("local word parser",   parsers.word_parsers.local,  LocalWordParserContainer, "local_"))
         super().__setattr__("web_sent_parsers",
-                            PluginLoader("web sentence parser", parsers.sentence_parsers,    WebSentenceParserContainer))
+                            PluginLoader("web sentence parser", parsers.sentence_parsers,    WebSentenceParserContainer, "web_"))
         super().__setattr__("image_parsers",
                             PluginLoader("web image parser",    parsers.image_parsers,       ImageParserContainer))
         super().__setattr__("card_processors",
@@ -128,15 +128,15 @@ class PluginFactory:
         return LocalCardGenerator(local_dict_path=f"{LOCAL_MEDIA_DIR}/{args.local_dict_name}.json",
                                   item_converter=args.translate)
 
-    def get_sentence_parser(self, name: str) -> Callable[[str, int], SentenceGenerator]:
+    def get_sentence_parser(self, name: str) -> WebSentenceParserContainer:
         if (gen := self.web_sent_parsers.get(name)) is None:
             raise UnknownPluginName(f"Unknown sentence parser: {name}")
-        return gen.get_sentence_batch
+        return gen
 
-    def get_image_parser(self, name: str) -> Callable[[str], ImageGenerator]:
+    def get_image_parser(self, name: str) -> ImageParserContainer:
         if (gen := self.image_parsers.get(name)) is None:
             raise UnknownPluginName(f"Unknown image parser: {name}")
-        return gen.get_image_links
+        return gen
 
     def get_card_processor(self, name: str) -> CardProcessorContainer:
         if (proc := self.card_processors.get(name)) is None:

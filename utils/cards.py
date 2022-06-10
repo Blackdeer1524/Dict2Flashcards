@@ -192,7 +192,8 @@ class SavedDeck(PointerList):
     CARD_STATUS = "status"
     CARD_DATA = "card"
     ADDITIONAL_DATA = "additional"
-    IMAGES_DATA = "local_images"
+    WORD_PARSER_NAME = "wp_name"
+    SAVED_IMAGES_PATHS = "local_images"
     AUDIO_DATA = "local_audios"
     USER_TAGS = "user_tags"
 
@@ -218,16 +219,14 @@ class SavedDeck(PointerList):
             saving_card = Card(card_data)
             res[SavedDeck.CARD_DATA] = saving_card
 
-            additional_data = {}
-            if (image_data := card_data.get(SavedDeck.IMAGES_DATA)) is not None:
-                additional_data[SavedDeck.IMAGES_DATA] = image_data
+            additional_data = {SavedDeck.WORD_PARSER_NAME: card_data[SavedDeck.WORD_PARSER_NAME]}
+            if (image_data := card_data.get(SavedDeck.SAVED_IMAGES_PATHS)) is not None:
+                additional_data[SavedDeck.SAVED_IMAGES_PATHS] = image_data
             if (audio_data := card_data.get(SavedDeck.AUDIO_DATA)) is not None:
                 additional_data[SavedDeck.AUDIO_DATA] = audio_data
             if (user_tags := card_data.get(SavedDeck.USER_TAGS)) is not None:
                 additional_data[SavedDeck.USER_TAGS] = user_tags
-
-            if additional_data:
-                res[SavedDeck.ADDITIONAL_DATA] = additional_data
+            res[SavedDeck.ADDITIONAL_DATA] = additional_data
         
         self._data.append(FrozenDict(res))
         self._pointer_position += 1

@@ -9,7 +9,8 @@ from consts.card_fields import FIELDS
 def save(deck: SavedDeck,
          saving_card_status: CardStatus,
          saving_path: str,
-         image_names_wrapper: Callable[[str], str]):
+         image_names_wrapper: Callable[[str], str],
+         audio_names_wrapper: Callable[[str], str]):
     csv_file = open(saving_path + ".csv", 'w', encoding="UTF-8")
     cards_writer = csv.writer(csv_file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
@@ -26,11 +27,9 @@ def save(deck: SavedDeck,
         user_tags = card_data.get(SavedDeck.USER_TAGS, "")
         tags = f"{dict_tags} {user_tags}"
 
-        images = ""
-        audios = ""
-        if (additional := card_page.get(SavedDeck.ADDITIONAL_DATA)) is not None:
-            images = " ".join([image_names_wrapper(name) for name in additional.get(SavedDeck.IMAGES_DATA, [])])
-            audios = " ".join([name for name in additional.get(SavedDeck.AUDIO_DATA, [])])
+        additional = card_page[SavedDeck.ADDITIONAL_DATA]
+        images = " ".join([image_names_wrapper(name) for name in additional.get(SavedDeck.SAVED_IMAGES_PATHS, [])])
+        audios = " ".join([audio_names_wrapper(name) for name in additional.get(SavedDeck.AUDIO_DATA, [])])
 
         cards_writer.writerow([sentence_example, saving_word, definition, images, audios, tags])
     csv_file.close()

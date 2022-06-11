@@ -29,6 +29,7 @@ from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
+from functools import partial
 
 
 class App(Tk):
@@ -87,7 +88,7 @@ class App(Tk):
         filemenu.add_separator()
         filemenu.add_command(label="Справка", command=App.func_placeholder)
         filemenu.add_separator()
-        filemenu.add_command(label="Скачать аудио", command=App.func_placeholder)
+        filemenu.add_command(label="Скачать аудио", command=partial(self.download_audio, choose_file=True))
         filemenu.add_separator()
         filemenu.add_command(label="Сменить пользователя", command=App.func_placeholder)
         main_menu.add_cascade(label="Файл", menu=filemenu)
@@ -661,8 +662,8 @@ class App(Tk):
         self.dict_card_data[FIELDS.sentences] = [picked_sentence]
 
         if self.local_audio_getter is not None and (local_audios := self.local_audio_getter.get_local_audios(word, dict_tags)):
-            self.dict_card_data[SavedDataDeck.AUDIO_SRC] = local_audios
-            self.dict_card_data[SavedDataDeck.AUDIO_SRC_TYPE] = SavedDataDeck.AUDIO_SRC_TYPE_LOCAL
+            self.dict_card_data[SavedDataDeck.AUDIO_SRCS] = local_audios
+            self.dict_card_data[SavedDataDeck.AUDIO_SRCS_TYPE] = SavedDataDeck.AUDIO_SRC_TYPE_LOCAL
             self.dict_card_data[SavedDataDeck.AUDIO_SAVING_PATHS] = [
                 os.path.join(self.configurations["directories"]["media_dir"],
                              self.card_processor.get_save_audio_name(word,
@@ -672,8 +673,8 @@ class App(Tk):
                 for i in range(len(local_audios))
             ]
         elif self.local_audio_getter is None and (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
-            self.dict_card_data[SavedDataDeck.AUDIO_SRC] = web_audios
-            self.dict_card_data[SavedDataDeck.AUDIO_SRC_TYPE] = SavedDataDeck.AUDIO_SRC_TYPE_WEB
+            self.dict_card_data[SavedDataDeck.AUDIO_SRCS] = web_audios
+            self.dict_card_data[SavedDataDeck.AUDIO_SRCS_TYPE] = SavedDataDeck.AUDIO_SRC_TYPE_WEB
             self.dict_card_data[SavedDataDeck.AUDIO_SAVING_PATHS] = [
                 os.path.join(self.configurations["directories"]["media_dir"],
                              self.card_processor.get_save_audio_name(word,

@@ -1,5 +1,7 @@
 import requests
 import bs4
+from consts.card_fields import FIELDS
+from utils.preprocessing import remove_empty_keys
 
 
 user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'
@@ -11,13 +13,8 @@ link_prefix = "https://dictionary.cambridge.org"
 
 
 def translate(word: str, word_dict: dict):
-    """
-    Adapt new parser to legacy code
-    """
     word_list = []
     for pos in word_dict:
-        # uk_ipa = word_dict[word][pos]["UK IPA"]
-        # us_ipa = word_dict[word][pos]["US IPA"]
         audio = word_dict[pos].get("UK_audio_link", "")
         for definition, examples, domain, labels_and_codes, level, \
             region, usage, image, alt_terms in zip(word_dict[pos]["definitions"],
@@ -29,13 +26,20 @@ def translate(word: str, word_dict: dict):
                                                    word_dict[pos]["usage"],
                                                    word_dict[pos]["image_links"],
                                                    word_dict[pos]["alt_terms"]):
-            # {"word": слово_n, "meaning": значение_n, "Sen_Ex": [пример_1, ..., пример_n]}
-            current_word_dict = {"word": word, "meaning": definition,
-                                 "Sen_Ex": examples, "domain": domain, "level": level, "region": region,
-                                 "usage": usage, "pos": pos, "audio_link": audio, "image_link": image,
-                                 "alt_terms": alt_terms}
-            current_word_dict = {key: value for key, value in current_word_dict.items() if
-                                 value not in ("", [])}
+            current_word_dict = {FIELDS.word: word.strip(),
+                                 FIELDS.alt_terms: alt_terms,
+                                 FIELDS.definition: definition,
+                                 FIELDS.sentences: examples,
+                                 FIELDS.audio_links: [audio] if audio else [],
+                                 FIELDS.img_links: [image] if image else [],
+                                 FIELDS.dict_tags: {"domain": domain,
+                                                    "level": level,
+                                                    "region": region,
+                                                    "usage": usage,
+                                                    "pos": pos
+                                                    }
+                                 }
+            remove_empty_keys(current_word_dict)
             word_list.append(current_word_dict)
     return word_list
 

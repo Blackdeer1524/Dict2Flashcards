@@ -195,8 +195,8 @@ class SavedDataDeck(PointerList):
     USER_TAGS          = "user_tags"           # 1
     SAVED_IMAGES_PATHS = "local_images"        # 1
     AUDIO_DATA         = "audio_data"          # 1
-    AUDIO_SRC          = "audio_src"           # 2
-    AUDIO_SRC_TYPE     = "audio_src_type"      # 2
+    AUDIO_SRCS         = "audio_src"           # 2
+    AUDIO_SRCS_TYPE    = "audio_src_type"      # 2
     AUDIO_SAVING_PATHS = "audio_saving_paths"  # 2
 
     AUDIO_SRC_TYPE_LOCAL = "local"
@@ -232,9 +232,9 @@ class SavedDataDeck(PointerList):
                 additional_data[SavedDataDeck.SAVED_IMAGES_PATHS] = image_data
 
             audio_data = {}
-            if (audio_src := card_data.get(SavedDataDeck.AUDIO_SRC)) is not None:
-                audio_data[SavedDataDeck.AUDIO_SRC]          = audio_src
-                audio_data[SavedDataDeck.AUDIO_SRC_TYPE]     = card_data[SavedDataDeck.AUDIO_SRC_TYPE]
+            if (audio_src := card_data.get(SavedDataDeck.AUDIO_SRCS)) is not None:
+                audio_data[SavedDataDeck.AUDIO_SRCS]          = audio_src
+                audio_data[SavedDataDeck.AUDIO_SRCS_TYPE]     = card_data[SavedDataDeck.AUDIO_SRCS_TYPE]
                 audio_data[SavedDataDeck.AUDIO_SAVING_PATHS] = card_data[SavedDataDeck.AUDIO_SAVING_PATHS]
             if audio_data:
                 additional_data[SavedDataDeck.AUDIO_DATA] = audio_data

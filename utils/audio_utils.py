@@ -4,12 +4,13 @@ from enum import IntEnum
 from tkinter import Button, Checkbutton, Label, Toplevel, BooleanVar
 from tkinter import messagebox
 from tkinter import ttk
+from typing import Iterator
 
 import requests
 
-from utils.window_utils import spawn_toplevel_in_center
-from utils.storages import FrozenDict
 from utils.cards import SavedDataDeck
+from utils.storages import FrozenDict
+from utils.window_utils import spawn_toplevel_in_center
 
 
 class AudioDownloader(Toplevel):
@@ -85,14 +86,12 @@ class AudioDownloader(Toplevel):
         return True
 
     def download_audio(self, audio_links_list: list[FrozenDict]):
-        """
-        :param audio_links_list:
-            [(srcs, type, saving_paths), ...]
-        :return:
-        """
-        length = len(audio_links_list)
+        item_gen = [(item[SavedDataDeck.AUDIO_SRCS_TYPE], src, dst)
+                     for item in audio_links_list
+                     for src, dst in zip(item[SavedDataDeck.AUDIO_SRCS], item[SavedDataDeck.AUDIO_SAVING_PATHS])]
+        length = len(item_gen)
 
-        def iterate(index: int, item: FrozenDict):
+        def iterate(src_type: str, src: str, dst: str, index: int = 1):
             """
             :param index:
             :param word:
@@ -101,30 +100,31 @@ class AudioDownloader(Toplevel):
             :param url:
             :return:
             """
+            def write_to_dst(_src_type: str, _src: str, _dst: str) -> bool:
+                wait_flag = False
+                if _src_type == SavedDataDeck.AUDIO_SRC_TYPE_WEB:
+                    wait_flag = self.fetch_audio(_src, _dst, self.headers, self.timeout,
+                                                 self.catch_fetching_error)
+
+                elif _src_type == SavedDataDeck.AUDIO_SRC_TYPE_LOCAL:
+                    shutil.copy(src, _dst)
+                return wait_flag
+
             self.pb["value"] = min(100.0, round(index / length * 100, 2))
-            self.current_word_label["text"] = ""
+            self.current_word_label["text"] = dst
             self.update()
 
-            save_audio_name = get_save_audio_name(word, pos, wp_name)
-            save_audio_path = os.path.join(self.saving_dir, save_audio_name)
-            temp_audio_path = os.path.join(self.temp_dir, save_audio_name)
-            local_audio_path = get_local_audios(word, pos,
-                                                    local_audio_folder_path=os.path.join(self.local_media_dir, wp_name),
-                                                    with_pos=bool(pos))
+            temp_audio_path = os.path.join(self.temp_dir, os.path.split(dst)[-1])
 
-            wait_before_next_batch = True
-            if word and save_audio_name not in self.already_processed_audios:
-                self.already_processed_audios.add(save_audio_name)
-                if os.path.exists(temp_audio_path):
-                    os.rename(temp_audio_path, save_audio_path)
-                    wait_before_next_batch = False
-                elif url and (not os.path.exists(save_audio_path) or
-                              self.if_copy_encountered == AudioDownloader.CopyEncounterAction.REWRITE):
-                    wait_before_next_batch = self.fetch_audio(url, save_audio_path, self.headers, self.timeout,
-                                                              self.catch_fetching_error)
-                elif local_audio_path:
-                    shutil.copy(local_audio_path, save_audio_path)
-                    wait_before_next_batch = False
+            wait_before_next_batch = False
+            if dst not in self.already_processed_audios:
+                self.already_processed_audios.add(dst)
+                if not os.path.exists(dst) or self.if_copy_encountered == AudioDownloader.CopyEncounterAction.REWRITE:
+                    if os.path.exists(temp_audio_path):
+                        os.rename(temp_audio_path, dst)
+                        wait_before_next_batch = False
+                    else:
+                        wait_before_next_batch = write_to_dst(src_type, src, dst)
 
                 elif self.if_copy_encountered == AudioDownloader.CopyEncounterAction.SKIP:
                     wait_before_next_batch = False
@@ -143,15 +143,14 @@ class AudioDownloader(Toplevel):
                             self.if_copy_encountered = AudioDownloader.CopyEncounterAction.REWRITE
                         copy_encounter_tl.destroy()
                         self.grab_set()
-                        wait_before_next_batch = self.fetch_audio(url, save_audio_path, self.headers, self.timeout,
-                                                                  self.catch_fetching_error)
+                        wait_before_next_batch = write_to_dst(src_type, src, dst)
 
                     apply_to_all_var = BooleanVar()
 
                     copy_encounter_tl = Toplevel(self, **self.toplevel_cfg)
                     copy_encounter_tl.withdraw()
 
-                    message = f"Файл\n  {save_audio_name}  \nуже существует.\nВыберите нужную опцию:"
+                    message = f"Файл\n  {dst}  \nуже существует.\nВыберите нужную опцию:"
 
                     encounter_label = Label(copy_encounter_tl, text=message, relief="ridge",
                                             wraplength=self.winfo_width() * 2 // 3, **self.label_cfg)
@@ -177,23 +176,24 @@ class AudioDownloader(Toplevel):
             else:
                 wait_before_next_batch = False
 
-            if audio_links_list:
+            if item_gen:
                 delay = self.request_delay if wait_before_next_batch else 0
-                next_word, next_pos, next_wp_name, next_url = audio_links_list.pop(0)
-                self.master.after(delay, lambda: iterate(index + 1, next_word, next_pos, next_wp_name, next_url))
-            else:
-                if self.errors["missing_audios"]:
-                    absent_audio_words = ", ".join(self.errors['missing_audios'])
-                    n_errors = f"Количество необработаных слов: {len(self.errors['missing_audios'])}\n"
-                    for error_type in self.errors["error_types"]:
-                        n_errors += f"{error_type}: {self.errors['error_types'][error_type]}\n"
+                src_type, src, dst = item_gen.pop(0)
+                self.master.after(delay, lambda: iterate(src_type, src, dst, index + 1))
+                return
 
-                    error_message = f"{n_errors}\n\n{absent_audio_words}"
-                    messagebox.showerror(message=error_message)
-                self.destroy()
+            if self.errors["missing_audios"]:
+                absent_audio_words = ", ".join(self.errors['missing_audios'])
+                n_errors = f"Количество необработаных слов: {len(self.errors['missing_audios'])}\n"
+                for error_type in self.errors["error_types"]:
+                    n_errors += f"{error_type}: {self.errors['error_types'][error_type]}\n"
 
-        if audio_links_list:
-            start_word, start_pos, start_wp_name, start_url = audio_links_list.pop(0)
-            iterate(1, start_word, start_pos, start_wp_name, start_url)
+                error_message = f"{n_errors}\n\n{absent_audio_words}"
+                messagebox.showerror(message=error_message)
+            self.destroy()
+
+        if item_gen:
+            src_type, src, dst = item_gen.pop(0)
+            iterate(src_type, src, dst, 1)
         else:
             self.destroy()

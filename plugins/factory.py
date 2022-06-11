@@ -49,8 +49,8 @@ PluginContainer = TypeVar("PluginContainer")
 @dataclass(init=False, frozen=True)
 class PluginLoader(Generic[PluginContainer]):
     plugin_type: str
-    _loaded_plugin_data: FrozenDict[str, PluginContainer] = field(init=False, default_factory=dict)
-    not_loaded: list[str] = field(init=False, default_factory=list)
+    _loaded_plugin_data: FrozenDict[str, PluginContainer]
+    not_loaded: tuple[str]
 
     _already_initialized: ClassVar[set[str]] = set()
 
@@ -66,17 +66,20 @@ class PluginLoader(Generic[PluginContainer]):
         super().__setattr__("plugin_type", plugin_type)
 
         _loaded_plugin_data = {}
+        not_loaded = []
         for name, module in parse_namespace(module).items():
             try:
-                _loaded_plugin_data[name] = container_type(f"{plugin_name_prefix}{name}", module)
+                plugin_name = f"{plugin_name_prefix}{name}"
+                _loaded_plugin_data[name] = container_type(plugin_name, module)
             except AttributeError as e:
                 error_callback(e, name)
-                self.not_loaded.append(name)
+                not_loaded.append(name)
         super().__setattr__("_loaded_plugin_data", FrozenDict(_loaded_plugin_data))
+        super().__setattr__("not_loaded", tuple(not_loaded))
 
     @property
     def loaded(self):
-        return list(self._loaded_plugin_data)
+        return tuple(self._loaded_plugin_data)
 
     def get(self, name: str) -> PluginContainer:
         if (value := self._loaded_plugin_data.get(name)) is not None:

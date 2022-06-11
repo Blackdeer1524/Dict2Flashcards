@@ -1,6 +1,9 @@
 import json
 import re
+import webbrowser
 from datetime import datetime
+from functools import partial
+from tkinter import BooleanVar
 from tkinter import Button, Menu, IntVar
 from tkinter import Frame
 from tkinter import Label
@@ -24,12 +27,12 @@ from utils.image_utils import ImageSearch
 from utils.search_checker import ParsingException
 from utils.search_checker import get_card_filter
 from utils.storages import validate_json
+from utils.string_utils import remove_special_chars
 from utils.widgets import EntryWithPlaceholder as Entry
 from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
-from functools import partial
 
 
 class App(Tk):
@@ -51,19 +54,24 @@ class App(Tk):
 
         wp_name = self.configurations["scrappers"]["word_parser_name"]
         if (wp_type := self.configurations["scrappers"]["word_parser_type"]) == "web":
-            cd = plugins.get_web_card_generator(wp_name)
+            self.cd = plugins.get_web_card_generator(wp_name)
         elif wp_type == "local":
-            cd = plugins.get_local_card_generator(wp_name)
+            self.cd = plugins.get_local_card_generator(wp_name)
         else:
             raise NotImplemented("Unknown word_parser_type: {}!".format(self.configurations["scrappers"]["word_parser_type"]))
         self.typed_word_parser_name = f"{wp_type} {wp_name}"
 
         self.deck = Deck(deck_path=self.configurations["directories"]["last_open_file"],
                          current_deck_pointer=self.history[self.configurations["directories"]["last_open_file"]],
-                         card_generator=cd)
+                         card_generator=self.cd)
+
         self.card_processor = plugins.get_card_processor("Anki")
         self.dict_card_data: dict = {}
+        self.sentence_batch_size = 5
         self.sentence_parser = plugins.get_sentence_parser(self.configurations["scrappers"]["base_sentence_parser"])
+        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch,
+                                                sentence_batch_size=self.sentence_batch_size)
+
         self.image_parser = plugins.get_image_parser(self.configurations["scrappers"]["base_image_parser"])
 
         if (local_audio_getter_name := self.configurations["scrappers"]["local_audio"]):
@@ -71,9 +79,7 @@ class App(Tk):
         else:
             self.local_audio_getter = None
 
-        self.sentence_batch_size = 5
-        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch,
-                                                sentence_batch_size=self.sentence_batch_size)
+
 
         self.saved_cards_data = SavedDataDeck()
         self.deck_saver = plugins.get_deck_saving_formats(self.configurations["deck"]["saving_format"])
@@ -82,15 +88,15 @@ class App(Tk):
 
         main_menu = Menu(self)
         filemenu = Menu(main_menu, tearoff=0)
-        filemenu.add_command(label="Создать", command=App.func_placeholder)
-        filemenu.add_command(label="Открыть", command=App.func_placeholder)
-        filemenu.add_command(label="Сохранить", command=App.func_placeholder)
+        filemenu.add_command(label="Создать", command=self.create_new_file)
+        filemenu.add_command(label="Открыть", command=self.change_file)
+        filemenu.add_command(label="Сохранить", command=self.save_button)
         filemenu.add_separator()
-        filemenu.add_command(label="Справка", command=App.func_placeholder)
+        filemenu.add_command(label="Справка", command=self.help_command)
         filemenu.add_separator()
         filemenu.add_command(label="Скачать аудио", command=partial(self.download_audio, choose_file=True))
         filemenu.add_separator()
-        filemenu.add_command(label="Сменить пользователя", command=App.func_placeholder)
+        filemenu.add_command(label="Сменить пользователя", command=self.change_media_dir)
         main_menu.add_cascade(label="Файл", menu=filemenu)
 
         main_menu.add_command(label="Добавить", command=self.add_word_dialog)
@@ -108,10 +114,10 @@ class App(Tk):
         main_menu.add_cascade(label="Тема", menu=theme_menu)
 
         main_menu.add_command(label="Anki", command=App.func_placeholder)
-        main_menu.add_command(label="Выход", command=App.func_placeholder)
+        main_menu.add_command(label="Выход", command=self.on_closing)
         self.config(menu=main_menu)
 
-        self.browse_button = Button(self, text="Найти в браузере", command=App.func_placeholder)
+        self.browse_button = Button(self, text="Найти в браузере", command=self.web_search_command)
         self.configurations_word_parser_button = Button(self, text="Настроить словарь", command=App.func_placeholder)
         self.find_image_button = Button(self, text="Добавить изображение", command=self.start_image_search)
         self.image_word_parsers_names = plugins.image_parsers.loaded
@@ -119,7 +125,8 @@ class App(Tk):
         self.image_parser_option_menu = get_option_menu(self,
                                                         init_text=self.image_parser.name,
                                                         values=self.image_word_parsers_names,
-                                                        command=App.func_placeholder,
+                                                        command=lambda parser_name:
+                                                        self.change_image_parser(parser_name),
                                                         widget_configuration={},
                                                         option_submenu_params={})
         self.sentence_button_text = "Добавить предложения"
@@ -129,7 +136,8 @@ class App(Tk):
         self.sentence_parser_option_menu = get_option_menu(self,
                                                            init_text=self.sentence_parser.name,
                                                            values=plugins.web_sent_parsers.loaded,
-                                                           command=App.func_placeholder,
+                                                           command=lambda parser_name:
+                                                           self.change_sentence_parser(parser_name),
                                                            widget_configuration={},
                                                            option_submenu_params={})
 
@@ -269,6 +277,42 @@ class App(Tk):
         self.clipboard_clear()
         self.clipboard_append(error_log)
 
+    def change_image_parser(self, given_image_parser_name: str):
+        self.image_parser = plugins.get_image_parser(given_image_parser_name)
+        self.configurations["scrappers"]["base_image_parser"] = given_image_parser_name
+
+    def change_sentence_parser(self, given_sentence_parser_name: str):
+        self.sentence_parser = plugins.get_sentence_parser(given_sentence_parser_name)
+        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch,
+                                                sentence_batch_size=self.sentence_batch_size)
+        self.configurations["scrappers"]["base_sentence_parser"] = given_sentence_parser_name
+
+    def web_search_command(self):
+        search_term = self.word
+        definition_search_query = search_term + " definition"
+        webbrowser.open_new_tab(f"https://www.google.com/search?q={definition_search_query}")
+        sentence_search_query = search_term + " sentence examples"
+        webbrowser.open_new_tab(f"https://www.google.com/search?q={sentence_search_query}")
+
+    @staticmethod
+    def help_command():
+        mes = "Программа для Sentence mining'a\n\n * Каждое поле полностью редактируемо!" + \
+              "\n * Для выбора подходящего примера с предложением просто нажмите на кнопку, стоящую рядом с ним\n\n" + \
+              "Назначения кнопок и полей:\n * Кнопки 1-5: кнопки выбора\nсоответствующих предложений\n" + \
+              " * Кнопка \"Skip\": откладывает слово в\nотдельный файл для просмотра позднее\n" + \
+              " * Кнопка \"Del\": удаляет слово\n * Самое нижнее окно ввода: поле для тэгов\n" + \
+              " * Кнопка \"Prev\": возвращается к предущему блоку\n" + \
+              " Ctrl + c + space: добавить выделенного слова в колоду\n" + \
+              " Ctrl + Shift + a: вызов окна добавления слова в колоду\n" + \
+              " Ctrl + z: возвращение к предыдущей карточке\n" + \
+              " Ctrl + d: удалить карточку\n" + \
+              " Ctrl + q: отложить карточку\n" + \
+              " Ctrl + e: вызов окна статистики\n" + \
+              " Ctrl + f: вызов окна перехода\n" + \
+              " Ctrl + 1..5: быстрый выбор предложения\n" + \
+              " Ctrl + 0: возврат прилодения на середину экрана\n(если оно застряло)"
+        messagebox.showinfo("Справка", message=mes)
+
     def delete_command(self):
         if self.deck.get_n_cards_left():
             self.saved_cards_data.append(CardStatus.DELETE)
@@ -348,6 +392,91 @@ class App(Tk):
 
         return (conf_file, False)
 
+    def change_media_dir(self):
+        media_dir =  askdirectory(title="Выберете директорию для медиа файлов",
+                                  mustexist=True,
+                                  initialdir=MEDIA_DOWNLOADING_LOCATION)
+        if media_dir:
+            self.configurations["directories"]["media_dir"] = media_dir
+
+    def change_file(self):
+        new_file = askopenfilename(title="Выберете JSON файл со словами",
+                                   filetypes=(("JSON", ".json"),),
+                                   initialdir="./")
+        if not new_file:
+            return
+
+        self.save_files()
+        self.configurations["directories"]["last_open_file"] = new_file
+        if not self.history.get(self.configurations["directories"]["last_open_file"]):
+            self.history[self.configurations["directories"]["last_open_file"]] = 0
+        self.deck = Deck(deck_path=self.configurations["directories"]["last_open_file"],
+                         current_deck_pointer=self.history[self.configurations["directories"]["last_open_file"]],
+                         card_generator=self.cd)
+        self.refresh()
+
+    def create_new_file(self):
+        def create_file():
+            def foo():
+                skip_var.set(True)
+                copy_encounter.destroy()
+
+            new_file_name = remove_special_chars(name_entry.get().strip(), sep="_")
+            if not new_file_name:
+                messagebox.showerror("Ошибка", "Не указано имя файла")
+                return
+
+            new_file_path = f"{new_file_dir}/{new_file_name}.json"
+            skip_var = BooleanVar()
+            skip_var.set(False)
+            if os.path.exists(new_file_path):
+                copy_encounter = Toplevel(create_file_win)
+                copy_encounter.withdraw()
+                message = f"Файл уже существует.\nВыберите нужную опцию:"
+                encounter_label = Label(copy_encounter, text=message, relief="ridge")
+                skip_encounter_button = Button(copy_encounter, text="Пропустить", command=lambda: foo())
+                rewrite_encounter_button = Button(copy_encounter, text="Заменить", command=lambda: copy_encounter.destroy())
+
+                encounter_label.grid(row=0, column=0, padx=5, pady=5)
+                skip_encounter_button.grid(row=1, column=0, padx=5, pady=5, sticky="news")
+                rewrite_encounter_button.grid(row=2, column=0, padx=5, pady=5, sticky="news")
+                copy_encounter.deiconify()
+                spawn_toplevel_in_center(self, copy_encounter)
+                create_file_win.wait_window(copy_encounter)
+
+            create_file_win.destroy()
+
+            if not skip_var.get():
+                with open(new_file_path, "w", encoding="UTF-8") as new_file:
+                    json.dump([], new_file)
+
+            new_save_dir = askdirectory(title="Выберете директорию сохранения", initialdir="./")
+            if len(new_save_dir) == 0:
+                return
+
+            self.save_files()
+            self.configurations["directories"]["last_save_dir"] = new_save_dir
+            self.configurations["directories"]["last_open_file"] = new_file_path
+            self.deck = Deck(deck_path=self.configurations["directories"]["last_open_file"],
+                             current_deck_pointer=self.history[self.configurations["directories"]["last_open_file"]],
+                             card_generator=self.cd)
+            self.refresh()
+
+        new_file_dir = askdirectory(title="Выберете директорию для файла со словами", initialdir="./")
+        if len(new_file_dir) == 0:
+            return
+        create_file_win = Toplevel()
+        create_file_win.withdraw()
+        name_entry = Entry(create_file_win, placeholder="Имя файла", justify="center")
+        name_button = Button(create_file_win, text="Создать", command=create_file)
+        name_entry.grid(row=0, column=0, padx=5, pady=3, sticky="news")
+        name_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
+        create_file_win.deiconify()
+        spawn_toplevel_in_center(self, create_file_win)
+        name_entry.focus()
+        create_file_win.bind("<Escape>", lambda event: create_file_win.destroy())
+        create_file_win.bind("<Return>", lambda event: create_file())
+
     def save_files(self):
         # получение координат на экране через self.winfo_rootx(), self.winfo_rooty() даёт некоторое смещение
         self.configurations["app"]["main_window_geometry"] = self.geometry()
@@ -355,11 +484,9 @@ class App(Tk):
         self.save_conf_file()
 
         self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position() - 1
-
         self.deck.save()
         with open(HISTORY_FILE_PATH, "w") as saving_f:
             json.dump(self.history, saving_f, indent=4)
-
 
         deck_name = os.path.basename(self.configurations["directories"]["last_open_file"]).split(sep=".")[0]
         saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name)
@@ -386,7 +513,7 @@ class App(Tk):
             self.save_files()
             # self.bg.stop()
             self.download_audio(closing=True)
-    
+
     def download_audio(self, choose_file=False, closing=False):
         if choose_file:
             self.save_files()
@@ -414,11 +541,11 @@ class App(Tk):
             audio_downloader.bind("<Destroy>", lambda event: self.destroy() if isinstance(event.widget, Toplevel) else None)
         spawn_toplevel_in_center(self, audio_downloader)
         audio_downloader.download_audio(audio_links_list)
-        
+
     def save_button(self):
         self.save_files()
         messagebox.showinfo(message="Файлы сохранены")
-    
+
     @property
     def word(self):
         return self.word_text.get(1.0, "end").strip()
@@ -426,7 +553,7 @@ class App(Tk):
     @property
     def definition(self):
         return self.definition_text.get(1.0, "end").rstrip()
-    
+
     def get_sentence(self, n: int):
         return self.sent_text_list[n].get(1.0, "end").rstrip()
 
@@ -532,27 +659,27 @@ class App(Tk):
         start_parsing_button = Button(add_word_frame, text="Добавить", command=define_word_button)
         start_parsing_button.grid(row=2, column=0, padx=5, pady=3, sticky="ns")
 
-        add_word_frame.bind_all("<Escape>", lambda event: add_word_frame.destroy())
-        add_word_frame.bind_all("<Return>", lambda event: define_word_button())
+        add_word_frame.bind("<Escape>", lambda event: add_word_frame.destroy())
+        add_word_frame.bind("<Return>", lambda event: define_word_button())
         add_word_frame.deiconify()
         spawn_toplevel_in_center(master=self, toplevel_widget=add_word_frame,
                                  desired_toplevel_width=self.winfo_width())
-    
+
     def find_dialog(self):
         def go_to():
             find_query = find_entry.get(1.0, "end").strip()
             if not find_query:
                 messagebox.showerror("Ошибка запроса", "Пустой запрос!")
                 return
-            
+
             if find_query.startswith("->"):
                 if not (move_quotient := find_query[2:]).lstrip("-").isdigit():
                     messagebox.showerror("Ошибка запроса", "Неверно задан переход!")
                 else:
                     self.replace_decks_pointers(int(move_quotient))
                 find_frame.destroy()
-                return 
-            
+                return
+
             try:
                 searching_filter = get_card_filter(find_query)
             except ParsingException as e:
@@ -798,7 +925,7 @@ class App(Tk):
                                    url_scrapper=self.image_parser.get_image_links,
                                    init_urls=self.dict_card_data.get(FIELDS.img_links, []),
                                    local_images=self.dict_card_data.get(self.saved_cards_data.SAVED_IMAGES_PATHS, []),
-                                   # headers=self.headers,
+                                   headers=self.headers,
                                    on_close_action=connect_images_to_card,
                                    show_image_width=show_image_width,
                                    saving_image_width=300,

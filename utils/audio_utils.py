@@ -57,9 +57,13 @@ class AudioDownloader(Toplevel):
                                   orient='horizontal',
                                   mode='determinate',
                                   **pb_cfg)  # lenght = self.WIDTH - 2 * self.text_padx
-        self.pb.grid(column=0, row=0, columnspan=2, padx=5, pady=5)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+
+        self.pb.grid(column=0, row=0, padx=5, pady=5, sticky="news")
         self.current_word_label = Label(self, **self.label_cfg)
-        self.current_word_label.grid(column=0, row=1, columnspan=2, sticky="news")
+        self.current_word_label.grid(column=0, row=1, sticky="news")
         self.label_cfg.pop("relief", None)
         self.deiconify()
         spawn_toplevel_in_center(master, self)

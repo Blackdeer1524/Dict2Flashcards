@@ -405,7 +405,7 @@ class App(Tk):
                                            temp_dir="./temp/",
                                            saving_dir=self.configurations["directories"]["media_dir"],
                                            # toplevel_cfg=self.toplevel_cfg,
-                                           # pb_cfg={"length": self.WIDTH - 2 * self.text_padx},
+                                           pb_cfg={"length": self.winfo_width()},
                                            # label_cfg=self.label_cfg,
                                            # button_cfg=self.button_cfg,
                                            # checkbutton_cfg=self.checkbutton_cfg

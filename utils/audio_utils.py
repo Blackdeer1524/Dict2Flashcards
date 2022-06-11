@@ -8,6 +8,8 @@ from tkinter import ttk
 import requests
 
 from utils.window_utils import spawn_toplevel_in_center
+from utils.storages import FrozenDict
+from utils.cards import SavedDataDeck
 
 
 class AudioDownloader(Toplevel):
@@ -82,15 +84,15 @@ class AudioDownloader(Toplevel):
             audio_file.write(audio_bin)
         return True
 
-    def download_audio(self, audio_links_list):
+    def download_audio(self, audio_links_list: list[FrozenDict]):
         """
         :param audio_links_list:
-            [(word, pos, parser_name, url(optional)), ...]
+            [(srcs, type, saving_paths), ...]
         :return:
         """
         length = len(audio_links_list)
 
-        def iterate(index: int, word: str, pos: str, wp_name: str, url: str):
+        def iterate(index: int, item: FrozenDict):
             """
             :param index:
             :param word:
@@ -100,8 +102,7 @@ class AudioDownloader(Toplevel):
             :return:
             """
             self.pb["value"] = min(100.0, round(index / length * 100, 2))
-            label_audio_name = f"{word} - {pos}"
-            self.current_word_label["text"] = label_audio_name
+            self.current_word_label["text"] = ""
             self.update()
 
             save_audio_name = get_save_audio_name(word, pos, wp_name)

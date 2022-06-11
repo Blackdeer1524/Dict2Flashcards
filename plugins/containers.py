@@ -10,7 +10,7 @@ from plugins.interfaces import LocalWordParserInterface
 from plugins.interfaces import WebSentenceParserInterface
 from plugins.interfaces import WebWordParserInterface
 from utils.cards import CardStatus
-from utils.cards import SavedDeck
+from utils.cards import SavedDataDeck
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False)
@@ -74,7 +74,7 @@ class CardProcessorContainer(_PluginContainer):
 
 
 class DeckSavingFormatContainer(_PluginContainer):
-    save: Callable[[SavedDeck, CardStatus, str, Callable[[str], str], Callable[[str], str]], None]
+    save: Callable[[SavedDataDeck, CardStatus, str, Callable[[str], str], Callable[[str], str]], None]
 
     def __init__(self, name: str, source_module: DeckSavingFormatInterface):
         super(DeckSavingFormatContainer, self).__init__(name)

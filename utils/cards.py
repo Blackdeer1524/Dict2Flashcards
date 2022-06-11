@@ -188,7 +188,7 @@ class CardStatus(Enum):
     BURY = 2
 
 
-class SavedDeck(PointerList):
+class SavedDataDeck(PointerList):
     CARD_STATUS        = "status"              # 0
     CARD_DATA          = "card"                # 0
     ADDITIONAL_DATA    = "additional"          # 0
@@ -203,7 +203,7 @@ class SavedDeck(PointerList):
     AUDIO_SRC_TYPE_WEB   = "web"
 
     def __init__(self):
-        super(SavedDeck, self).__init__()
+        super(SavedDataDeck, self).__init__()
         self._statistics = [0, 0, 0]
 
     def get_n_added(self):
@@ -219,38 +219,56 @@ class SavedDeck(PointerList):
         if card_data is None:
             card_data = {}
 
-        res = {SavedDeck.CARD_STATUS: status}
+        res = {SavedDataDeck.CARD_STATUS: status}
         if status != CardStatus.DELETE:
             saving_card = Card(card_data)
-            res[SavedDeck.CARD_DATA] = saving_card
+            res[SavedDataDeck.CARD_DATA] = saving_card
 
             additional_data = {}
-            if (user_tags := card_data.get(SavedDeck.USER_TAGS)) is not None:
-                additional_data[SavedDeck.USER_TAGS] = user_tags
+            if (user_tags := card_data.get(SavedDataDeck.USER_TAGS)) is not None:
+                additional_data[SavedDataDeck.USER_TAGS] = user_tags
 
-            if (image_data := card_data.get(SavedDeck.SAVED_IMAGES_PATHS)) is not None:
-                additional_data[SavedDeck.SAVED_IMAGES_PATHS] = image_data
+            if (image_data := card_data.get(SavedDataDeck.SAVED_IMAGES_PATHS)) is not None:
+                additional_data[SavedDataDeck.SAVED_IMAGES_PATHS] = image_data
 
             audio_data = {}
-            if (audio_src := card_data.get(SavedDeck.AUDIO_SRC)) is not None:
-                audio_data[SavedDeck.AUDIO_SRC]          = audio_src
-                audio_data[SavedDeck.AUDIO_SRC_TYPE]     = card_data[SavedDeck.AUDIO_SRC_TYPE]
-                audio_data[SavedDeck.AUDIO_SAVING_PATHS] = card_data[SavedDeck.AUDIO_SAVING_PATHS]
+            if (audio_src := card_data.get(SavedDataDeck.AUDIO_SRC)) is not None:
+                audio_data[SavedDataDeck.AUDIO_SRC]          = audio_src
+                audio_data[SavedDataDeck.AUDIO_SRC_TYPE]     = card_data[SavedDataDeck.AUDIO_SRC_TYPE]
+                audio_data[SavedDataDeck.AUDIO_SAVING_PATHS] = card_data[SavedDataDeck.AUDIO_SAVING_PATHS]
             if audio_data:
-                additional_data[SavedDeck.AUDIO_DATA] = audio_data
+                additional_data[SavedDataDeck.AUDIO_DATA] = audio_data
 
             if additional_data:
-                res[SavedDeck.ADDITIONAL_DATA] = additional_data
+                res[SavedDataDeck.ADDITIONAL_DATA] = additional_data
         
         self._data.append(FrozenDict(res))
         self._pointer_position += 1
         self._statistics[status.value] += 1
 
     def move(self, n: int) -> None:
-        super(SavedDeck, self).move(n)
+        super(SavedDataDeck, self).move(n)
         for i in range(self.get_pointer_position(), len(self)):
-            self._statistics[self[i][SavedDeck.CARD_STATUS].value] -= 1
+            self._statistics[self[i][SavedDataDeck.CARD_STATUS].value] -= 1
         del self._data[self.get_pointer_position():]
+
+    def get_audio_data(self, saving_card_status: CardStatus) -> list[FrozenDict]:
+        saving_object = []
+        for card_page in self:
+            if card_page[SavedDataDeck.CARD_STATUS] != saving_card_status:
+                continue
+            if (additional := card_page.get(SavedDataDeck.ADDITIONAL_DATA)) is not None and \
+                    (audio_data := additional.get(SavedDataDeck.AUDIO_DATA)):
+                saving_object.append(audio_data)
+        return saving_object
+
+    def get_card_data(self, saving_card_status: CardStatus) -> list[FrozenDict]:
+        saving_object = []
+        for card_page in self:
+            if card_page[SavedDataDeck.CARD_STATUS] != saving_card_status:
+                continue
+            saving_object.append(card_page[SavedDataDeck.CARD_DATA])
+        return saving_object
 
 
 class SentenceFetcher:

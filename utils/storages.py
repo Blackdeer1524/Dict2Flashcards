@@ -1,6 +1,6 @@
 import copy
 from json import JSONEncoder
-from typing import Any, TypeVar, Mapping
+from typing import Any, TypeVar, Mapping, Generic
 
 
 class _FrozenDictNode(Mapping):
@@ -63,7 +63,7 @@ class FrozenDictJSONEncoder(JSONEncoder):
 
 
 _T = TypeVar("_T")
-class PointerList:
+class PointerList(Generic[_T]):
     def __init__(self, data: list[_T] = None,
                  starting_position: int = 0,
                  default_return_value: Any = None):
@@ -117,9 +117,6 @@ class PointerList:
 
     def move(self, n: int) -> None:
         self._pointer_position = min(max(self._pointer_position + n, self.get_starting_position()), len(self))
-
-    def save(self, *args, **kwargs):
-        raise NotImplementedError
 
 
 def validate_json(checking_scheme: dict[Any, Any], default_scheme: dict[Any, Any]) -> None:

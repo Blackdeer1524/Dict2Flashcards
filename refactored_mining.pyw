@@ -2,23 +2,23 @@ import json
 import re
 from datetime import datetime
 from tkinter import Button, Menu, IntVar
-from tkinter import Canvas
 from tkinter import Frame
 from tkinter import Label
 from tkinter import Toplevel
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename, askdirectory
-from tkinter.ttk import Scrollbar
 from typing import Any
 from typing import Callable
 
+from playsound import playsound
 from tkinterdnd2 import Tk
 
 from consts.card_fields import FIELDS
 from consts.paths import *
 from plugins.factory import plugins
+from utils.audio_utils import AudioDownloader
 from utils.cards import Card
-from utils.cards import Deck, SentenceFetcher, SavedDeck, CardStatus
+from utils.cards import Deck, SentenceFetcher, SavedDataDeck, CardStatus
 from utils.error_handling import create_exception_message
 from utils.image_utils import ImageSearch
 from utils.search_checker import ParsingException
@@ -29,8 +29,6 @@ from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
-from playsound import playsound
-from utils.audio_utils import AudioDownloader
 
 
 class App(Tk):
@@ -42,6 +40,7 @@ class App(Tk):
             return
         self.save_conf_file()
 
+        self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'}
         self.session_start = datetime.now()
         self.srt_session_start = self.session_start.strftime("%d-%m-%Y-%H-%M-%S")
 
@@ -75,7 +74,7 @@ class App(Tk):
         self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch,
                                                 sentence_batch_size=self.sentence_batch_size)
 
-        self.saved_cards = SavedDeck()
+        self.saved_cards_data = SavedDataDeck()
         self.deck_saver = plugins.get_deck_saving_formats(self.configurations["deck"]["saving_format"])
         self.audio_saver = plugins.get_deck_saving_formats("json_deck_audio")
         self.buried_saver = plugins.get_deck_saving_formats("json_deck_cards")
@@ -271,12 +270,12 @@ class App(Tk):
 
     def delete_command(self):
         if self.deck.get_n_cards_left():
-            self.saved_cards.append(CardStatus.DELETE)
+            self.saved_cards_data.append(CardStatus.DELETE)
         self.refresh()
 
     def replace_decks_pointers(self, n: int):
         self.deck.move(n - 1)
-        self.saved_cards.move(n)
+        self.saved_cards_data.move(n)
         self.refresh()
 
     @staticmethod
@@ -363,17 +362,17 @@ class App(Tk):
 
         deck_name = os.path.basename(self.configurations["directories"]["last_open_file"]).split(sep=".")[0]
         saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name)
-        self.deck_saver.save(self.saved_cards, CardStatus.ADD,
+        self.deck_saver.save(self.saved_cards_data, CardStatus.ADD,
                              f"{saving_path}_{self.srt_session_start}",
                              self.card_processor.get_card_image_name,
                              self.card_processor.get_card_audio_name)
 
-        self.audio_saver.save(self.saved_cards, CardStatus.ADD,
+        self.audio_saver.save(self.saved_cards_data, CardStatus.ADD,
                                f"{saving_path}_{self.srt_session_start}_audios",
                                self.card_processor.get_card_image_name,
                                self.card_processor.get_card_audio_name)
 
-        self.buried_saver.save(self.saved_cards, CardStatus.BURY,
+        self.buried_saver.save(self.saved_cards_data, CardStatus.BURY,
                                f"{saving_path}_{self.srt_session_start}_buried",
                                self.card_processor.get_card_image_name,
                                self.card_processor.get_card_audio_name)
@@ -397,21 +396,24 @@ class App(Tk):
             with open(audio_file_name, encoding="UTF-8") as audio_file:
                 audio_links_list = json.load(audio_file)
         else:
-            audio_links_list = self.AUDIO_INFO
-        audio_downloader = AudioDownloader(master=self, headers=self.headers, timeout=1, request_delay=3_000,
-                                           temp_dir="./temp/", saving_dir=self.MEDIA_DIR,
-                                           local_media_dir=self.LOCAL_DICTIONARIES_DIR,
-                                           toplevel_cfg=self.toplevel_cfg,
-                                           pb_cfg={"length": self.WIDTH - 2 * self.text_padx},
-                                           label_cfg=self.label_cfg,
-                                           button_cfg=self.button_cfg,
-                                           checkbutton_cfg=self.checkbutton_cfg)
+            audio_links_list = self.saved_cards_data.get_audio_data(CardStatus.ADD)
+        audio_downloader = AudioDownloader(master=self,
+                                           headers=self.headers,
+                                           timeout=1,
+                                           request_delay=3_000,
+                                           temp_dir="./temp/",
+                                           saving_dir=self.configurations["directories"]["media_dir"],
+                                           # toplevel_cfg=self.toplevel_cfg,
+                                           # pb_cfg={"length": self.WIDTH - 2 * self.text_padx},
+                                           # label_cfg=self.label_cfg,
+                                           # button_cfg=self.button_cfg,
+                                           # checkbutton_cfg=self.checkbutton_cfg
+                                           )
         if closing:
             audio_downloader.bind("<Destroy>", lambda event: self.destroy() if isinstance(event.widget, Toplevel) else None)
         spawn_toplevel_in_center(self, audio_downloader)
         audio_downloader.download_audio(audio_links_list)
         
-    
     def save_button(self):
         self.save_files()
         messagebox.showinfo(message="Файлы сохранены")
@@ -577,7 +579,7 @@ class App(Tk):
                     right["state"] = "disabled" if move_list.get_pointer_position() == len(move_list) else "normal"
 
                     self.deck.move(current_offset - 1)
-                    self.saved_cards.move(current_offset)
+                    self.saved_cards_data.move(current_offset)
                     self.refresh()
 
                 find_frame.destroy()
@@ -623,7 +625,7 @@ class App(Tk):
 
         statistics_window.title("Статистика")
         text_list = (('Добавлено', 'Пропущено', 'Удалено', 'Осталось', "Файл", "Директория сохранения", "Медиа"),
-                     (self.saved_cards.get_n_added(), self.saved_cards.get_n_buried(), self.saved_cards.get_n_deleted(),
+                     (self.saved_cards_data.get_n_added(), self.saved_cards_data.get_n_buried(), self.saved_cards_data.get_n_deleted(),
                       self.deck.get_n_cards_left(), self.deck.deck_path,
                       self.configurations["directories"]["last_save_dir"],
                       self.configurations["directories"]["media_dir"]))
@@ -659,9 +661,9 @@ class App(Tk):
         self.dict_card_data[FIELDS.sentences] = [picked_sentence]
 
         if self.local_audio_getter is not None and (local_audios := self.local_audio_getter.get_local_audios(word, dict_tags)):
-            self.dict_card_data[SavedDeck.AUDIO_SRC] = local_audios
-            self.dict_card_data[SavedDeck.AUDIO_SRC_TYPE] = SavedDeck.AUDIO_SRC_TYPE_LOCAL
-            self.dict_card_data[SavedDeck.AUDIO_SAVING_PATHS] = [
+            self.dict_card_data[SavedDataDeck.AUDIO_SRC] = local_audios
+            self.dict_card_data[SavedDataDeck.AUDIO_SRC_TYPE] = SavedDataDeck.AUDIO_SRC_TYPE_LOCAL
+            self.dict_card_data[SavedDataDeck.AUDIO_SAVING_PATHS] = [
                 os.path.join(self.configurations["directories"]["media_dir"],
                              self.card_processor.get_save_audio_name(word,
                                                                      self.local_audio_getter.name,
@@ -670,9 +672,9 @@ class App(Tk):
                 for i in range(len(local_audios))
             ]
         elif self.local_audio_getter is None and (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
-            self.dict_card_data[SavedDeck.AUDIO_SRC] = web_audios
-            self.dict_card_data[SavedDeck.AUDIO_SRC_TYPE] = SavedDeck.AUDIO_SRC_TYPE_WEB
-            self.dict_card_data[SavedDeck.AUDIO_SAVING_PATHS] = [
+            self.dict_card_data[SavedDataDeck.AUDIO_SRC] = web_audios
+            self.dict_card_data[SavedDataDeck.AUDIO_SRC_TYPE] = SavedDataDeck.AUDIO_SRC_TYPE_WEB
+            self.dict_card_data[SavedDataDeck.AUDIO_SAVING_PATHS] = [
                 os.path.join(self.configurations["directories"]["media_dir"],
                              self.card_processor.get_save_audio_name(word,
                                                                      self.typed_word_parser_name,
@@ -681,7 +683,7 @@ class App(Tk):
                 for i in range(len(web_audios))
             ]
 
-        self.saved_cards.append(status=CardStatus.ADD, card_data=self.dict_card_data)
+        self.saved_cards_data.append(status=CardStatus.ADD, card_data=self.dict_card_data)
         if not self.deck.get_n_cards_left():
             self.deck.append(Card(self.dict_card_data))
         self.refresh()
@@ -725,7 +727,7 @@ class App(Tk):
                 success = AudioDownloader.fetch_audio(url=src,
                                                       save_path=temp_audio_path,
                                                       timeout=5,
-                                                      headers={'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'},
+                                                      headers=self.headers,
                                                       exception_action=lambda exc: show_download_error(exc))
             if success:
                 playsound(temp_audio_path)
@@ -774,13 +776,13 @@ class App(Tk):
                     instance.saving_images[i].save(saving_name)
                     names.append(saving_name)
 
-            if (paths := self.dict_card_data.get(self.saved_cards.SAVED_IMAGES_PATHS)) is not None:
+            if (paths := self.dict_card_data.get(self.saved_cards_data.SAVED_IMAGES_PATHS)) is not None:
                 for path in paths:
                     if os.path.isfile(path):
                         os.remove(path)
 
             if names:
-                self.dict_card_data[self.saved_cards.SAVED_IMAGES_PATHS] = names
+                self.dict_card_data[self.saved_cards_data.SAVED_IMAGES_PATHS] = names
 
             x, y = instance.geometry().split(sep="+")[1:]
             self.configurations["app"]["image_search_position"] = f"+{x}+{y}"
@@ -794,7 +796,7 @@ class App(Tk):
                                    saving_dir=self.configurations["directories"]["media_dir"],
                                    url_scrapper=self.image_parser.get_image_links,
                                    init_urls=self.dict_card_data.get(FIELDS.img_links, []),
-                                   local_images=self.dict_card_data.get(self.saved_cards.SAVED_IMAGES_PATHS, []),
+                                   local_images=self.dict_card_data.get(self.saved_cards_data.SAVED_IMAGES_PATHS, []),
                                    # headers=self.headers,
                                    on_close_action=connect_images_to_card,
                                    show_image_width=show_image_width,

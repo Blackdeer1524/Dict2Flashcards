@@ -60,6 +60,8 @@ class ImageSearch(Toplevel):
     def __init__(self, master, search_term, **kwargs):
         """
         master: \n
+        main_params: toplevel config
+        frame_params: Frame config
         search_term: \n
         self.__url_scrapper: function that returns image urls by given query\n
         max_request_tries: how many retries allowed per one image-showing cycle\n
@@ -77,7 +79,6 @@ class ImageSearch(Toplevel):
         button_pady: \n
         window_width_limit: maximum width of the window\n
         window_height_limit: maximum height of the window\n
-        window_bg: window background placeholder_fg_color\n
         entry_params(**kwargs)s: entry widget params\n
         command_button_params(**kwargs): "Show more" and "Download" buttons params\n
         on_close_action(**kwargs): additional action performed on closing.
@@ -95,12 +96,11 @@ class ImageSearch(Toplevel):
 
         self._button_bg = self.activebackground = "#FFFFFF"
         self._choose_color = "#FF0000"
-        self._window_bg = kwargs.get("window_bg", "#F0F0F0")
         self._command_button_params = kwargs.get("command_button_params", {})
         self._entry_params = kwargs.get("entry_params", {})
         self._button_padx = kwargs.get("button_padx", 10)
         self._button_pady = kwargs.get("button_pady", 10)
-        Toplevel.__init__(self, master, bg=self._window_bg)
+        Toplevel.__init__(self, master, **kwargs.get("main_params", {}))
 
         self._headers = kwargs.get("headers")
         self._timeout = kwargs.get("timeout", 1)
@@ -137,7 +137,8 @@ class ImageSearch(Toplevel):
         self._sf = ScrolledFrame(self, scrollbars="both")
         self._sf.grid(row=1, column=0, columnspan=2)
         self._sf.bind_scroll_wheel(self)
-        self._inner_frame = self._sf.display_widget(partial(Frame, bg=self._window_bg))
+        self._frame_params = kwargs.get("frame_params", {})
+        self._inner_frame = self._sf.display_widget(partial(Frame, **self._frame_params))
 
         window_width_limit = kwargs.get("window_width_limit")
         window_height_limit = kwargs.get("window_height_limit")
@@ -212,7 +213,7 @@ class ImageSearch(Toplevel):
 
         self._image_url_gen = self._url_scrapper(self.search_term) if self._url_scrapper is not None else None
         self._start_url_generator()
-        self._inner_frame = self._sf.display_widget(partial(Frame, bg=self._window_bg))
+        self._inner_frame = self._sf.display_widget(partial(Frame, **self._frame_params))
         self._img_urls.clear()
 
         left_indent = 0

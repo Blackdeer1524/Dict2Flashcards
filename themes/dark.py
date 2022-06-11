@@ -6,6 +6,7 @@ text_selectforeground = "#000000"
 main_bg = "#2f2f31"
 
 
+root_cfg = {"bg": main_bg}
 label_cfg = {"background": main_bg, 
              "foreground": widget_fg}
 button_cfg = {"background": button_bg,
@@ -28,7 +29,6 @@ checkbutton_cfg = {"background": main_bg,
                    "activeforeground": widget_fg,
                    "selectcolor": main_bg}
 toplevel_cfg = {"bg": main_bg}
-main_cfg = {"bg": main_bg}
 frame_cfg = {"bg": main_bg}
 option_menu_cfg = {"background": button_bg, 
                    "foreground": widget_fg,

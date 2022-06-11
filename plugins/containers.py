@@ -29,7 +29,7 @@ class ThemeContainer(_PluginContainer):
     entry_cfg: dict
     checkbutton_cfg: dict
     toplevel_cfg: dict
-    main_cfg: dict
+    root_cfg: dict
     frame_cfg: dict
     option_menu_cfg: dict
     option_submenus_cfg: dict
@@ -42,7 +42,7 @@ class ThemeContainer(_PluginContainer):
         super().__setattr__("entry_cfg",           source_module.entry_cfg)
         super().__setattr__("checkbutton_cfg",     source_module.checkbutton_cfg)
         super().__setattr__("toplevel_cfg",        source_module.toplevel_cfg)
-        super().__setattr__("main_cfg",            source_module.main_cfg)
+        super().__setattr__("root_cfg",            source_module.root_cfg)
         super().__setattr__("frame_cfg",           source_module.frame_cfg)
         super().__setattr__("option_menu_cfg",     source_module.option_menu_cfg)
         super().__setattr__("option_submenus_cfg", source_module.option_submenus_cfg)

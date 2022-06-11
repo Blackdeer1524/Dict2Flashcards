@@ -4,7 +4,7 @@ import webbrowser
 from datetime import datetime
 from functools import partial
 from tkinter import BooleanVar
-from tkinter import Button, Menu, IntVar
+from tkinter import Button, Menu
 from tkinter import Frame
 from tkinter import Label
 from tkinter import Toplevel
@@ -52,6 +52,18 @@ class App(Tk):
         if not self.history.get(self.configurations["directories"]["last_open_file"]):
             self.history[self.configurations["directories"]["last_open_file"]] = 0
 
+        self.theme = plugins.get_theme(self.configurations["app"]["theme"])
+        self.configure(**self.theme.root_cfg)
+        self.Label    = partial(Label,    **self.theme.label_cfg)
+        self.Button   = partial(Button,   **self.theme.button_cfg)
+        self.Text     = partial(Text,     **self.theme.text_cfg)
+        self.Entry    = partial(Entry,    **self.theme.entry_cfg)
+        self.Toplevel = partial(Toplevel, **self.theme.toplevel_cfg)
+        self.Frame    = partial(Frame,    **self.theme.frame_cfg)
+        self.get_option_menu = partial(get_option_menu,
+                                       option_menu_cfg=self.theme.option_menu_cfg,
+                                       option_submenu_cfg=self.theme.option_submenus_cfg)
+
         wp_name = self.configurations["scrappers"]["word_parser_name"]
         if (wp_type := self.configurations["scrappers"]["word_parser_type"]) == "web":
             self.cd = plugins.get_web_card_generator(wp_name)
@@ -79,8 +91,6 @@ class App(Tk):
         else:
             self.local_audio_getter = None
 
-
-
         self.saved_cards_data = SavedDataDeck()
         self.deck_saver = plugins.get_deck_saving_formats(self.configurations["deck_saving_format"])
         self.audio_saver = plugins.get_deck_saving_formats("json_deck_audio")
@@ -102,73 +112,59 @@ class App(Tk):
         main_menu.add_command(label="Добавить", command=self.add_word_dialog)
         main_menu.add_command(label="Перейти", command=self.find_dialog)
         main_menu.add_command(label="Статистика", command=self.statistics_dialog)
-
-        theme_menu = Menu(main_menu, tearoff=0)
-        self.index2theme_map = {0: "white",
-                                1: "dark"}
-        self.theme2index_map = {value: key for key, value in self.index2theme_map.items()}
-
-        self.theme_index_var = IntVar(value=self.theme2index_map[self.configurations["app"]["theme"]])
-        theme_menu.add_radiobutton(label="Светлая", variable=self.theme_index_var, value=0, command=App.func_placeholder)
-        theme_menu.add_radiobutton(label="Тёмная", variable=self.theme_index_var, value=1, command=App.func_placeholder)
-        main_menu.add_cascade(label="Тема", menu=theme_menu)
-
+        main_menu.add_command(label="Тема", command=self.switch_theme)
         main_menu.add_command(label="Anki", command=App.func_placeholder)
         main_menu.add_command(label="Выход", command=self.on_closing)
         self.config(menu=main_menu)
 
-        self.browse_button = Button(self, text="Найти в браузере", command=self.web_search_command)
-        self.configurations_word_parser_button = Button(self, text="Настроить словарь", command=self.configure_dictionary)
-        self.find_image_button = Button(self, text="Добавить изображение", command=self.start_image_search)
+        self.browse_button = self.Button(self, text="Найти в браузере", command=self.web_search_command)
+        self.configurations_word_parser_button = self.Button(self, text="Настроить словарь", command=self.configure_dictionary)
+        self.find_image_button = self.Button(self, text="Добавить изображение", command=self.start_image_search)
         self.image_word_parsers_names = plugins.image_parsers.loaded
 
-        self.image_parser_option_menu = get_option_menu(self,
+        self.image_parser_option_menu = self.get_option_menu(self,
                                                         init_text=self.image_parser.name,
                                                         values=self.image_word_parsers_names,
                                                         command=lambda parser_name:
-                                                        self.change_image_parser(parser_name),
-                                                        widget_configuration={},
-                                                        option_submenu_params={})
+                                                        self.change_image_parser(parser_name))
         self.sentence_button_text = "Добавить предложения"
-        self.add_sentences_button = Button(self, text=self.sentence_button_text,
+        self.add_sentences_button = self.Button(self, text=self.sentence_button_text,
                                            command=self.replace_sentences)
 
-        self.sentence_parser_option_menu = get_option_menu(self,
+        self.sentence_parser_option_menu = self.get_option_menu(self,
                                                            init_text=self.sentence_parser.name,
                                                            values=plugins.web_sent_parsers.loaded,
                                                            command=lambda parser_name:
-                                                           self.change_sentence_parser(parser_name),
-                                                           widget_configuration={},
-                                                           option_submenu_params={})
+                                                           self.change_sentence_parser(parser_name))
 
-        self.word_text = Text(self, placeholder="Слово", height=2)
-        self.alt_terms_field = Text(self, relief="ridge", state="disabled", height=1)
-        self.definition_text = Text(self, placeholder="Значение")
+        self.word_text = self.Text(self, placeholder="Слово", height=2)
+        self.alt_terms_field = self.Text(self, relief="ridge", state="disabled", height=1)
+        self.definition_text = self.Text(self, placeholder="Значение")
 
         self.sent_text_list = []
         self.sent_button_list = []
         button_width = 3
         for i in range(5):
-            self.sent_text_list.append(Text(self, placeholder=f"Предложение {i + 1}"))
+            self.sent_text_list.append(self.Text(self, placeholder=f"Предложение {i + 1}"))
             self.sent_text_list[-1].fill_placeholder()
-            self.sent_button_list.append(Button(self,
+            self.sent_button_list.append(self.Button(self,
                                                 text=f"{i + 1}",
                                                 command=lambda x=i: self.choose_sentence(x),
                                                 width=button_width))
 
-        self.delete_button = Button(self, text="Del", command=self.delete_command, width=button_width)
-        self.prev_button = Button(self, text="Prev", command=lambda x=-1: self.replace_decks_pointers(x),
+        self.delete_button = self.Button(self, text="Del", command=self.delete_command, width=button_width)
+        self.prev_button = self.Button(self, text="Prev", command=lambda x=-1: self.replace_decks_pointers(x),
                                   state="disabled", width=button_width)
-        self.sound_button = Button(self, text="Play", command=self.play_sound, width=button_width)
-        self.anki_button = Button(self, text="Anki", command=App.func_placeholder, width=button_width)
-        self.bury_button = Button(self, text="Bury", command=self.bury_command, width=button_width)
+        self.sound_button = self.Button(self, text="Play", command=self.play_sound, width=button_width)
+        self.anki_button = self.Button(self, text="Anki", command=App.func_placeholder, width=button_width)
+        self.bury_button = self.Button(self, text="Bury", command=self.bury_command, width=button_width)
 
-        self.user_tags_field = Entry(self, placeholder="Тэги")
+        self.user_tags_field = self.Entry(self, placeholder="Тэги")
         self.user_tags_field.fill_placeholder()
 
-        self.tag_prefix_field = Entry(self, justify="center", width=8)
-        self.tag_prefix_field.insert(0, self.configurations["tags"]["hierarchical_pref"])
-        self.dict_tags_field = Text(self, relief="ridge", state="disabled", height=2)
+        self.tag_prefix_field = self.Entry(self, justify="center", width=8)
+        self.tag_prefix_field.insert(0, self.configurations["tags_hierarchical_pref"])
+        self.dict_tags_field = self.Text(self, relief="ridge", state="disabled", height=2)
 
         Text_padx = 10
         Text_pady = 2
@@ -260,13 +256,13 @@ class App(Tk):
     def show_errors(self, *args, **kwargs):
         error_log = create_exception_message()
 
-        error_handler_toplevel = Toplevel(self)
+        error_handler_toplevel = self.Toplevel(self)
         error_handler_toplevel.title("Ошибка")
         sf = ScrolledFrame(error_handler_toplevel, scrollbars="both")
         sf.pack(side="top", expand=1, fill="both")
         sf.bind_scroll_wheel(error_handler_toplevel)
-        inner_frame = sf.display_widget(Frame)
-        label = Label(inner_frame, text=error_log, justify="left")
+        inner_frame = sf.display_widget(self.Frame)
+        label = self.Label(inner_frame, text=error_log, justify="left")
         label.pack()
         label.update()
         sf.config(width=min(1000, label.winfo_width()), height=min(500, label.winfo_height()))
@@ -276,6 +272,20 @@ class App(Tk):
 
         self.clipboard_clear()
         self.clipboard_append(error_log)
+
+    def switch_theme(self):
+        def pick(name: str):
+            self.configurations["app"]["theme"] = name
+            messagebox.showinfo(message="Изменения вступят в силу после перезагрузки приложения!")
+            theme_toplevel.destroy()
+
+        theme_toplevel = self.Toplevel(self)
+        theme_toplevel.grid_columnconfigure(0, weight=1)
+        for i, theme_name in enumerate(plugins.themes.loaded):
+            b = self.Button(theme_toplevel, text=theme_name, command=lambda x=theme_name: pick(x))
+            b.grid(row=i, column=0, sticky="we", padx=5, pady=5)
+        theme_toplevel.bind("<Escape>", lambda event: theme_toplevel.destroy())
+        spawn_toplevel_in_center(self, theme_toplevel)
 
     def change_image_parser(self, given_image_parser_name: str):
         self.image_parser = plugins.get_image_parser(given_image_parser_name)
@@ -306,24 +316,22 @@ class App(Tk):
             self.deck.update_card_generator(self.cd)
 
         # dict
-        dict_configuration_toplevel = Toplevel(self)
+        dict_configuration_toplevel = self.Toplevel(self)
         dict_configuration_toplevel.grid_columnconfigure(1, weight=1)
         dict_configuration_toplevel.withdraw()
 
-        dict_label = Label(dict_configuration_toplevel, text="Словарь")
+        dict_label = self.Label(dict_configuration_toplevel, text="Словарь")
         dict_label.grid(row=0, column=0, sticky="news")
 
-        choose_wp_option = get_option_menu(dict_configuration_toplevel,
+        choose_wp_option = self.get_option_menu(dict_configuration_toplevel,
                                            init_text=self.typed_word_parser_name,
                                            values=[f"{WEB_PREF} {item}" for item in plugins.web_word_parsers.loaded] +
                                                   [f"{LOCAL_PREF} {item}" for item in plugins.local_word_parsers.loaded],
-                                           command=lambda parser: pick_parser(parser),
-                                           widget_configuration={},
-                                           option_submenu_params={})
+                                           command=lambda parser: pick_parser(parser))
         choose_wp_option.grid(row=0, column=1, sticky="news")
 
         # audio_getter
-        audio_getter_label = Label(dict_configuration_toplevel, text="Получение аудио")
+        audio_getter_label = self.Label(dict_configuration_toplevel, text="Получение аудио")
         audio_getter_label.grid(row=1, column=0, sticky="news")
 
         def pick_audio_getter(name: str):
@@ -334,45 +342,39 @@ class App(Tk):
             self.configurations["scrappers"]["local_audio"] = name
             self.local_audio_getter = plugins.get_local_audio_getter(name)
 
-        choose_audio_option = get_option_menu(dict_configuration_toplevel,
+        choose_audio_option = self.get_option_menu(dict_configuration_toplevel,
                                               init_text=DEFAULT_AUDIO_SRC if self.local_audio_getter is None
                                                                           else self.local_audio_getter.name,
                                               values=list(plugins.local_audio_getters.loaded) + [DEFAULT_AUDIO_SRC],
-                                              command=lambda getter: pick_audio_getter(getter),
-                                              widget_configuration={},
-                                              option_submenu_params={})
+                                              command=lambda getter: pick_audio_getter(getter))
         choose_audio_option.grid(row=1, column=1, sticky="news")
 
         # card_processor
-        card_processor_label = Label(dict_configuration_toplevel, text="Формат карточки")
+        card_processor_label = self.Label(dict_configuration_toplevel, text="Формат карточки")
         card_processor_label.grid(row=2, column=0, sticky="news")
 
         def choose_card_processor(name: str):
             self.configurations["card_processor"] = name
             self.card_processor = plugins.get_card_processor(name)
 
-        card_processor_option = get_option_menu(dict_configuration_toplevel,
+        card_processor_option = self.get_option_menu(dict_configuration_toplevel,
                                                 init_text=self.card_processor.name,
                                                 values=plugins.card_processors.loaded,
-                                                command=lambda processor: choose_card_processor(processor),
-                                                widget_configuration={},
-                                                option_submenu_params={})
+                                                command=lambda processor: choose_card_processor(processor))
         card_processor_option.grid(row=2, column=1, sticky="news")
 
         #format_processor
-        format_processor_label = Label(dict_configuration_toplevel, text="Формат итогового файла")
+        format_processor_label = self.Label(dict_configuration_toplevel, text="Формат итогового файла")
         format_processor_label.grid(row=3, column=0, sticky="news")
 
         def choose_format_processor(name: str):
             self.configurations["deck_saving_format"] = name
             self.deck_saver = plugins.get_deck_saving_formats(name)
 
-        format_processor_option = get_option_menu(dict_configuration_toplevel,
+        format_processor_option = self.get_option_menu(dict_configuration_toplevel,
                                                   init_text=self.deck_saver.name,
                                                   values=plugins.deck_saving_formats.loaded,
-                                                  command=lambda format: choose_format_processor(format),
-                                                  widget_configuration={},
-                                                  option_submenu_params={})
+                                                  command=lambda format: choose_format_processor(format))
         format_processor_option.grid(row=3, column=1, sticky="news")
 
         dict_configuration_toplevel.bind("<Escape>", lambda event: dict_configuration_toplevel.destroy())
@@ -449,7 +451,7 @@ class App(Tk):
                                             "word_parser_name": "cambridge_US",
                                             "base_image_parser": "google",
                                             "local_audio": ""},
-                              "tags": {"hierarchical_pref": ""},
+                              "tags_hierarchical_pref": "",
                               "directories": {"media_dir": "",
                                               "last_open_file": "",
                                               "last_save_dir": ""},
@@ -527,12 +529,12 @@ class App(Tk):
             skip_var = BooleanVar()
             skip_var.set(False)
             if os.path.exists(new_file_path):
-                copy_encounter = Toplevel(create_file_win)
+                copy_encounter = self.Toplevel(create_file_win)
                 copy_encounter.withdraw()
                 message = f"Файл уже существует.\nВыберите нужную опцию:"
-                encounter_label = Label(copy_encounter, text=message, relief="ridge")
-                skip_encounter_button = Button(copy_encounter, text="Пропустить", command=lambda: foo())
-                rewrite_encounter_button = Button(copy_encounter, text="Заменить", command=lambda: copy_encounter.destroy())
+                encounter_label = self.Label(copy_encounter, text=message, relief="ridge")
+                skip_encounter_button = self.Button(copy_encounter, text="Пропустить", command=lambda: foo())
+                rewrite_encounter_button = self.Button(copy_encounter, text="Заменить", command=lambda: copy_encounter.destroy())
 
                 encounter_label.grid(row=0, column=0, padx=5, pady=5)
                 skip_encounter_button.grid(row=1, column=0, padx=5, pady=5, sticky="news")
@@ -562,10 +564,10 @@ class App(Tk):
         new_file_dir = askdirectory(title="Выберете директорию для файла со словами", initialdir="./")
         if len(new_file_dir) == 0:
             return
-        create_file_win = Toplevel()
+        create_file_win = self.Toplevel()
         create_file_win.withdraw()
-        name_entry = Entry(create_file_win, placeholder="Имя файла", justify="center")
-        name_button = Button(create_file_win, text="Создать", command=create_file)
+        name_entry = self.Entry(create_file_win, placeholder="Имя файла", justify="center")
+        name_button = self.Button(create_file_win, text="Создать", command=create_file)
         name_entry.grid(row=0, column=0, padx=5, pady=3, sticky="news")
         name_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
         create_file_win.deiconify()
@@ -577,7 +579,7 @@ class App(Tk):
     def save_files(self):
         # получение координат на экране через self.winfo_rootx(), self.winfo_rooty() даёт некоторое смещение
         self.configurations["app"]["main_window_geometry"] = self.geometry()
-        self.configurations["tags"]["hierarchical_pref"] = self.tag_prefix_field.get()
+        self.configurations["tags_hierarchical_pref"] = self.tag_prefix_field.get()
         self.save_conf_file()
 
         self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position() - 1
@@ -628,11 +630,11 @@ class App(Tk):
                                            request_delay=3_000,
                                            temp_dir="./temp/",
                                            saving_dir=self.configurations["directories"]["media_dir"],
-                                           # toplevel_cfg=self.toplevel_cfg,
+                                           toplevel_cfg=self.theme.toplevel_cfg,
                                            pb_cfg={"length": self.winfo_width()},
-                                           # label_cfg=self.label_cfg,
-                                           # button_cfg=self.button_cfg,
-                                           # checkbutton_cfg=self.checkbutton_cfg
+                                           label_cfg=self.theme.label_cfg,
+                                           button_cfg=self.theme.button_cfg,
+                                           checkbutton_cfg=self.theme.checkbutton_cfg
                                            )
         if closing:
             audio_downloader.bind("<Destroy>", lambda event: self.destroy() if isinstance(event.widget, Toplevel) else None)
@@ -740,20 +742,20 @@ class App(Tk):
                 add_word_frame.withdraw()
                 add_word_frame.deiconify()
 
-        add_word_frame = Toplevel(self)
+        add_word_frame = self.Toplevel(self)
         add_word_frame.withdraw()
 
         add_word_frame.grid_columnconfigure(0, weight=1)
         add_word_frame.title("Добавить")
 
-        add_word_entry = Entry(add_word_frame, placeholder="Слово")
+        add_word_entry = self.Entry(add_word_frame, placeholder="Слово")
         add_word_entry.focus()
         add_word_entry.grid(row=0, column=0, padx=5, pady=3, sticky="we")
 
-        additional_filter_entry = Text(add_word_frame, placeholder="Дополнительный фильтр", height=5)
+        additional_filter_entry = self.Text(add_word_frame, placeholder="Дополнительный фильтр", height=5)
         additional_filter_entry.grid(row=1, column=0, padx=5, pady=3, sticky="we")
 
-        start_parsing_button = Button(add_word_frame, text="Добавить", command=define_word_button)
+        start_parsing_button = self.Button(add_word_frame, text="Добавить", command=define_word_button)
         start_parsing_button.grid(row=2, column=0, padx=5, pady=3, sticky="ns")
 
         add_word_frame.bind("<Escape>", lambda event: add_word_frame.destroy())
@@ -810,42 +812,42 @@ class App(Tk):
                 find_frame.destroy()
 
                 found_item_number = 1
-                rotate_frame = Toplevel(self)
+                rotate_frame = self.Toplevel(self)
                 rotate_frame.title(f"{found_item_number}/{len(move_list) + 1}")
 
-                left = Button(rotate_frame, text="<", command=lambda: rotate(-1))
+                left = self.Button(rotate_frame, text="<", command=lambda: rotate(-1))
                 left["state"] = "disabled"
                 left.grid(row=0, column=0)
 
-                right = Button(rotate_frame, text=">", command=lambda: rotate(1))
+                right = self.Button(rotate_frame, text=">", command=lambda: rotate(1))
                 right.grid(row=0, column=2)
 
-                done = Button(rotate_frame, text="Готово", command=lambda: rotate_frame.destroy())
+                done = self.Button(rotate_frame, text="Готово", command=lambda: rotate_frame.destroy())
                 done.grid(row=0, column=1)
                 spawn_toplevel_in_center(self, rotate_frame)
-                rotate_frame.bind_all("<Escape>", lambda _: rotate_frame.destroy())
+                rotate_frame.bind("<Escape>", lambda _: rotate_frame.destroy())
                 return
             messagebox.showerror("Ошибка запроса", "Ничего не найдено!")
             find_frame.withdraw()
             find_frame.deiconify()
 
-        find_frame = Toplevel(self)
+        find_frame = self.Toplevel(self)
         find_frame.withdraw()
         find_frame.title("Перейти")
         find_frame.grid_columnconfigure(0, weight=1)
-        find_entry = Text(find_frame, height=5)
+        find_entry = self.Text(find_frame, height=5)
         find_entry.grid(row=0, column=0, padx=5, pady=3, sticky="we")
         find_entry.focus()
 
-        find_button = Button(find_frame, text="Перейти", command=go_to)
+        find_button = self.Button(find_frame, text="Перейти", command=go_to)
         find_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
-        find_frame.bind_all("<Return>", lambda _: go_to())
-        find_frame.bind_all("<Escape>", lambda _: find_frame.destroy())
+        find_frame.bind("<Return>", lambda _: go_to())
+        find_frame.bind("<Escape>", lambda _: find_frame.destroy())
         find_frame.deiconify()
         spawn_toplevel_in_center(self, find_frame, desired_toplevel_width=self.winfo_width())
 
     def statistics_dialog(self):
-        statistics_window = Toplevel(self)
+        statistics_window = self.Toplevel(self)
         statistics_window.withdraw()
 
         statistics_window.title("Статистика")
@@ -858,14 +860,14 @@ class App(Tk):
         scroll_frame = ScrolledFrame(statistics_window, scrollbars="horizontal")
         scroll_frame.pack()
         scroll_frame.bind_scroll_wheel(statistics_window)
-        inner_frame = scroll_frame.display_widget(Frame)
+        inner_frame = scroll_frame.display_widget(self.Frame)
         for row_index in range(len(text_list[0])):
             for column_index in range(2):
-                info = Label(inner_frame, text=text_list[column_index][row_index], anchor="center",
+                info = self.Label(inner_frame, text=text_list[column_index][row_index], anchor="center",
                              relief="ridge")
                 info.grid(column=column_index, row=row_index, sticky="news")
 
-        statistics_window.bind_all("<Escape>", lambda _: statistics_window.destroy())
+        statistics_window.bind("<Escape>", lambda _: statistics_window.destroy())
         statistics_window.update()
         current_frame_width = inner_frame.winfo_width()
         current_frame_height = inner_frame.winfo_height()
@@ -917,21 +919,21 @@ class App(Tk):
         def sound_dialog(audio_src: list[str], info: list[str], play_command: Callable[[str, str], None]):
             assert len(audio_src) == len(info)
 
-            playsound_toplevel = Toplevel(self)
+            playsound_toplevel = self.Toplevel(self)
             playsound_toplevel.withdraw()
             playsound_toplevel.title("Аудио")
             playsound_toplevel.columnconfigure(0, weight=1)
 
             for i in range(len(audio_src)):
                 playsound_toplevel.rowconfigure(i, weight=1)
-                label = Text(playsound_toplevel, relief="ridge", height=3)
+                label = self.Text(playsound_toplevel, relief="ridge", height=3)
                 label.insert(1.0, info[i])
                 label["state"] = "disabled"
                 label.grid(row=i, column=0)
-                b = Button(playsound_toplevel, text="Play", command=lambda src=audio_src[i]: play_command(src, str(i)))
+                b = self.Button(playsound_toplevel, text="Play", command=lambda src=audio_src[i]: play_command(src, str(i)))
                 b.grid(row=i, column=1, sticky="news")
 
-            playsound_toplevel.bind_all("<Escape>", lambda _: playsound_toplevel.destroy())
+            playsound_toplevel.bind("<Escape>", lambda _: playsound_toplevel.destroy())
             playsound_toplevel.deiconify()
             spawn_toplevel_in_center(self, playsound_toplevel,
                                      desired_toplevel_width=self.winfo_width()
@@ -1017,6 +1019,7 @@ class App(Tk):
         button_pady = button_padx = 10
         height_lim = self.winfo_height() * 7 // 8
         image_finder = ImageSearch(master=self,
+                                   main_params=self.theme.toplevel_cfg,
                                    search_term=word,
                                    saving_dir=self.configurations["directories"]["media_dir"],
                                    url_scrapper=self.image_parser.get_image_links,
@@ -1026,12 +1029,13 @@ class App(Tk):
                                    on_close_action=connect_images_to_card,
                                    show_image_width=show_image_width,
                                    saving_image_width=300,
-                                   button_padx=button_padx, button_pady=button_pady,
+                                   button_padx=button_padx,
+                                   button_pady=button_pady,
                                    window_height_limit=height_lim,
                                    on_closing_action=connect_images_to_card,
-                                   #window_bg=self.main_bg,
-                                   #command_button_params=self.button_cfg,
-                                   #entry_params=self.entry_cfg
+                                   command_button_params=self.theme.button_cfg,
+                                   entry_params=self.theme.entry_cfg,
+                                   frame_params=self.theme.frame_cfg
                                    )
         image_finder.focus()
         image_finder.grab_set()

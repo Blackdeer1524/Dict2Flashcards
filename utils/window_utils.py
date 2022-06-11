@@ -27,16 +27,16 @@ def spawn_toplevel_in_center(master, toplevel_widget, desired_toplevel_width=0, 
     toplevel_widget.grab_set()
 
 
-def get_option_menu(master, init_text, values, command, widget_configuration=None, option_submenu_params=None):
-    if widget_configuration is None:
-        widget_configuration = {}
-    if option_submenu_params is None:
-        option_submenu_params = {}
+def get_option_menu(master, init_text, values, command, option_menu_cfg=None, option_submenu_cfg=None):
+    if option_menu_cfg is None:
+        option_menu_cfg = {}
+    if option_submenu_cfg is None:
+        option_submenu_cfg = {}
 
     var = StringVar()
     var.set(init_text)
     option_menu = OptionMenu(master, var, *values, command=command)
-    option_menu.configure(**widget_configuration)
+    option_menu.configure(**option_menu_cfg)
     for submenu_index in range(len(values)):
-        option_menu["menu"].entryconfig(submenu_index, **option_submenu_params)
+        option_menu["menu"].entryconfig(submenu_index, **option_submenu_cfg)
     return option_menu

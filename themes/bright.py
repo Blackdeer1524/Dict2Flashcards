@@ -1,12 +1,13 @@
 button_bg = "#E1E1E1"
 text_bg = "#FFFFFF"
-widget_fg = "SystemWindowText"
-text_selectbackground = "SystemHighlight"
-text_selectforeground = "SystemHighlightText"
+widget_fg = "#030303"
+text_selectbackground = "#308CC6"
+text_selectforeground = text_bg
 main_bg = "#F0F0F0"
 
 
-label_cfg = {"background": main_bg, 
+root_cfg = {"bg": main_bg}
+label_cfg = {"background": main_bg,
              "foreground": widget_fg}
 button_cfg = {"background": button_bg,
               "foreground": widget_fg,
@@ -28,7 +29,6 @@ checkbutton_cfg = {"background": main_bg,
                    "activeforeground": widget_fg,
                    "selectcolor": main_bg}
 toplevel_cfg = {"bg": main_bg}
-main_cfg = {"bg": main_bg}
 frame_cfg = {"bg": main_bg}
 option_menu_cfg = {"background": button_bg,
                    "foreground": widget_fg,

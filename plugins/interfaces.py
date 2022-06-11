@@ -10,7 +10,7 @@ class ThemeInterface(Protocol):
     entry_cfg: dict
     checkbutton_cfg: dict
     toplevel_cfg: dict
-    main_cfg: dict
+    root_cfg: dict
     frame_cfg: dict
     option_menu_cfg: dict
     option_submenus_cfg: dict

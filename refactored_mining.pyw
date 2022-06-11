@@ -29,6 +29,8 @@ from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
+from playsound import playsound
+from utils.audio_utils import AudioDownloader
 
 
 class App(Tk):
@@ -577,7 +579,6 @@ class App(Tk):
         find_frame.withdraw()
         find_frame.title("Перейти")
         find_frame.grid_columnconfigure(0, weight=1)
-
         find_entry = Text(find_frame, height=5)
         find_entry.grid(row=0, column=0, padx=5, pady=3, sticky="we")
         find_entry.focus()
@@ -587,7 +588,7 @@ class App(Tk):
         find_frame.bind_all("<Return>", lambda _: go_to())
         find_frame.bind_all("<Escape>", lambda _: find_frame.destroy())
         find_frame.deiconify()
-        spawn_toplevel_in_center(self, find_frame)
+        spawn_toplevel_in_center(self, find_frame, desired_toplevel_width=self.winfo_width())
 
     def statistics_dialog(self):
         statistics_window = Toplevel(self)
@@ -644,32 +645,29 @@ class App(Tk):
         self.refresh()
 
     def play_sound(self):
-        def sound_dialog(audio_src: list[str], info: list[str], play_command: Callable[[str, int], None]):
+        def sound_dialog(audio_src: list[str], info: list[str], play_command: Callable[[str, str], None]):
             assert len(audio_src) == len(info)
 
             playsound_toplevel = Toplevel(self)
             playsound_toplevel.withdraw()
             playsound_toplevel.title("Аудио")
+            playsound_toplevel.columnconfigure(0, weight=1)
 
-            scroll_frame = ScrolledFrame(playsound_toplevel, scrollbars="both")
-            scroll_frame.pack()
-            scroll_frame.bind_scroll_wheel(playsound_toplevel)
-            inner_frame = scroll_frame.display_widget(Frame)
             for i in range(len(audio_src)):
-                label = Label(inner_frame, text=info[i], anchor="center",
-                              relief="ridge")
-                label.grid(row=i, column=0, sticky="news")
-                b = Button(inner_frame, text="Play", command=lambda src=audio_src[i]: play_command(src, i))
-                b.grid(row=i, column=3, sticky="e")
+                playsound_toplevel.rowconfigure(i, weight=1)
+                label = Text(playsound_toplevel, relief="ridge", height=3)
+                label.insert(1.0, info[i])
+                label["state"] = "disabled"
+                label.grid(row=i, column=0)
+                b = Button(playsound_toplevel, text="Play", command=lambda src=audio_src[i]: play_command(src, str(i)))
+                b.grid(row=i, column=1, sticky="news")
 
             playsound_toplevel.bind_all("<Escape>", lambda _: playsound_toplevel.destroy())
-            playsound_toplevel.update()
-            current_frame_width = inner_frame.winfo_width()
-            current_frame_height = inner_frame.winfo_height()
-            scroll_frame.config(width=min(self.winfo_width(), current_frame_width),
-                                height=min(self.winfo_height(), current_frame_height))
-            spawn_toplevel_in_center(self, playsound_toplevel)
             playsound_toplevel.deiconify()
+            spawn_toplevel_in_center(self, playsound_toplevel,
+                                     desired_toplevel_width=self.winfo_width()
+                                     )
+
 
         def show_download_error(exc):
             messagebox.showerror(message=f"Ошибка получения звука\n{exc}")
@@ -694,36 +692,31 @@ class App(Tk):
         def local_playsound(src: str, postfix: str = ""):
             playsound(src)
 
-
         word = self.word
         dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
         if self.configurations["scrappers"]["local_audio"]:
             audio_file_path = self.local_audio_getter.get_local_audio_path(word, dict_tags)
 
             if audio_file_path:
-                playsound(audio_file_path, block=True)
+                if os.path.isdir(audio_file_path):
+                    srcs = [file_path for item in os.listdir(audio_file_path)
+                            if os.path.isfile((file_path := os.path.join(audio_file_path, item))) and
+                            file_path.endswith(".mp3")]
+                    sound_dialog(srcs, srcs, local_playsound)
+                    return
+                local_playsound(audio_file_path)
                 return
             messagebox.showerror(message="Ошибка получения звука\nЛокальный файл не найден")
             return
 
-        if (audio_file_url := self.dict_card_data.get(FIELDS.audio_links)[0]) is None:
+        if (audio_file_urls := self.dict_card_data.get(FIELDS.audio_links)) is None or len(audio_file_urls == 0):
             messagebox.showerror(message="Ошибка получения звука\nНе откуда брать аудио!")
             return
 
-        audio_name = self.card_processor.get_save_audio_name(word,
-                                                             self.typed_word_parser_name,
-                                                             dict_tags)
-
-        temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name)
-        success = True
-        if not os.path.exists(temp_audio_path):
-            success = AudioDownloader.fetch_audio(url=audio_file_url,
-                                                  save_path=temp_audio_path,
-                                                  timeout=5,
-                                                  headers={'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'},
-                                                  exception_action=lambda exc: show_download_error(exc))
-        if success:
-            playsound(temp_audio_path)
+        elif len(audio_file_urls) == 1:
+            web_playsound(audio_file_urls[0], "")
+            return
+        sound_dialog(audio_file_urls, audio_file_urls, web_playsound)
 
     def start_image_search(self):
         def connect_images_to_card(instance: ImageSearch):

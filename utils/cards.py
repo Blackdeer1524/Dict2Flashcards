@@ -136,6 +136,9 @@ class Deck(PointerList):
 
         self._cards_left = max(0, len(self) - self._pointer_position)
 
+    def update_card_generator(self, cd: CardGenerator):
+        self._card_generator = cd
+
     def set_card_generator(self, value: CardGenerator):
         assert (isinstance(value, CardGenerator))
         self._card_generator = value

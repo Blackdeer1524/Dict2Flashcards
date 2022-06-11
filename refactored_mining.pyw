@@ -59,7 +59,7 @@ class App(Tk):
             self.cd = plugins.get_local_card_generator(wp_name)
         else:
             raise NotImplemented("Unknown word_parser_type: {}!".format(self.configurations["scrappers"]["word_parser_type"]))
-        self.typed_word_parser_name = f"{wp_type} {wp_name}"
+        self.typed_word_parser_name = f"[{wp_type}] {wp_name}"
 
         self.deck = Deck(deck_path=self.configurations["directories"]["last_open_file"],
                          current_deck_pointer=self.history[self.configurations["directories"]["last_open_file"]],
@@ -82,7 +82,7 @@ class App(Tk):
 
 
         self.saved_cards_data = SavedDataDeck()
-        self.deck_saver = plugins.get_deck_saving_formats(self.configurations["deck"]["saving_format"])
+        self.deck_saver = plugins.get_deck_saving_formats(self.configurations["deck_saving_format"])
         self.audio_saver = plugins.get_deck_saving_formats("json_deck_audio")
         self.buried_saver = plugins.get_deck_saving_formats("json_deck_cards")
 
@@ -118,7 +118,7 @@ class App(Tk):
         self.config(menu=main_menu)
 
         self.browse_button = Button(self, text="Найти в браузере", command=self.web_search_command)
-        self.configurations_word_parser_button = Button(self, text="Настроить словарь", command=App.func_placeholder)
+        self.configurations_word_parser_button = Button(self, text="Настроить словарь", command=self.configure_dictionary)
         self.find_image_button = Button(self, text="Добавить изображение", command=self.start_image_search)
         self.image_word_parsers_names = plugins.image_parsers.loaded
 
@@ -161,7 +161,7 @@ class App(Tk):
                                   state="disabled", width=button_width)
         self.sound_button = Button(self, text="Play", command=self.play_sound, width=button_width)
         self.anki_button = Button(self, text="Anki", command=App.func_placeholder, width=button_width)
-        self.bury_button = Button(self, text="Bury", command=App.func_placeholder, width=button_width)
+        self.bury_button = Button(self, text="Bury", command=self.bury_command, width=button_width)
 
         self.user_tags_field = Entry(self, placeholder="Тэги")
         self.user_tags_field.fill_placeholder()
@@ -239,7 +239,7 @@ class App(Tk):
         self.bind("<Escape>", lambda event: self.on_closing())
         self.bind("<Control-Key-0>", lambda event: self.geometry("+0+0"))
         self.bind("<Control-d>", lambda event: self.delete_command())
-        self.bind("<Control-q>", lambda event: self.func_placeholder())
+        self.bind("<Control-q>", lambda event: self.bury_command())
         self.bind("<Control-s>", lambda event: self.save_button())
         self.bind("<Control-f>", lambda event: self.find_dialog())
         self.bind("<Control-e>", lambda event: self.statistics_dialog())
@@ -287,6 +287,99 @@ class App(Tk):
                                                 sentence_batch_size=self.sentence_batch_size)
         self.configurations["scrappers"]["base_sentence_parser"] = given_sentence_parser_name
 
+    def configure_dictionary(self):
+        WEB_PREF = "[web]"
+        LOCAL_PREF = "[local]"
+        DEFAULT_AUDIO_SRC = "default"
+
+        def pick_parser(name: str):
+            if name.startswith(WEB_PREF):
+                res_name = name[len(WEB_PREF) + 1:]
+                self.cd = plugins.get_web_card_generator(name[len(WEB_PREF) + 1:])
+                self.configurations["scrappers"]["word_parser_type"] = "web"
+            else:
+                res_name = name[len(LOCAL_PREF) + 1:]
+                self.cd = plugins.get_local_card_generator(name[len(LOCAL_PREF) + 1:])
+                self.configurations["scrappers"]["word_parser_type"] = "local"
+            self.configurations["scrappers"]["word_parser_name"] = res_name
+            self.typed_word_parser_name = name
+            self.deck.update_card_generator(self.cd)
+
+        # dict
+        dict_configuration_toplevel = Toplevel(self)
+        dict_configuration_toplevel.grid_columnconfigure(1, weight=1)
+        dict_configuration_toplevel.withdraw()
+
+        dict_label = Label(dict_configuration_toplevel, text="Словарь")
+        dict_label.grid(row=0, column=0, sticky="news")
+
+        choose_wp_option = get_option_menu(dict_configuration_toplevel,
+                                           init_text=self.typed_word_parser_name,
+                                           values=[f"{WEB_PREF} {item}" for item in plugins.web_word_parsers.loaded] +
+                                                  [f"{LOCAL_PREF} {item}" for item in plugins.local_word_parsers.loaded],
+                                           command=lambda parser: pick_parser(parser),
+                                           widget_configuration={},
+                                           option_submenu_params={})
+        choose_wp_option.grid(row=0, column=1, sticky="news")
+
+        # audio_getter
+        audio_getter_label = Label(dict_configuration_toplevel, text="Получение аудио")
+        audio_getter_label.grid(row=1, column=0, sticky="news")
+
+        def pick_audio_getter(name: str):
+            if name == DEFAULT_AUDIO_SRC:
+                self.local_audio_getter = None
+                self.configurations["scrappers"]["local_audio"] = ""
+                return
+            self.configurations["scrappers"]["local_audio"] = name
+            self.local_audio_getter = plugins.get_local_audio_getter(name)
+
+        choose_audio_option = get_option_menu(dict_configuration_toplevel,
+                                              init_text=DEFAULT_AUDIO_SRC if self.local_audio_getter is None
+                                                                          else self.local_audio_getter.name,
+                                              values=list(plugins.local_audio_getters.loaded) + [DEFAULT_AUDIO_SRC],
+                                              command=lambda getter: pick_audio_getter(getter),
+                                              widget_configuration={},
+                                              option_submenu_params={})
+        choose_audio_option.grid(row=1, column=1, sticky="news")
+
+        # card_processor
+        card_processor_label = Label(dict_configuration_toplevel, text="Формат карточки")
+        card_processor_label.grid(row=2, column=0, sticky="news")
+
+        def choose_card_processor(name: str):
+            self.configurations["card_processor"] = name
+            self.card_processor = plugins.get_card_processor(name)
+
+        card_processor_option = get_option_menu(dict_configuration_toplevel,
+                                                init_text=self.card_processor.name,
+                                                values=plugins.card_processors.loaded,
+                                                command=lambda processor: choose_card_processor(processor),
+                                                widget_configuration={},
+                                                option_submenu_params={})
+        card_processor_option.grid(row=2, column=1, sticky="news")
+
+        #format_processor
+        format_processor_label = Label(dict_configuration_toplevel, text="Формат итогового файла")
+        format_processor_label.grid(row=3, column=0, sticky="news")
+
+        def choose_format_processor(name: str):
+            self.configurations["deck_saving_format"] = name
+            self.deck_saver = plugins.get_deck_saving_formats(name)
+
+        format_processor_option = get_option_menu(dict_configuration_toplevel,
+                                                  init_text=self.deck_saver.name,
+                                                  values=plugins.deck_saving_formats.loaded,
+                                                  command=lambda format: choose_format_processor(format),
+                                                  widget_configuration={},
+                                                  option_submenu_params={})
+        format_processor_option.grid(row=3, column=1, sticky="news")
+
+        dict_configuration_toplevel.bind("<Escape>", lambda event: dict_configuration_toplevel.destroy())
+        dict_configuration_toplevel.bind("<Return>", lambda event: dict_configuration_toplevel.destroy())
+        dict_configuration_toplevel.deiconify()
+        spawn_toplevel_in_center(self, dict_configuration_toplevel)
+
     def web_search_command(self):
         search_term = self.word
         definition_search_query = search_term + " definition"
@@ -318,6 +411,10 @@ class App(Tk):
             self.saved_cards_data.append(CardStatus.DELETE)
         self.refresh()
 
+    def bury_command(self):
+        self.saved_cards_data.append(status=CardStatus.BURY, card_data=self.dict_card_data)
+        self.refresh()
+
     def replace_decks_pointers(self, n: int):
         self.deck.move(n - 1)
         self.saved_cards_data.move(n)
@@ -345,13 +442,13 @@ class App(Tk):
         standard_conf_file = {"app": {"theme": "dark",
                                       "main_window_geometry": "500x800+0+0",
                                       "image_search_position": "+0+0"},
-                              "deck": {"saving_format": "csv"},
+                              "card_processor": "Anki",
+                              "deck_saving_format": "csv",
                               "scrappers": {"base_sentence_parser": "sentencedict",
                                             "word_parser_type": "web",
                                             "word_parser_name": "cambridge_US",
                                             "base_image_parser": "google",
-                                            "local_audio": ""
-                                            },
+                                            "local_audio": ""},
                               "tags": {"hierarchical_pref": ""},
                               "directories": {"media_dir": "",
                                               "last_open_file": "",
@@ -865,7 +962,7 @@ class App(Tk):
 
         word = self.word
         dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
-        if self.configurations["scrappers"]["local_audio"]:
+        if self.local_audio_getter is not None:
             audio_file_paths = self.local_audio_getter.get_local_audios(word, dict_tags)
             if audio_file_paths:
                 if len(audio_file_paths) == 1:

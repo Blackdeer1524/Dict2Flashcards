@@ -16,5 +16,6 @@ def save(deck: SavedDeck,
             continue
         saving_object.append(card_page[SavedDeck.CARD_DATA])
 
-    with open(saving_path + ".json", "w", encoding="utf-8") as deck_file:
-        json.dump(saving_object, deck_file, cls=FrozenDictJSONEncoder)
+    if saving_object:
+        with open(saving_path + ".json", "w", encoding="utf-8") as deck_file:
+            json.dump(saving_object, deck_file, cls=FrozenDictJSONEncoder)

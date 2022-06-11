@@ -60,7 +60,7 @@ class ImageParserContainer(_PluginContainer):
 class CardProcessorContainer(_PluginContainer):
     get_save_image_name: Callable[[str, str, dict], str]
     get_card_image_name: Callable[[str], str]
-    get_save_audio_name: Callable[[str, str, dict], str]
+    get_save_audio_name: Callable[[str, str, str, dict], str]
     get_card_audio_name: Callable[[str], str]
     process_card:        Callable[[dict], None]
 
@@ -82,8 +82,8 @@ class DeckSavingFormatContainer(_PluginContainer):
 
 
 class LocalAudioGetterContainer(_PluginContainer):
-    get_local_audio_path: Callable[[str, dict], str]
+    get_local_audios: Callable[[str, dict], str]
 
     def __init__(self, name: str, source_module: LocalAudioGetterInterface):
         super(LocalAudioGetterContainer, self).__init__(name)
-        super().__setattr__("get_local_audio_path", source_module.get_local_audio_path)
+        super().__setattr__("get_local_audios", source_module.get_local_audios)

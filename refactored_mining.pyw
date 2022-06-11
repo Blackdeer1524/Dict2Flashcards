@@ -77,7 +77,8 @@ class App(Tk):
 
         self.saved_cards = SavedDeck()
         self.deck_saver = plugins.get_deck_saving_formats(self.configurations["deck"]["saving_format"])
-        self.buried_saver = plugins.get_deck_saving_formats("json_deck")
+        self.audio_saver = plugins.get_deck_saving_formats("json_deck_audio")
+        self.buried_saver = plugins.get_deck_saving_formats("json_deck_cards")
 
         main_menu = Menu(self)
         filemenu = Menu(main_menu, tearoff=0)
@@ -367,6 +368,11 @@ class App(Tk):
                              self.card_processor.get_card_image_name,
                              self.card_processor.get_card_audio_name)
 
+        self.audio_saver.save(self.saved_cards, CardStatus.ADD,
+                               f"{saving_path}_{self.srt_session_start}_audios",
+                               self.card_processor.get_card_image_name,
+                               self.card_processor.get_card_audio_name)
+
         self.buried_saver.save(self.saved_cards, CardStatus.BURY,
                                f"{saving_path}_{self.srt_session_start}_buried",
                                self.card_processor.get_card_image_name,
@@ -379,12 +385,33 @@ class App(Tk):
         if messagebox.askokcancel("Выход", "Вы точно хотите выйти?"):
             self.save_files()
             # self.bg.stop()
-            # if self.AUDIO_INFO:
-            #     self.download_audio(closing=True)
-            # else:
-            #     self.destroy()
-            self.destroy()
-
+            self.download_audio(closing=True)
+    
+    def download_audio(self, choose_file=False, closing=False):
+        if choose_file:
+            self.save_files()
+            audio_file_name = askopenfilename(title="Выберете JSON файл c аудио", filetypes=(("JSON", ".json"),),
+                                              initialdir="./")
+            if not audio_file_name:
+                return
+            with open(audio_file_name, encoding="UTF-8") as audio_file:
+                audio_links_list = json.load(audio_file)
+        else:
+            audio_links_list = self.AUDIO_INFO
+        audio_downloader = AudioDownloader(master=self, headers=self.headers, timeout=1, request_delay=3_000,
+                                           temp_dir="./temp/", saving_dir=self.MEDIA_DIR,
+                                           local_media_dir=self.LOCAL_DICTIONARIES_DIR,
+                                           toplevel_cfg=self.toplevel_cfg,
+                                           pb_cfg={"length": self.WIDTH - 2 * self.text_padx},
+                                           label_cfg=self.label_cfg,
+                                           button_cfg=self.button_cfg,
+                                           checkbutton_cfg=self.checkbutton_cfg)
+        if closing:
+            audio_downloader.bind("<Destroy>", lambda event: self.destroy() if isinstance(event.widget, Toplevel) else None)
+        spawn_toplevel_in_center(self, audio_downloader)
+        audio_downloader.download_audio(audio_links_list)
+        
+    
     def save_button(self):
         self.save_files()
         messagebox.showinfo(message="Файлы сохранены")
@@ -621,22 +648,37 @@ class App(Tk):
         statistics_window.deiconify()
 
     def choose_sentence(self, sentence_number: int):
-        self.dict_card_data[FIELDS.word] = self.word
+        word = self.word
+        dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
+        self.dict_card_data[FIELDS.word] = word
         self.dict_card_data[FIELDS.definition] = self.definition
-        self.dict_card_data[SavedDeck.WORD_PARSER_NAME] = self.typed_word_parser_name
 
         picked_sentence = self.get_sentence(sentence_number)
         if not picked_sentence:
             picked_sentence = self.dict_card_data[FIELDS.word]
-
         self.dict_card_data[FIELDS.sentences] = [picked_sentence]
 
-        if self.local_audio_getter is None and self.dict_card_data.get(FIELDS.img_links, []) or \
-            self.local_audio_getter is not None and self.local_audio_getter.get_local_audio_path():
-            self.dict_card_data[SavedDeck.AUDIO_DATA] = [
-                self.card_processor.get_save_audio_name(self.word,
-                                                        self.typed_word_parser_name,
-                                                        self.dict_card_data.get(FIELDS.dict_tags, {}))
+        if self.local_audio_getter is not None and (local_audios := self.local_audio_getter.get_local_audios(word, dict_tags)):
+            self.dict_card_data[SavedDeck.AUDIO_SRC] = local_audios
+            self.dict_card_data[SavedDeck.AUDIO_SRC_TYPE] = SavedDeck.AUDIO_SRC_TYPE_LOCAL
+            self.dict_card_data[SavedDeck.AUDIO_SAVING_PATHS] = [
+                os.path.join(self.configurations["directories"]["media_dir"],
+                             self.card_processor.get_save_audio_name(word,
+                                                                     self.local_audio_getter.name,
+                                                                     f"{i}",
+                                                                     dict_tags))
+                for i in range(len(local_audios))
+            ]
+        elif self.local_audio_getter is None and (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
+            self.dict_card_data[SavedDeck.AUDIO_SRC] = web_audios
+            self.dict_card_data[SavedDeck.AUDIO_SRC_TYPE] = SavedDeck.AUDIO_SRC_TYPE_WEB
+            self.dict_card_data[SavedDeck.AUDIO_SAVING_PATHS] = [
+                os.path.join(self.configurations["directories"]["media_dir"],
+                             self.card_processor.get_save_audio_name(word,
+                                                                     self.typed_word_parser_name,
+                                                                     f"{i}",
+                                                                     dict_tags))
+                for i in range(len(web_audios))
             ]
 
         self.saved_cards.append(status=CardStatus.ADD, card_data=self.dict_card_data)
@@ -668,13 +710,13 @@ class App(Tk):
                                      desired_toplevel_width=self.winfo_width()
                                      )
 
-
         def show_download_error(exc):
             messagebox.showerror(message=f"Ошибка получения звука\n{exc}")
 
         def web_playsound(src: str, postfix: str = ""):
             audio_name = self.card_processor.get_save_audio_name(word,
                                                                  self.typed_word_parser_name,
+                                                                 "0",
                                                                  dict_tags)
 
             temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name + postfix)
@@ -683,8 +725,7 @@ class App(Tk):
                 success = AudioDownloader.fetch_audio(url=src,
                                                       save_path=temp_audio_path,
                                                       timeout=5,
-                                                      headers={
-                                                          'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'},
+                                                      headers={'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'},
                                                       exception_action=lambda exc: show_download_error(exc))
             if success:
                 playsound(temp_audio_path)
@@ -695,16 +736,12 @@ class App(Tk):
         word = self.word
         dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
         if self.configurations["scrappers"]["local_audio"]:
-            audio_file_path = self.local_audio_getter.get_local_audio_path(word, dict_tags)
-
-            if audio_file_path:
-                if os.path.isdir(audio_file_path):
-                    srcs = [file_path for item in os.listdir(audio_file_path)
-                            if os.path.isfile((file_path := os.path.join(audio_file_path, item))) and
-                            file_path.endswith(".mp3")]
-                    sound_dialog(srcs, srcs, local_playsound)
+            audio_file_paths = self.local_audio_getter.get_local_audios(word, dict_tags)
+            if audio_file_paths:
+                if len(audio_file_paths) == 1:
+                    local_playsound(audio_file_paths[0])
                     return
-                local_playsound(audio_file_path)
+                sound_dialog(audio_file_paths, audio_file_paths, local_playsound)
                 return
             messagebox.showerror(message="Ошибка получения звука\nЛокальный файл не найден")
             return

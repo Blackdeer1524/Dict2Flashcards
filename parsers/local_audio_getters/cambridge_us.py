@@ -8,10 +8,10 @@ AUDIO_NAME_SPEC_CHARS = '/\\:*?\"<>| '
 AUDIO_FOLDER = "us_audios"
 
 
-def get_local_audio_path(word, dict_tags: dict):
+def get_local_audios(word, dict_tags: dict) -> list[str]:
     word = word.strip()
     if not word:
-        return ""
+        return []
 
     letter_group = word[0] if word[0].lower() in LETTERS else "0-9"
     name = f"{remove_special_chars(word, '-', AUDIO_NAME_SPEC_CHARS)}.mp3"
@@ -19,5 +19,9 @@ def get_local_audio_path(word, dict_tags: dict):
 
     for current_dir_path, dirs, files in os.walk(search_root):
         if name in files:
-            return os.path.join(current_dir_path, name)
-    return ""
+            return [os.path.join(str(current_dir_path), name)]
+        elif name in dirs:
+            dir = os.path.join(str(current_dir_path), name)
+            return [file_path for item in os.listdir(dir)
+                    if os.path.isfile((file_path := os.path.join(dir, item)))]
+    return []

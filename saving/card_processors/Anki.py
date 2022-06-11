@@ -3,7 +3,7 @@ import os.path
 from utils.string_utils import remove_special_chars
 
 
-SCHEME_PREFIX = os.path.basename(__file__)
+SCHEME_PREFIX = os.path.basename(__file__).rstrip(".py")
 
 
 def get_save_image_name(word: str,
@@ -17,15 +17,16 @@ def get_card_image_name(saved_image_path: str) -> str:
     return f"<img src='{os.path.split(saved_image_path)[-1]}'/>"
 
 
-def get_save_audio_name(word: str, word_parser_name: str, dict_tags: dict) -> str:
+def get_save_audio_name(word: str, audio_provider: str, multiple_postfix: str,
+                        dict_tags: dict) -> str:
     word = word.strip().lower()
     pos = dict_tags.get("pos")
 
     raw_audio_name = f"{remove_special_chars(pos, sep='-')}-{remove_special_chars(word, sep='-')}" \
         if pos is not None else remove_special_chars(word, sep='-')
 
-    prepared_word_parser_name = remove_special_chars(word_parser_name, sep='-')
-    audio_name = f"mined-{SCHEME_PREFIX}-{prepared_word_parser_name}-{raw_audio_name}.mp3"
+    prepared_word_parser_name = remove_special_chars(audio_provider, sep='-')
+    audio_name = f"mined-{SCHEME_PREFIX}-{prepared_word_parser_name}-{raw_audio_name}-{multiple_postfix}.mp3"
     return audio_name
 
 

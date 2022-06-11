@@ -107,7 +107,7 @@ class AudioDownloader(Toplevel):
             save_audio_name = get_save_audio_name(word, pos, wp_name)
             save_audio_path = os.path.join(self.saving_dir, save_audio_name)
             temp_audio_path = os.path.join(self.temp_dir, save_audio_name)
-            local_audio_path = get_local_audio_path(word, pos,
+            local_audio_path = get_local_audios(word, pos,
                                                     local_audio_folder_path=os.path.join(self.local_media_dir, wp_name),
                                                     with_pos=bool(pos))
 

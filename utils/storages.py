@@ -57,7 +57,7 @@ class FrozenDict(_FrozenDictNode):
 
 class FrozenDictJSONEncoder(JSONEncoder):
     def default(self, o):
-        if isinstance(o, FrozenDict):
+        if isinstance(o, (FrozenDict, _FrozenDictNode)):
             return o.to_dict()
         return super().default(o)
 

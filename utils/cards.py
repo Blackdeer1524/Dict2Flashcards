@@ -189,13 +189,18 @@ class CardStatus(Enum):
 
 
 class SavedDeck(PointerList):
-    CARD_STATUS = "status"
-    CARD_DATA = "card"
-    ADDITIONAL_DATA = "additional"
-    WORD_PARSER_NAME = "wp_name"
-    SAVED_IMAGES_PATHS = "local_images"
-    AUDIO_DATA = "local_audios"
-    USER_TAGS = "user_tags"
+    CARD_STATUS        = "status"              # 0
+    CARD_DATA          = "card"                # 0
+    ADDITIONAL_DATA    = "additional"          # 0
+    USER_TAGS          = "user_tags"           # 1
+    SAVED_IMAGES_PATHS = "local_images"        # 1
+    AUDIO_DATA         = "audio_data"          # 1
+    AUDIO_SRC          = "audio_src"           # 2
+    AUDIO_SRC_TYPE     = "audio_src_type"      # 2
+    AUDIO_SAVING_PATHS = "audio_saving_paths"  # 2
+
+    AUDIO_SRC_TYPE_LOCAL = "local"
+    AUDIO_SRC_TYPE_WEB   = "web"
 
     def __init__(self):
         super(SavedDeck, self).__init__()
@@ -219,14 +224,23 @@ class SavedDeck(PointerList):
             saving_card = Card(card_data)
             res[SavedDeck.CARD_DATA] = saving_card
 
-            additional_data = {SavedDeck.WORD_PARSER_NAME: card_data[SavedDeck.WORD_PARSER_NAME]}
-            if (image_data := card_data.get(SavedDeck.SAVED_IMAGES_PATHS)) is not None:
-                additional_data[SavedDeck.SAVED_IMAGES_PATHS] = image_data
-            if (audio_data := card_data.get(SavedDeck.AUDIO_DATA)) is not None:
-                additional_data[SavedDeck.AUDIO_DATA] = audio_data
+            additional_data = {}
             if (user_tags := card_data.get(SavedDeck.USER_TAGS)) is not None:
                 additional_data[SavedDeck.USER_TAGS] = user_tags
-            res[SavedDeck.ADDITIONAL_DATA] = additional_data
+
+            if (image_data := card_data.get(SavedDeck.SAVED_IMAGES_PATHS)) is not None:
+                additional_data[SavedDeck.SAVED_IMAGES_PATHS] = image_data
+
+            audio_data = {}
+            if (audio_src := card_data.get(SavedDeck.AUDIO_SRC)) is not None:
+                audio_data[SavedDeck.AUDIO_SRC]          = audio_src
+                audio_data[SavedDeck.AUDIO_SRC_TYPE]     = card_data[SavedDeck.AUDIO_SRC_TYPE]
+                audio_data[SavedDeck.AUDIO_SAVING_PATHS] = card_data[SavedDeck.AUDIO_SAVING_PATHS]
+            if audio_data:
+                additional_data[SavedDeck.AUDIO_DATA] = audio_data
+
+            if additional_data:
+                res[SavedDeck.ADDITIONAL_DATA] = additional_data
         
         self._data.append(FrozenDict(res))
         self._pointer_position += 1

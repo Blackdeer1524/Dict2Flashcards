@@ -43,7 +43,8 @@ class CardProcessorInterface(Protocol):
         ...
 
     @staticmethod
-    def get_save_audio_name(word: str, word_parser_name: str, dict_tags: dict) -> str:
+    def get_save_audio_name(word: str, audio_provider: str, multiple_postfix: str,
+                            dict_tags: dict) -> str:
         ...
 
     @staticmethod
@@ -67,5 +68,5 @@ class LocalAudioGetterInterface(Protocol):
     AUDIO_FOLDER: str
 
     @staticmethod
-    def get_local_audio_path(word: str, dict_tags: dict):
+    def get_local_audios(word: str, dict_tags: dict) -> list[str]:
         ...

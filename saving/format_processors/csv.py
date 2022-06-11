@@ -27,9 +27,12 @@ def save(deck: SavedDeck,
         user_tags = card_data.get(SavedDeck.USER_TAGS, "")
         tags = f"{dict_tags} {user_tags}"
 
-        additional = card_page[SavedDeck.ADDITIONAL_DATA]
-        images = " ".join([image_names_wrapper(name) for name in additional.get(SavedDeck.SAVED_IMAGES_PATHS, [])])
-        audios = " ".join([audio_names_wrapper(name) for name in additional.get(SavedDeck.AUDIO_DATA, [])])
+        images = ""
+        audios = ""
+        if (additional := card_page.get(SavedDeck.ADDITIONAL_DATA)):
+            images = " ".join([image_names_wrapper(name) for name in additional.get(SavedDeck.SAVED_IMAGES_PATHS, [])])
+            if (audio_data := additional.get(SavedDeck.AUDIO_DATA)) is not None:
+                audios = " ".join([audio_names_wrapper(name) for name in audio_data[SavedDeck.AUDIO_SAVING_PATHS]])
 
         cards_writer.writerow([sentence_example, saving_word, definition, images, audios, tags])
     csv_file.close()

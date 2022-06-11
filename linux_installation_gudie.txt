@@ -4,7 +4,7 @@
 ============
 virtual envs:
    * cd to your venv
-   cd ~/.virtualenvs/cv/lib/python3.9/
+   cd /venv/lib/python3.9/
 
    !!you may also have to find tkitner and gi location yourself!! 
    * ln -s /usr/lib/python3.9/tkinter tkinter

@@ -1,7 +1,6 @@
 import importlib
 import pkgutil
 from dataclasses import dataclass
-from dataclasses import field
 from types import ModuleType
 from typing import Callable
 from typing import ClassVar
@@ -14,12 +13,14 @@ import parsers.word_parsers.local
 import parsers.word_parsers.web
 import saving.card_processors
 import saving.format_processors
+import themes
 from consts.paths import LOCAL_MEDIA_DIR
 from plugins.containers import CardProcessorContainer
 from plugins.containers import DeckSavingFormatContainer
 from plugins.containers import ImageParserContainer
 from plugins.containers import LocalAudioGetterContainer
 from plugins.containers import LocalWordParserContainer
+from plugins.containers import ThemeContainer
 from plugins.containers import WebSentenceParserContainer
 from plugins.containers import WebWordParserContainer
 from plugins.exceptions import LoaderError
@@ -91,12 +92,13 @@ class PluginLoader(Generic[PluginContainer]):
 class PluginFactory:
     _is_initialized:     ClassVar[bool] = False
 
+    themes:              PluginLoader[ThemeContainer]
     web_word_parsers:    PluginLoader[WebWordParserContainer]
     local_word_parsers:  PluginLoader[LocalWordParserContainer]
     web_sent_parsers:    PluginLoader[WebSentenceParserContainer]
     image_parsers:       PluginLoader[ImageParserContainer]
     card_processors:     PluginLoader[CardProcessorContainer]
-    deck_saving_formats:  PluginLoader[DeckSavingFormatContainer]
+    deck_saving_formats: PluginLoader[DeckSavingFormatContainer]
     local_audio_getters: PluginLoader[LocalAudioGetterContainer]
 
     def __init__(self):
@@ -104,20 +106,38 @@ class PluginFactory:
             raise LoaderError(f"{self.__class__.__name__} already exists!")
         PluginFactory._is_initialized = True
 
-        super().__setattr__("web_word_parsers",
-                            PluginLoader("web word parser",     parsers.word_parsers.web,    WebWordParserContainer, "web_"))
-        super().__setattr__("local_word_parsers",
-                            PluginLoader("local word parser",   parsers.word_parsers.local,  LocalWordParserContainer, "local_"))
-        super().__setattr__("web_sent_parsers",
-                            PluginLoader("web sentence parser", parsers.sentence_parsers,    WebSentenceParserContainer, "web_"))
-        super().__setattr__("image_parsers",
-                            PluginLoader("web image parser",    parsers.image_parsers,       ImageParserContainer))
-        super().__setattr__("card_processors",
-                            PluginLoader("card processor",      saving.card_processors,      CardProcessorContainer))
-        super().__setattr__("deck_saving_formats",
-                            PluginLoader("deck saving format",  saving.format_processors,    DeckSavingFormatContainer))
-        super().__setattr__("local_audio_getters",
-                            PluginLoader("local audio getter",  parsers.local_audio_getters, LocalAudioGetterContainer))
+        super().__setattr__("themes",              PluginLoader(plugin_type="theme",
+                                                                module=themes,
+                                                                container_type=ThemeContainer))
+        super().__setattr__("web_word_parsers",    PluginLoader(plugin_type="web word parser",
+                                                                module=parsers.word_parsers.web,
+                                                                container_type=WebWordParserContainer,
+                                                                plugin_name_prefix="web_"))
+        super().__setattr__("local_word_parsers",  PluginLoader(plugin_type="local word parser",
+                                                                module=parsers.word_parsers.local,
+                                                                container_type=LocalWordParserContainer,
+                                                                plugin_name_prefix="local_"))
+        super().__setattr__("web_sent_parsers",    PluginLoader(plugin_type="web sentence parser",
+                                                                module=parsers.sentence_parsers,
+                                                                container_type=WebSentenceParserContainer,
+                                                                plugin_name_prefix="web_"))
+        super().__setattr__("image_parsers",       PluginLoader(plugin_type="web image parser",
+                                                                module=parsers.image_parsers,
+                                                                container_type=ImageParserContainer))
+        super().__setattr__("card_processors",     PluginLoader(plugin_type="card processor",
+                                                                module=saving.card_processors,
+                                                                container_type=CardProcessorContainer))
+        super().__setattr__("deck_saving_formats", PluginLoader(plugin_type="deck saving format",
+                                                                module=saving.format_processors,
+                                                                container_type=DeckSavingFormatContainer))
+        super().__setattr__("local_audio_getters", PluginLoader(plugin_type="local audio getter",
+                                                                module=parsers.local_audio_getters,
+                                                                container_type=LocalAudioGetterContainer))
+
+    def get_theme(self, name: str) -> ThemeContainer:
+        if (theme := self.themes.get(name)) is None:
+            raise UnknownPluginName(f"Unknown theme: {name}")
+        return theme
 
     def get_web_card_generator(self, name: str) -> WebCardGenerator:
         if (args := self.web_word_parsers.get(name)) is None:

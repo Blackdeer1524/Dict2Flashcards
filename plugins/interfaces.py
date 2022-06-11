@@ -3,6 +3,19 @@ from parsers.return_types import SentenceGenerator, ImageGenerator
 from utils.cards import SavedDataDeck, CardStatus
 
 
+class ThemeInterface(Protocol):
+    label_cfg: dict
+    button_cfg: dict
+    text_cfg: dict
+    entry_cfg: dict
+    checkbutton_cfg: dict
+    toplevel_cfg: dict
+    main_cfg: dict
+    frame_cfg: dict
+    option_menu_cfg: dict
+    option_submenus_cfg: dict
+
+
 class WebWordParserInterface(Protocol):
     @staticmethod
     def define(word: str) -> dict:

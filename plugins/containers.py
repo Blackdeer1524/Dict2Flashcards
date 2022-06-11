@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from parsers.return_types import SentenceGenerator, ImageGenerator
+from plugins.interfaces import ThemeInterface
 from plugins.interfaces import CardProcessorInterface
 from plugins.interfaces import DeckSavingFormatInterface
 from plugins.interfaces import ImageParserInterface
@@ -19,6 +20,32 @@ class _PluginContainer:
     
     def __init__(self, name: str):
         super().__setattr__("name", name)
+
+
+class ThemeContainer(_PluginContainer):
+    label_cfg: dict
+    button_cfg: dict
+    text_cfg: dict
+    entry_cfg: dict
+    checkbutton_cfg: dict
+    toplevel_cfg: dict
+    main_cfg: dict
+    frame_cfg: dict
+    option_menu_cfg: dict
+    option_submenus_cfg: dict
+
+    def __init__(self, name: str, source_module: ThemeInterface):
+        super(ThemeContainer, self).__init__(name)
+        super().__setattr__("label_cfg",           source_module.label_cfg)
+        super().__setattr__("button_cfg",          source_module.button_cfg)
+        super().__setattr__("text_cfg",            source_module.text_cfg)
+        super().__setattr__("entry_cfg",           source_module.entry_cfg)
+        super().__setattr__("checkbutton_cfg",     source_module.checkbutton_cfg)
+        super().__setattr__("toplevel_cfg",        source_module.toplevel_cfg)
+        super().__setattr__("main_cfg",            source_module.main_cfg)
+        super().__setattr__("frame_cfg",           source_module.frame_cfg)
+        super().__setattr__("option_menu_cfg",     source_module.option_menu_cfg)
+        super().__setattr__("option_submenus_cfg", source_module.option_submenus_cfg)
 
 
 class WebWordParserContainer(_PluginContainer):

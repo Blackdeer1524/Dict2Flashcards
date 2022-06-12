@@ -33,8 +33,8 @@ from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
-import urllib
 from utils.error_handling import error_handler
+from utils.global_bindings import Binder
 
 
 class App(Tk):
@@ -248,6 +248,12 @@ class App(Tk):
         self.bind("<Control-Key-3>", lambda event: self.choose_sentence(2))
         self.bind("<Control-Key-4>", lambda event: self.choose_sentence(3))
         self.bind("<Control-Key-5>", lambda event: self.choose_sentence(4))
+
+        self.gb = Binder()
+        self.gb.bind("Control", "c", "space",
+                     action=lambda: self.define_word_button(word_query=self.clipboard_get(), additional_query="")
+                     )
+        self.gb.start()
 
         self.minsize(500, 0)
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -643,7 +649,7 @@ class App(Tk):
         """
         if messagebox.askokcancel("Выход", "Вы точно хотите выйти?"):
             self.save_files()
-            # self.bg.stop()
+            self.gb.stop()
             self.download_audio(closing=True)
 
     def download_audio(self, choose_file=False, closing=False):

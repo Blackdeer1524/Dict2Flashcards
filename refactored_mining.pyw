@@ -749,29 +749,33 @@ class App(Tk):
             self.sound_button["state"] = "disabled"
         return True
 
-    def add_word_dialog(self):
-        def define_word_button():
-            clean_word = add_word_entry.get().strip()
-            try:
-                pattern = re.compile(clean_word)
-            except re.error:
-                messagebox.showerror("Неверно задано регулярное выражение для слова!")
-                return
+    def define_word_button(self, word_query: str, additional_query: str) -> bool:
+        try:
+            exact_pattern = re.compile(r"\b{}\b".format(word_query))
+        except re.error:
+            messagebox.showerror("Неверно задано регулярное выражение для слова!")
+            return True
 
-            word_filter = lambda comparable: re.search(pattern, comparable)
+        exact_word_filter = lambda comparable: re.search(exact_pattern, comparable)
+        try:
+            additional_filter = get_card_filter(additional_query) if additional_query else None
+            if self.deck.add_card_to_deck(query=word_query,
+                                          word_filter=exact_word_filter,
+                                          additional_filter=additional_filter):
+                self.refresh()
+                return False
+            messagebox.showerror(title="Ошибка!", message="Слово не найдено!")
+        except ParsingException as e:
+            messagebox.showerror("Ошибка запроса", str(e))
+        return True
+
+    def add_word_dialog(self):
+        def get_word():
+            clean_word = add_word_entry.get().strip()
             additional_query = additional_filter_entry.get(1.0, "end").strip()
-            try:
-                additional_filter = get_card_filter(additional_query) if additional_query else None
-                if self.deck.add_card_to_deck(query=clean_word, word_filter=word_filter,
-                                              additional_filter=additional_filter):
-                    add_word_frame.destroy()
-                    self.refresh()
-                    return
-                messagebox.showerror(title="Ошибка!", message="Слово не найдено!")
-                add_word_frame.withdraw()
-                add_word_frame.deiconify()
-            except ParsingException as e:
-                messagebox.showerror("Ошибка запроса", str(e))
+            if not self.define_word_button(clean_word, additional_query):
+                add_word_frame.destroy()
+            else:
                 add_word_frame.withdraw()
                 add_word_frame.deiconify()
 
@@ -788,11 +792,11 @@ class App(Tk):
         additional_filter_entry = self.Text(add_word_frame, placeholder="Дополнительный фильтр", height=5)
         additional_filter_entry.grid(row=1, column=0, padx=5, pady=3, sticky="we")
 
-        start_parsing_button = self.Button(add_word_frame, text="Добавить", command=define_word_button)
+        start_parsing_button = self.Button(add_word_frame, text="Добавить", command=get_word)
         start_parsing_button.grid(row=2, column=0, padx=5, pady=3, sticky="ns")
 
         add_word_frame.bind("<Escape>", lambda event: add_word_frame.destroy())
-        add_word_frame.bind("<Return>", lambda event: define_word_button())
+        add_word_frame.bind("<Return>", lambda event: get_word())
         add_word_frame.deiconify()
         spawn_toplevel_in_center(master=self, toplevel_widget=add_word_frame,
                                  desired_toplevel_width=self.winfo_width())

@@ -192,15 +192,16 @@ class CardStatus(Enum):
 
 
 class SavedDataDeck(PointerList):
-    CARD_STATUS        = "status"              # 0
-    CARD_DATA          = "card"                # 0
-    ADDITIONAL_DATA    = "additional"          # 0
-    USER_TAGS          = "user_tags"           # 1
-    SAVED_IMAGES_PATHS = "local_images"        # 1
-    AUDIO_DATA         = "audio_data"          # 1
-    AUDIO_SRCS         = "audio_src"           # 2
-    AUDIO_SRCS_TYPE    = "audio_src_type"      # 2
-    AUDIO_SAVING_PATHS = "audio_saving_paths"  # 2
+    CARD_STATUS         = "status"               # 0
+    CARD_DATA           = "card"                 # 0
+    ADDITIONAL_DATA     = "additional"           # 0
+    USER_TAGS           = "user_tags"            # 1
+    HIERARCHICAL_PREFIX = "hierarchical_prefix"  # 1
+    SAVED_IMAGES_PATHS  = "local_images"         # 1
+    AUDIO_DATA          = "audio_data"           # 1
+    AUDIO_SRCS          = "audio_src"            # 2
+    AUDIO_SRCS_TYPE     = "audio_src_type"       # 2
+    AUDIO_SAVING_PATHS  = "audio_saving_paths"   # 2
 
     AUDIO_SRC_TYPE_LOCAL = "local"
     AUDIO_SRC_TYPE_WEB   = "web"
@@ -228,6 +229,9 @@ class SavedDataDeck(PointerList):
             res[SavedDataDeck.CARD_DATA] = saving_card
 
             additional_data = {}
+            if (hierarchical_prefix := card_data.get(SavedDataDeck.HIERARCHICAL_PREFIX)) is not None:
+                additional_data[SavedDataDeck.HIERARCHICAL_PREFIX] = hierarchical_prefix
+
             if (user_tags := card_data.get(SavedDataDeck.USER_TAGS)) is not None:
                 additional_data[SavedDataDeck.USER_TAGS] = user_tags
 
@@ -244,7 +248,7 @@ class SavedDataDeck(PointerList):
 
             if additional_data:
                 res[SavedDataDeck.ADDITIONAL_DATA] = additional_data
-        
+
         self._data.append(FrozenDict(res))
         self._pointer_position += 1
         self._statistics[status.value] += 1

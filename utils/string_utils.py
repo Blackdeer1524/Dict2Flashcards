@@ -52,4 +52,4 @@ def remove_special_chars(text, sep=" ", special_chars='№!"#$%&\'()*+,-./:;<=>?
             new_text += sep
         new_text += text[start_index]
         start_index += 1
-    return new_text
+    return new_text.strip(sep)

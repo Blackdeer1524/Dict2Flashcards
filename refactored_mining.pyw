@@ -579,7 +579,7 @@ class App(Tk):
     def save_files(self):
         # получение координат на экране через self.winfo_rootx(), self.winfo_rooty() даёт некоторое смещение
         self.configurations["app"]["main_window_geometry"] = self.geometry()
-        self.configurations["tags_hierarchical_pref"] = self.tag_prefix_field.get()
+        self.configurations["tags_hierarchical_pref"] = self.tag_prefix_field.get().strip()
         self.save_conf_file()
 
         self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position() - 1
@@ -887,6 +887,10 @@ class App(Tk):
             picked_sentence = self.dict_card_data[FIELDS.word]
         self.dict_card_data[FIELDS.sentences] = [picked_sentence]
 
+        user_tags = self.user_tags_field.get().strip()
+        if user_tags:
+            self.dict_card_data[SavedDataDeck.USER_TAGS] = user_tags
+
         if self.local_audio_getter is not None and (local_audios := self.local_audio_getter.get_local_audios(word, dict_tags)):
             self.dict_card_data[SavedDataDeck.AUDIO_SRCS] = local_audios
             self.dict_card_data[SavedDataDeck.AUDIO_SRCS_TYPE] = SavedDataDeck.AUDIO_SRC_TYPE_LOCAL
@@ -909,6 +913,9 @@ class App(Tk):
                                                                      dict_tags))
                 for i in range(len(web_audios))
             ]
+
+        if (hierarchical_prefix := self.tag_prefix_field.get().strip()):
+            self.dict_card_data[SavedDataDeck.HIERARCHICAL_PREFIX] = hierarchical_prefix
 
         self.saved_cards_data.append(status=CardStatus.ADD, card_data=self.dict_card_data)
         if not self.deck.get_n_cards_left():

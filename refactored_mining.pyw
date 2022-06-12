@@ -33,6 +33,8 @@ from utils.widgets import ScrolledFrame
 from utils.widgets import TextWithPlaceholder as Text
 from utils.window_utils import get_option_menu
 from utils.window_utils import spawn_toplevel_in_center
+import urllib
+from utils.error_handling import error_handler
 
 
 class App(Tk):
@@ -113,7 +115,7 @@ class App(Tk):
         main_menu.add_command(label="Перейти", command=self.find_dialog)
         main_menu.add_command(label="Статистика", command=self.statistics_dialog)
         main_menu.add_command(label="Тема", command=self.switch_theme)
-        main_menu.add_command(label="Anki", command=App.func_placeholder)
+        main_menu.add_command(label="Anki", command=self.anki_dialog)
         main_menu.add_command(label="Выход", command=self.on_closing)
         self.config(menu=main_menu)
 
@@ -156,7 +158,7 @@ class App(Tk):
         self.prev_button = self.Button(self, text="Prev", command=lambda x=-1: self.replace_decks_pointers(x),
                                   state="disabled", width=button_width)
         self.sound_button = self.Button(self, text="Play", command=self.play_sound, width=button_width)
-        self.anki_button = self.Button(self, text="Anki", command=App.func_placeholder, width=button_width)
+        self.anki_button = self.Button(self, text="Anki", command=self.open_anki_browser, width=button_width)
         self.bury_button = self.Button(self, text="Bury", command=self.bury_command, width=button_width)
 
         self.user_tags_field = self.Entry(self, placeholder="Тэги")
@@ -417,15 +419,6 @@ class App(Tk):
         self.saved_cards_data.append(status=CardStatus.BURY, card_data=self.dict_card_data)
         self.refresh()
 
-    def replace_decks_pointers(self, n: int):
-        self.deck.move(n - 1)
-        self.saved_cards_data.move(n)
-        self.refresh()
-
-    @staticmethod
-    def func_placeholder():
-        return 0
-
     @staticmethod
     def load_history_file() -> dict:
         if not os.path.exists(HISTORY_FILE_PATH):
@@ -434,6 +427,46 @@ class App(Tk):
             with open(HISTORY_FILE_PATH, "r", encoding="UTF-8") as f:
                 history_json = json.load(f)
         return history_json
+
+    def replace_decks_pointers(self, n: int):
+        self.deck.move(n - 1)
+        self.saved_cards_data.move(n)
+        self.refresh()
+
+    @error_handler(show_errors)
+    def open_anki_browser(self):
+        def invoke(action, **params):
+            def request_anki(action, **params):
+                return {'action': action, 'params': params, 'version': 6}
+            import requests
+
+            request_json = json.dumps(request_anki(action, **params)).encode('utf-8')
+            try:
+                res = requests.get("http://localhost:8765", data=request_json, timeout=1)
+                res.raise_for_status()
+            except requests.ConnectionError:
+                messagebox.showerror("Ошибка", "Проверьте аддон AnkiConnect и откройте Anki")
+                return
+            except requests.RequestException as e:
+                messagebox.showerror("Ошибка", f"Результат ошибки: {e}")
+                return
+
+            response = res.json()
+            if response['error'] is not None:
+                messagebox.showerror("Ошибка", response['error'])
+            return response['result']
+
+        word = self.word_text.get(1.0, "end").strip()
+        query_list = []
+        if self.configurations["anki"]["anki_deck"]:
+            query_list.append("deck:\"{}\"".format(self.configurations["anki"]["anki_deck"]))
+        if self.configurations["anki"]["anki_field"]:
+            query_list.append("\"{}:*{}*\"".format(self.configurations["anki"]["anki_field"],
+                                                   word))
+        else:
+            query_list.append(f"*{word}*")
+        result_query = " and ".join(query_list)
+        invoke('guiBrowse', query=result_query)
 
     def save_conf_file(self):
         with open(CONFIG_FILE_PATH, "w") as f:
@@ -921,6 +954,34 @@ class App(Tk):
         if not self.deck.get_n_cards_left():
             self.deck.append(Card(self.dict_card_data))
         self.refresh()
+
+    def anki_dialog(self):
+        anki_toplevel = self.Toplevel(self)
+        def save_anki_settings_command():
+            deck = anki_deck_entry.get().strip()
+            field = anki_field_entry.get().strip()
+            self.configurations["anki"]["anki_deck"] = deck if deck != 'Колода поиска' else ""
+            self.configurations["anki"]["anki_field"] = field if field != 'Поле поиска' else ""
+            anki_toplevel.destroy()
+
+        anki_toplevel.title("Настройки Anki")
+        anki_deck_entry = self.Entry(anki_toplevel, placeholder='Колода поиска')
+        anki_deck_entry.insert(0, self.configurations["anki"]["anki_deck"])
+        anki_deck_entry.fill_placeholder()
+
+        anki_field_entry = self.Entry(anki_toplevel, placeholder='Поле поиска')
+        anki_field_entry.insert(0, self.configurations["anki"]["anki_field"])
+        anki_field_entry.fill_placeholder()
+
+        save_anki_settings_button = self.Button(anki_toplevel, text="Сохранить", command=save_anki_settings_command)
+
+        padx = pady = 5
+        anki_deck_entry.grid(row=0, column=0, sticky="we", padx=padx, pady=pady)
+        anki_field_entry.grid(row=1, column=0, sticky="we", padx=padx, pady=pady)
+        save_anki_settings_button.grid(row=2, column=0, sticky="ns", padx=padx)
+        anki_toplevel.bind("<Return>", lambda event: save_anki_settings_command())
+        anki_toplevel.bind("<Escape>", lambda event: anki_toplevel.destroy())
+        spawn_toplevel_in_center(self, anki_toplevel)
 
     def play_sound(self):
         def sound_dialog(audio_src: list[str], info: list[str], play_command: Callable[[str, str], None]):

@@ -7,12 +7,11 @@ __all__ = ["FIELDS"]
 class _CardFields(NamedTuple):
     word: str = "word"
     alt_terms: str = "alt_terms"
-    definition: str = "meaning"
-    sentences: str = "Sen_Ex"
-    img_links: str = "image_link"
-    audio_links: str = "audio_link"
-    dict_tags: dict = "dict_tags"
-    user_tags: str = "user_tags"
+    definition: str = "definition"
+    sentences: str = "examples"
+    img_links: str = "image_links"
+    audio_links: str = "audio_links"
+    dict_tags: str = "tags"
 
 
 FIELDS = _CardFields()

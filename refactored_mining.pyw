@@ -708,11 +708,11 @@ class App(Tk):
         self.add_sentences_button["text"] = self.sentence_button_text if local_flag else self.sentence_button_text + " +"
 
     def refresh(self) -> bool:
-        def fill_dict_tags(text: str):
-            self.dict_tags_field["state"] = "normal"
-            self.dict_tags_field.clear()
-            self.dict_tags_field.insert(1.0, text)
-            self.dict_tags_field["state"] = "disabled"
+        def fill_additional_dict_data(widget: Text, text: str):
+            widget["state"] = "normal"
+            widget.clear()
+            widget.insert(1.0, text)
+            widget["state"] = "disabled"
 
         self.dict_card_data = self.deck.get_card().to_dict()
         self.card_processor.process_card(self.dict_card_data)
@@ -726,6 +726,9 @@ class App(Tk):
         self.word_text.insert(1.0, self.dict_card_data.get(FIELDS.word, ""))
         self.word_text.focus()
 
+        fill_additional_dict_data(self.dict_tags_field, Card.get_str_dict_tags(self.dict_card_data))
+        fill_additional_dict_data(self.alt_terms_field, " ".join(self.dict_card_data.get(FIELDS.alt_terms, [])))
+
         self.definition_text.clear()
         self.definition_text.insert(1.0, self.dict_card_data.get(FIELDS.definition, ""))
         self.definition_text.fill_placeholder()
@@ -736,20 +739,14 @@ class App(Tk):
             self.find_image_button["text"] = "Добавить изображение"
             if not self.configurations["scrappers"]["local_audio"]:
                 self.sound_button["state"] = "disabled"
-            fill_dict_tags("")
             return False
-        fill_dict_tags(Card.get_str_dict_tags(self.dict_card_data))
 
-        # Обновление поля для слова
-        alt_terms = " ".join(self.dict_card_data.get("alt_terms", []))
-        self.DICT_IMAGE_LINK = self.dict_card_data.get("image_link", "")
-        if self.DICT_IMAGE_LINK:
+        if self.dict_card_data.get(FIELDS.img_links, []):
             self.find_image_button["text"] = "Добавить изображение ★"
         else:
             self.find_image_button["text"] = "Добавить изображение"
-        self.CURRENT_AUDIO_LINK = self.dict_card_data.get("audio_link", "")
 
-        if self.configurations["scrappers"]["local_audio"] or self.CURRENT_AUDIO_LINK:
+        if self.configurations["scrappers"]["local_audio"] or self.dict_card_data.get(FIELDS.img_links, []):
             self.sound_button["state"] = "normal"
         else:
             self.sound_button["state"] = "disabled"

@@ -45,12 +45,28 @@ class App(Tk):
             self.destroy()
             return
         self.save_conf_file()
+        self.history = App.load_history_file()
+
+        if not os.path.exists("./temp/"):
+            os.makedirs("./temp")
+
+        if not os.path.exists(LOCAL_MEDIA_DIR):
+            os.makedirs(LOCAL_MEDIA_DIR)
+
+        if not os.path.exists("./Cards/"):
+            os.makedirs("./Cards")
+
+        if not os.path.exists("./Words/"):
+            os.makedirs("./Words")
+
+        if not os.path.exists("./Words/custom.json"):
+            with open("./Words/custom.json", "w", encoding="UTF-8") as custom_file:
+                json.dump([], custom_file)
 
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'}
         self.session_start = datetime.now()
         self.srt_session_start = self.session_start.strftime("%d-%m-%Y-%H-%M-%S")
 
-        self.history = App.load_history_file()
         if not self.history.get(self.configurations["directories"]["last_open_file"]):
             self.history[self.configurations["directories"]["last_open_file"]] = 0
 

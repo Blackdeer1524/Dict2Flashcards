@@ -40,12 +40,6 @@ from utils.global_bindings import Binder
 class App(Tk):
     def __init__(self, *args, **kwargs):
         super(App, self).__init__(*args, **kwargs)
-        self.configurations, error_code = App.load_conf_file()
-        if error_code:
-            self.destroy()
-            return
-        self.save_conf_file()
-        self.history = App.load_history_file()
 
         if not os.path.exists("./temp/"):
             os.makedirs("./temp")
@@ -62,6 +56,13 @@ class App(Tk):
         if not os.path.exists("./Words/custom.json"):
             with open("./Words/custom.json", "w", encoding="UTF-8") as custom_file:
                 json.dump([], custom_file)
+
+        self.configurations, error_code = App.load_conf_file()
+        if error_code:
+            self.destroy()
+            return
+        self.save_conf_file()
+        self.history = App.load_history_file()
 
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'}
         self.session_start = datetime.now()
@@ -762,7 +763,7 @@ class App(Tk):
         else:
             self.find_image_button["text"] = "Добавить изображение"
 
-        if self.configurations["scrappers"]["local_audio"] or self.dict_card_data.get(FIELDS.img_links, []):
+        if self.configurations["scrappers"]["local_audio"] or self.dict_card_data.get(FIELDS.audio_links, []):
             self.sound_button["state"] = "normal"
         else:
             self.sound_button["state"] = "disabled"
@@ -1066,7 +1067,7 @@ class App(Tk):
             messagebox.showerror(message="Ошибка получения звука\nЛокальный файл не найден")
             return
 
-        if (audio_file_urls := self.dict_card_data.get(FIELDS.audio_links)) is None or len(audio_file_urls == 0):
+        if (audio_file_urls := self.dict_card_data.get(FIELDS.audio_links)) is None or len(audio_file_urls) == 0:
             messagebox.showerror(message="Ошибка получения звука\nНе откуда брать аудио!")
             return
 

@@ -3,6 +3,7 @@ import itertools
 import json
 import re
 import webbrowser
+from collections import namedtuple
 from datetime import datetime
 from functools import partial
 from tkinter import BooleanVar
@@ -21,7 +22,6 @@ from tkinterdnd2 import Tk
 from app_utils.audio_utils import AudioDownloader
 from app_utils.cards import Card
 from app_utils.cards import Deck, SentenceFetcher, SavedDataDeck, CardStatus, DataSourceType
-from app_utils.cards import WebCardGenerator, LocalCardGenerator
 from app_utils.error_handling import create_exception_message
 from app_utils.error_handling import error_handler
 from app_utils.global_bindings import Binder
@@ -306,20 +306,23 @@ saving_image_height
 
         main_menu.add_command(label=self.lang_pack.settings_menu_label, command=settings_dialog)
 
-        def chaining():
+        def build_chain():
             pady = 2
 
-            def reposition_choosing(ind: int):
-                choosing_widgets_data[ind][1].destroy()
-                choosing_widgets_data[ind][2].destroy()
-                removed_name = choosing_widgets_data.pop(ind)[0]
+            ChoosingData = namedtuple("ChoosingData", ("name", "label", "select_button"))
+            ChainData = namedtuple("ChainData", ("name", "label", "up_button", "deselect_button", "down_button"))
+
+            def add_to_chain(ind: int):
+                choosing_widgets_data[ind].label.destroy()
+                choosing_widgets_data[ind].select_button.destroy()
+                removed_name = choosing_widgets_data.pop(ind).name
 
                 for i in range(ind, len(choosing_widgets_data)):
-                    choosing_widgets_data[i][1].grid_forget()
-                    choosing_widgets_data[i][2].grid_forget()
-                    choosing_widgets_data[i][1].grid(row=i, column=0, sticky="news", pady=pady)
-                    choosing_widgets_data[i][2].grid(row=i, column=1, sticky="news", pady=pady)
-                    choosing_widgets_data[i][2].configure(command=lambda ind=i: reposition_choosing(ind))
+                    choosing_widgets_data[i].label.grid_forget()
+                    choosing_widgets_data[i].label.grid(row=i, column=0, sticky="news", pady=pady)
+                    choosing_widgets_data[i].select_button.grid_forget()
+                    choosing_widgets_data[i].select_button.grid(row=i, column=1, sticky="news", pady=pady)
+                    choosing_widgets_data[i].select_button.configure(command=lambda ind=i: add_to_chain(ind))
 
                 new_chain_ind = len(chain_data) * 3
                 a = self.Label(ordering_frame, text=removed_name, justify='center')
@@ -361,44 +364,43 @@ saving_image_height
                     place(operand, old_3)
                     chain_data[old_3 // 3], chain_data[new_3 // 3] = chain_data[new_3 // 3], chain_data[old_3 // 3]
 
-
                 def return_back(ind: int):
                     for i in range(1, len(chain_data[ind])):
                         chain_data[ind][i].destroy()
-                    removed_name = chain_data.pop(ind)[0]
+                    removed_name = chain_data.pop(ind).name
 
                     for i in range(ind, len(chain_data)):
-                        chain_data[i][1].grid_forget()
-                        chain_data[i][1].grid(row=3 * i, column=0, sticky="news", pady=pady, rowspan=3)
+                        chain_data[i].label.grid_forget()
+                        chain_data[i].label.grid(row=3 * i, column=0, sticky="news", pady=pady, rowspan=3)
 
-                        chain_data[i][2].grid_forget()
-                        chain_data[i][2].grid(row=3 * i, column=1, sticky="news", pady=(pady, 0))
+                        chain_data[i].up_button.grid_forget()
+                        chain_data[i].up_button.grid(row=3 * i, column=1, sticky="news", pady=(pady, 0))
 
-                        chain_data[i][3].grid_forget()
-                        chain_data[i][3].grid(row=3 * i + 1, column=1, sticky="news", pady=0)
-                        chain_data[i][3].configure(command=lambda ind=i: return_back(ind))
+                        chain_data[i].deselect_button.grid_forget()
+                        chain_data[i].deselect_button.grid(row=3 * i + 1, column=1, sticky="news", pady=0)
+                        chain_data[i].deselect_button.configure(command=lambda ind=i: return_back(ind))
 
-                        chain_data[i][4].grid_forget()
-                        chain_data[i][4].grid(row=3 * i + 2, column=1, sticky="news", pady=(0, pady))
+                        chain_data[i].down_button.grid_forget()
+                        chain_data[i].down_button.grid(row=3 * i + 2, column=1, sticky="news", pady=(0, pady))
 
 
                     new_choosing_ind = len(choosing_widgets_data)
                     a = self.Label(choosing_frame, text=removed_name, justify='center')
                     a.grid(row=new_choosing_ind, column=0, sticky="news", pady=pady)
-                    b = self.Button(choosing_frame, text=">", command=lambda ind=new_choosing_ind: reposition_choosing(ind))
+                    b = self.Button(choosing_frame, text=">", command=lambda ind=new_choosing_ind: add_to_chain(ind))
                     b.grid(row=new_choosing_ind, column=1, sticky="news", pady=pady)
-                    choosing_widgets_data.append((removed_name, a, b))
+                    choosing_widgets_data.append(ChoosingData(name=removed_name, label=a, select_button=b))
 
                 up = self.Button(ordering_frame, text="∧")
                 back = self.Button(ordering_frame, text="✕", command=lambda ind=new_chain_ind: return_back(ind // 3))
                 down = self.Button(ordering_frame, text="∨")
 
                 if chain_data:
-                    chain_data[-1][-1]["state"] = "normal"
+                    chain_data[-1].down_button["state"] = "normal"
 
-                g = (removed_name, a, up, back, down)
-                chain_data.append(g)
-                place(g, new_chain_ind)
+                chain_data.append(ChainData(name=removed_name, label=a,
+                                            up_button=up, deselect_button=back, down_button=down))
+                place(chain_data[-1], new_chain_ind)
 
             chaining_window = self.Toplevel(self)
             chaining_window.grid_columnconfigure(0, weight=1)
@@ -412,24 +414,32 @@ saving_image_height
             choosing_frame: Frame = self.Frame(chaining_window, bg="blue")
             choosing_frame.grid_columnconfigure(0, weight=1)
             choosing_frame.grid(row=0, column=0, sticky="news", padx=10, pady=10)
-            choosing_widgets_data: list[tuple[str, Label, Button]] = []
+            choosing_widgets_data: list[ChoosingData] = []
 
-            chain_data: list[tuple[str, Label, Button, Button, Button]] = []
+            chain_data: list[ChainData] = []
 
             for i, parser_name in enumerate(itertools.chain(loaded_plugins.web_word_parsers.loaded,
                                                             loaded_plugins.local_word_parsers.loaded)):
                 a = self.Label(choosing_frame, text=parser_name, justify='center')
                 a.grid(row=i, column=0, sticky="news", pady=pady)
-                b = self.Button(choosing_frame, text=">", command=lambda ind=i: reposition_choosing(ind))
+                b = self.Button(choosing_frame, text=">", command=lambda ind=i: add_to_chain(ind))
                 b.grid(row=i, column=1, sticky="news", pady=pady)
-                choosing_widgets_data.append((parser_name, a, b))
+                choosing_widgets_data.append(ChoosingData(name=parser_name, label=a, select_button=b))
 
             ordering_frame: Frame = self.Frame(chaining_window, bg="red")
             ordering_frame.grid_columnconfigure(0, weight=1)
             ordering_frame.grid(row=0, column=1, sticky="news", padx=10, pady=10)
 
+            command_frame: Frame = self.Frame(chaining_window, bg="green", height=30)
+            command_frame.grid(row=1, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 10))
 
-        main_menu.add_command(label="asdf", command=chaining)
+            done_button = self.Button(command_frame, text="Готово")
+            done_button.pack(side="right", padx=5, pady=5)
+
+            cancel_button = self.Button(command_frame, text="Отмена")
+            cancel_button.pack(side="right", padx=5, pady=5)
+
+        main_menu.add_command(label="asdf", command=build_chain)
         main_menu.add_command(label=self.lang_pack.exit_menu_label, command=self.on_closing)
         self.config(menu=main_menu)
 

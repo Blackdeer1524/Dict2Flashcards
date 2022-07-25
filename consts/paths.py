@@ -10,6 +10,10 @@ WORDS_DIR = ROOT_DIR / "Words"
 LOCAL_MEDIA_DIR = ROOT_DIR / "media"
 HISTORY_FILE_PATH = ROOT_DIR / "history.json"
 CONFIG_FILE_PATH = ROOT_DIR / "config.json"
+
+CHAIN_DATA_DIR = ROOT_DIR / "chaining_data"
+CHAIN_DATA_FILE_PATH = CHAIN_DATA_DIR / "chains.json"
+
 USER_FOLDER = Path(os.path.expanduser("~"))
 SYSTEM = system()
 if SYSTEM == "Linux":

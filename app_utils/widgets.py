@@ -58,6 +58,7 @@ class EntryWithPlaceholder(Entry):
         self.bind("<FocusOut>", self._foc_out)
         self._is_under_focus = False
         self._placeholder_set_status = False
+        self.fill_placeholder()
 
     def insert(self, index, string: str) -> None:
         if string:

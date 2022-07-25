@@ -95,17 +95,17 @@ class Config(UserDict):
 
 
 class LoadableConfig(Config):
-    CONF_FILE_NAME: ClassVar[str] = "config.json"
     ENCODING: ClassVar[str] = "UTF-8"
 
     def __init__(self,
-                 config_location: str,
                  validation_scheme: dict[Any, tuple[Any, Sequence[Type], Sequence[Any]]],
-                 docs: str):
+                 docs: str,
+                 config_location: str,
+                 _config_file_name: str = "config.json"):
         super(LoadableConfig, self).__init__(validation_scheme=validation_scheme,
                                              docs=docs,
                                              initial_value={})
-        self._conf_file_path = os.path.join(config_location, LoadableConfig.CONF_FILE_NAME)
+        self._conf_file_path = os.path.join(config_location, _config_file_name)
         self.load()
 
     def load(self) -> Optional["Config.SchemeCheckResults"]:

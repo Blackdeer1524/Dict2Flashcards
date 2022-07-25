@@ -14,6 +14,7 @@ from tkinter import PanedWindow
 from tkinter import Toplevel
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename, askdirectory
+from tkinter.ttk import Treeview
 from typing import Callable
 
 from playsound import playsound
@@ -67,6 +68,8 @@ class App(Tk):
             return
         self.configurations.save()
         self.history = App.load_history_file()
+        self.chaining_data = self.load_chaining_data()
+        self.chaining_data.save()
 
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'}
         self.session_start = datetime.now()
@@ -306,140 +309,227 @@ saving_image_height
 
         main_menu.add_command(label=self.lang_pack.settings_menu_label, command=settings_dialog)
 
-        def build_chain():
-            pady = 2
+        def chain_dialog():
+            chain_type_window: Toplevel = self.Toplevel(self)
+            chain_type_window.grid_columnconfigure(0, weight=1)
+            chain_type_window.title()
 
-            ChoosingData = namedtuple("ChoosingData", ("name", "label", "select_button"))
-            ChainData = namedtuple("ChainData", ("name", "label", "up_button", "deselect_button", "down_button"))
+            chaining_options = {"Парсеры слов"       : "word_parsers",
+                                "Парсеры Предложений": "sentence_parsers",
+                                "Изображения"        : "image_parsers",
+                                "Аудио"              : "audio_getters"}
 
-            def add_to_chain(ind: int):
-                choosing_widgets_data[ind].label.destroy()
-                choosing_widgets_data[ind].select_button.destroy()
-                removed_name = choosing_widgets_data.pop(ind).name
+            def select_chain_type(picked_value: str) -> None:
+                exit_chain_creation_button["state"] = create_chain_of_selected_type_button["state"] = "normal"
+                existing_chains_treeview.delete(*existing_chains_treeview.get_children())
+                for i, (name, chain) in enumerate(self.chaining_data[chaining_options[picked_value]]):
+                    existing_chains_treeview.insert(parent="", index=i, values=(name, "->".join(chain)))
 
-                for i in range(ind, len(choosing_widgets_data)):
-                    choosing_widgets_data[i].label.grid_forget()
-                    choosing_widgets_data[i].label.grid(row=i, column=0, sticky="news", pady=pady)
-                    choosing_widgets_data[i].select_button.grid_forget()
-                    choosing_widgets_data[i].select_button.grid(row=i, column=1, sticky="news", pady=pady)
-                    choosing_widgets_data[i].select_button.configure(command=lambda ind=i: add_to_chain(ind))
+            chain_type_label = self.Label(chain_type_window, text="Тип цепи", anchor="w")
+            chain_type_label.grid(row=0, column=0, sticky="we", padx=10, pady=10)
 
-                new_chain_ind = len(chain_data) * 3
-                a = self.Label(ordering_frame, text=removed_name, justify='center')
+            chain_type_option_menu = self.get_option_menu(master=chain_type_window,
+                                                          init_text="",
+                                                          values=chaining_options.keys(),
+                                                          command=select_chain_type,
+                                                          option_submenu_cfg=self.theme.option_submenus_cfg)
+            chain_type_option_menu.configure(anchor='w')
+            chain_type_option_menu.grid(row=1, column=0, sticky="we", padx=10, pady=(0, 10))
 
-                def place(item, next_3i: int):
-                    item[1].grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
-                    item[2].grid(row=next_3i, column=1, sticky="news", pady=(pady, 0))
-                    if next_3i:
-                        item[2]["state"] = "normal"
-                        item[2].configure(
-                            command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
-                                                                   direction=-3))
-                    else:
-                        item[2]["state"] = "disabled"
+            existing_chains_treeview = Treeview(chain_type_window, columns=["Имя", "Цепь"], show="headings")
+            existing_chains_treeview.grid(row=2, column=0, sticky="news", padx=10, pady=(0, 10))
+            chain_type_window.grid_rowconfigure(2, weight=1)
 
-                    item[3].grid(row=next_3i + 1, column=1, sticky="news", pady=0)
-                    item[3].configure(command=lambda ind=next_3i: return_back(ind // 3))
-                    item[4].grid(row=next_3i + 2, column=1, sticky="news", pady=(0, pady))
+            existing_chains_treeview.heading("Имя", text="Имя")
+            existing_chains_treeview.heading("Цепь", text="Цепь")
 
-                    if next_3i == 3 * (len(chain_data) - 1):
-                        item[4]["state"] = "disabled"
-                    else:
-                        item[4]["state"] = "normal"
-                        item[4].configure(
-                            command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
-                                                                   direction=3))
+            existing_chains_treeview.column("#1", anchor="center", stretch=True)
+            existing_chains_treeview.column("#2", anchor="center", stretch=True)
 
-                def swap_places(current_ind: ind, direction: int):
-                    current = chain_data[current_ind]
-                    operand = chain_data[current_ind + direction // 3]
+            command_panel: Frame = self.Frame(chain_type_window)
+            command_panel.grid(row=3, column=0, sticky="we")
 
-                    for i in range(1, len(chain_data[current_ind])):
-                        current[i].grid_forget()
-                        operand[i].grid_forget()
+            def build_chain():
+                pady = 2
 
-                    old_3 = 3 * current_ind
-                    new_3 = old_3 + direction
-                    place(current, new_3)
-                    place(operand, old_3)
-                    chain_data[old_3 // 3], chain_data[new_3 // 3] = chain_data[new_3 // 3], chain_data[old_3 // 3]
+                chain_type = chaining_options[chain_type_option_menu["text"]]
 
-                def return_back(ind: int):
-                    for i in range(1, len(chain_data[ind])):
-                        chain_data[ind][i].destroy()
-                    removed_name = chain_data.pop(ind).name
+                ChoosingData = namedtuple("ChoosingData", ("name", "label", "select_button"))
+                ChainData = namedtuple("ChainData", ("name", "label", "up_button", "deselect_button", "down_button"))
 
-                    for i in range(ind, len(chain_data)):
-                        chain_data[i].label.grid_forget()
-                        chain_data[i].label.grid(row=3 * i, column=0, sticky="news", pady=pady, rowspan=3)
+                def add_to_chain(ind: int):
+                    choosing_widgets_data[ind].label.destroy()
+                    choosing_widgets_data[ind].select_button.destroy()
+                    removed_name = choosing_widgets_data.pop(ind).name
 
-                        chain_data[i].up_button.grid_forget()
-                        chain_data[i].up_button.grid(row=3 * i, column=1, sticky="news", pady=(pady, 0))
+                    for i in range(ind, len(choosing_widgets_data)):
+                        choosing_widgets_data[i].label.grid_forget()
+                        choosing_widgets_data[i].label.grid(row=i, column=0, sticky="news", pady=pady)
+                        choosing_widgets_data[i].select_button.grid_forget()
+                        choosing_widgets_data[i].select_button.grid(row=i, column=1, sticky="news", pady=pady)
+                        choosing_widgets_data[i].select_button.configure(command=lambda ind=i: add_to_chain(ind))
 
-                        chain_data[i].deselect_button.grid_forget()
-                        chain_data[i].deselect_button.grid(row=3 * i + 1, column=1, sticky="news", pady=0)
-                        chain_data[i].deselect_button.configure(command=lambda ind=i: return_back(ind))
+                    new_chain_ind = len(chain_data) * 3
+                    a = self.Label(ordering_frame, text=removed_name, justify='center')
 
-                        chain_data[i].down_button.grid_forget()
-                        chain_data[i].down_button.grid(row=3 * i + 2, column=1, sticky="news", pady=(0, pady))
+                    def place(item, next_3i: int):
+                        item[1].grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
+                        item[2].grid(row=next_3i, column=1, sticky="news", pady=(pady, 0))
+                        if next_3i:
+                            item[2]["state"] = "normal"
+                            item[2].configure(
+                                command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
+                                                                        direction=-3))
+                        else:
+                            item[2]["state"] = "disabled"
+
+                        item[3].grid(row=next_3i + 1, column=1, sticky="news", pady=0)
+                        item[3].configure(command=lambda ind=next_3i: return_back(ind // 3))
+                        item[4].grid(row=next_3i + 2, column=1, sticky="news", pady=(0, pady))
+
+                        if next_3i == 3 * (len(chain_data) - 1):
+                            item[4]["state"] = "disabled"
+                        else:
+                            item[4]["state"] = "normal"
+                            item[4].configure(
+                                command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
+                                                                        direction=3))
+
+                    def swap_places(current_ind: ind, direction: int):
+                        current = chain_data[current_ind]
+                        operand = chain_data[current_ind + direction // 3]
+
+                        for i in range(1, len(chain_data[current_ind])):
+                            current[i].grid_forget()
+                            operand[i].grid_forget()
+
+                        old_3 = 3 * current_ind
+                        new_3 = old_3 + direction
+                        place(current, new_3)
+                        place(operand, old_3)
+                        chain_data[old_3 // 3], chain_data[new_3 // 3] = chain_data[new_3 // 3], chain_data[old_3 // 3]
+
+                    def return_back(ind: int):
+                        for i in range(1, len(chain_data[ind])):
+                            chain_data[ind][i].destroy()
+                        removed_name = chain_data.pop(ind).name
+
+                        for i in range(ind, len(chain_data)):
+                            chain_data[i].label.grid_forget()
+                            chain_data[i].label.grid(row=3 * i, column=0, sticky="news", pady=pady, rowspan=3)
+
+                            chain_data[i].up_button.grid_forget()
+                            chain_data[i].up_button.grid(row=3 * i, column=1, sticky="news", pady=(pady, 0))
+
+                            chain_data[i].deselect_button.grid_forget()
+                            chain_data[i].deselect_button.grid(row=3 * i + 1, column=1, sticky="news", pady=0)
+                            chain_data[i].deselect_button.configure(command=lambda ind=i: return_back(ind))
+
+                            chain_data[i].down_button.grid_forget()
+                            chain_data[i].down_button.grid(row=3 * i + 2, column=1, sticky="news", pady=(0, pady))
+
+                        new_choosing_ind = len(choosing_widgets_data)
+                        a = self.Label(choosing_frame, text=removed_name, justify='center')
+                        a.grid(row=new_choosing_ind, column=0, sticky="news", pady=pady)
+                        b = self.Button(choosing_frame, text=">",
+                                        command=lambda ind=new_choosing_ind: add_to_chain(ind))
+                        b.grid(row=new_choosing_ind, column=1, sticky="news", pady=pady)
+                        choosing_widgets_data.append(ChoosingData(name=removed_name, label=a, select_button=b))
+
+                    up = self.Button(ordering_frame, text="∧")
+                    back = self.Button(ordering_frame, text="✕",
+                                       command=lambda ind=new_chain_ind: return_back(ind // 3))
+                    down = self.Button(ordering_frame, text="∨")
+
+                    if chain_data:
+                        chain_data[-1].down_button["state"] = "normal"
+
+                    chain_data.append(ChainData(name=removed_name, label=a,
+                                                up_button=up, deselect_button=back, down_button=down))
+                    place(chain_data[-1], new_chain_ind)
+
+                chaining_window = self.Toplevel(self)
+                chaining_window.grid_columnconfigure(0, weight=1)
+                chaining_window.grid_columnconfigure(1, weight=1)
+                chaining_window.grid_rowconfigure(1, weight=1)
+
+                spawn_window_in_center(self, chaining_window,
+                                       desired_window_width=self.winfo_width(),
+                                       desired_window_height=self.winfo_height() * 2 // 3)
+
+                chain_name_entry = self.Entry(chaining_window, placeholder="Имя цепи")
+                chain_name_entry.grid(row=0, column=0, columnspan=2, sticky="we", padx=10, pady=10)
+
+                choosing_frame: Frame = self.Frame(chaining_window, bg="blue")
+                choosing_frame.grid_columnconfigure(0, weight=1)
+                choosing_frame.grid(row=1, column=0, sticky="news", padx=10, pady=(0, 10))
+                choosing_widgets_data: list[ChoosingData] = []
+
+                chain_data: list[ChainData] = []
+
+                if chain_type == "word_parsers":
+                    displaying_options = \
+                        itertools.chain(
+                            (f"[{DataSourceType.WEB}] {name}" for name in loaded_plugins.web_word_parsers.loaded),
+                            (f"[{DataSourceType.LOCAL}] {name}" for name in loaded_plugins.local_word_parsers.loaded))
+                elif chain_type == "sentence_parsers":
+                    displaying_options = loaded_plugins.web_sent_parsers.loaded
+                elif chain_type == "image_parsers":
+                    displaying_options = loaded_plugins.image_parsers.loaded
+                elif chain_type == "audio_getters":
+                    displaying_options = \
+                        itertools.chain(
+                            (f"[{DataSourceType.WEB}] {name}" for name in loaded_plugins.web_audio_getters.loaded),
+                            (f"[{DataSourceType.LOCAL}] {name}" for name in loaded_plugins.local_audio_getters.loaded))
+                else:
+                    raise NotImplementedError(f"Unknown chain type: {chain_type}")
+
+                for i, parser_name in enumerate(displaying_options):
+                    a = self.Label(choosing_frame, text=parser_name, justify='center')
+                    a.grid(row=i, column=0, sticky="news", pady=pady)
+                    b = self.Button(choosing_frame, text=">", command=lambda ind=i: add_to_chain(ind))
+                    b.grid(row=i, column=1, sticky="news", pady=pady)
+                    choosing_widgets_data.append(ChoosingData(name=parser_name, label=a, select_button=b))
+
+                ordering_frame: Frame = self.Frame(chaining_window, bg="red")
+                ordering_frame.grid_columnconfigure(0, weight=1)
+                ordering_frame.grid(row=1, column=1, sticky="news", padx=10, pady=10)
+
+                command_frame: Frame = self.Frame(chaining_window, bg="green", height=30)
+                command_frame.grid(row=2, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 10))
+
+                def save_chain_sequence():
+                    chain_name = chain_name_entry.get().strip()
+                    if not chain_name:
+                        messagebox.showerror(title=self.lang_pack.error_title, 
+                                             message="Пустое имя цепи!")
+                        return 
+
+                    chain = [item.name for item in chain_data]
+                    self.chaining_data[chain_type].append([chain_name, chain])
+
+                    existing_chains_treeview.insert("", "end", values=(chain_name, "->".join(chain)))
+                    chaining_window.destroy()
+
+                done_button = self.Button(command_frame, text="Готово", command=save_chain_sequence)
+                done_button.pack(side="right", padx=5, pady=5)
+
+                cancel_button = self.Button(command_frame, text="Отмена", command=chaining_window.destroy)
+                cancel_button.pack(side="right", padx=5, pady=5)
+
+            create_chain_of_selected_type_button = self.Button(command_panel,
+                                                               text="Создать новую цепь",
+                                                               command=build_chain,
+                                                               state="disabled")
+            create_chain_of_selected_type_button.pack(side="right", padx=10, pady=(0, 10))
+
+            exit_chain_creation_button = self.Button(command_panel, text="Выход", state="disabled")
+            exit_chain_creation_button.pack(side="right", pady=(0, 10))
 
 
-                    new_choosing_ind = len(choosing_widgets_data)
-                    a = self.Label(choosing_frame, text=removed_name, justify='center')
-                    a.grid(row=new_choosing_ind, column=0, sticky="news", pady=pady)
-                    b = self.Button(choosing_frame, text=">", command=lambda ind=new_choosing_ind: add_to_chain(ind))
-                    b.grid(row=new_choosing_ind, column=1, sticky="news", pady=pady)
-                    choosing_widgets_data.append(ChoosingData(name=removed_name, label=a, select_button=b))
 
-                up = self.Button(ordering_frame, text="∧")
-                back = self.Button(ordering_frame, text="✕", command=lambda ind=new_chain_ind: return_back(ind // 3))
-                down = self.Button(ordering_frame, text="∨")
 
-                if chain_data:
-                    chain_data[-1].down_button["state"] = "normal"
-
-                chain_data.append(ChainData(name=removed_name, label=a,
-                                            up_button=up, deselect_button=back, down_button=down))
-                place(chain_data[-1], new_chain_ind)
-
-            chaining_window = self.Toplevel(self)
-            chaining_window.grid_columnconfigure(0, weight=1)
-            chaining_window.grid_columnconfigure(1, weight=1)
-            chaining_window.grid_rowconfigure(0, weight=1)
-
-            spawn_window_in_center(self, chaining_window,
-                                   desired_window_width=self.winfo_width(),
-                                   desired_window_height=self.winfo_height() * 2 // 3 )
-
-            choosing_frame: Frame = self.Frame(chaining_window, bg="blue")
-            choosing_frame.grid_columnconfigure(0, weight=1)
-            choosing_frame.grid(row=0, column=0, sticky="news", padx=10, pady=10)
-            choosing_widgets_data: list[ChoosingData] = []
-
-            chain_data: list[ChainData] = []
-
-            for i, parser_name in enumerate(itertools.chain(loaded_plugins.web_word_parsers.loaded,
-                                                            loaded_plugins.local_word_parsers.loaded)):
-                a = self.Label(choosing_frame, text=parser_name, justify='center')
-                a.grid(row=i, column=0, sticky="news", pady=pady)
-                b = self.Button(choosing_frame, text=">", command=lambda ind=i: add_to_chain(ind))
-                b.grid(row=i, column=1, sticky="news", pady=pady)
-                choosing_widgets_data.append(ChoosingData(name=parser_name, label=a, select_button=b))
-
-            ordering_frame: Frame = self.Frame(chaining_window, bg="red")
-            ordering_frame.grid_columnconfigure(0, weight=1)
-            ordering_frame.grid(row=0, column=1, sticky="news", padx=10, pady=10)
-
-            command_frame: Frame = self.Frame(chaining_window, bg="green", height=30)
-            command_frame.grid(row=1, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 10))
-
-            done_button = self.Button(command_frame, text="Готово")
-            done_button.pack(side="right", padx=5, pady=5)
-
-            cancel_button = self.Button(command_frame, text="Отмена")
-            cancel_button.pack(side="right", padx=5, pady=5)
-
-        main_menu.add_command(label="asdf", command=build_chain)
+        main_menu.add_command(label="asdf", command=chain_dialog)
         main_menu.add_command(label=self.lang_pack.exit_menu_label, command=self.on_closing)
         self.config(menu=main_menu)
 
@@ -705,9 +795,8 @@ saving_image_height
             }
         }
         conf_file = LoadableConfig(config_location=os.path.dirname(__file__),
-                                   validation_scheme=validation_scheme,  # type: ignore
+                                   validation_scheme=validation_scheme,
                                    docs="")
-        conf_file.load()
 
         lang_pack = loaded_plugins.get_language_package(conf_file["app"]["language_package"])
 
@@ -744,6 +833,24 @@ saving_image_height
             with open(HISTORY_FILE_PATH, "r", encoding="UTF-8") as f:
                 history_json = json.load(f)
         return history_json
+
+    def load_chaining_data(self) -> LoadableConfig:
+        validation_scheme = \
+        {
+            "word_parsers":     ([], [list], []),
+            "sentence_parsers": ([], [list], []),
+            "image_parsers":    ([], [list], []),
+            "audio_getters":    ([], [list], [])
+        }
+        chaining_data_file_dir = os.path.dirname(CHAIN_DATA_FILE_PATH)
+        chaining_data_file_name = os.path.basename(CHAIN_DATA_FILE_PATH)
+
+        chaining_data = LoadableConfig(validation_scheme=validation_scheme,
+                                       docs="",
+                                       config_location=chaining_data_file_dir,
+                                       _config_file_name=chaining_data_file_name)
+        return chaining_data
+
 
     @property
     @error_handler(show_errors)

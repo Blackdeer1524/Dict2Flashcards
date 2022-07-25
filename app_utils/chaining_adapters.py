@@ -138,11 +138,13 @@ class ImageParsersChain:
         batch_size = yield
         for url_getting_function in self.url_getting_functions:
             url_generator = url_getting_function(word)
-            starting_error_message = next(url_generator)
-            if starting_error_message:
+            try:
+                next(url_generator)
+            except StopIteration:
                 continue
             while True:
                 try:
                     batch_size = yield url_generator.send(batch_size)
                 except StopIteration:
                     break
+        return [], ""

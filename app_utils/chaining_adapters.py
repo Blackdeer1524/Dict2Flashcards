@@ -5,8 +5,7 @@ from app_utils.cards import DataSourceType
 from consts.paths import *
 from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig
-from plugins_management.parsers_return_types import ImageGenerator
-from plugins_management.parsers_return_types import SentenceGenerator
+from plugins_management.parsers_return_types import ImageGenerator, SentenceGenerator, AudioData
 
 
 class ChainConfig(LoadableConfig):
@@ -60,7 +59,7 @@ class CardGeneratorsChain:
                 self.card_generators.append(
                     loaded_plugins.get_local_card_generator(parser_name[3 + len(DataSourceType.LOCAL):]))
             else:
-                raise NotImplementedError(f"Parser with unknown type: {parser_name}")
+                raise NotImplementedError(f"Word parser of unknown type: {parser_name}")
             parser_configs.append(self.card_generators[-1].config)
             scheme_docs_list.append("{}\n{}".format(parser_name,
                                                     self.card_generators[-1].scheme_docs.replace("\n", "\n |\t")))
@@ -148,3 +147,39 @@ class ImageParsersChain:
                 except StopIteration:
                     break
         return [], ""
+
+
+class AudioGettersChain:
+    def __init__(self,
+                 name: str,
+                 chain_data: dict[str, str | list[str]]):
+        self.name = name
+        self.parsers_data = []
+        parser_configs = []
+        for parser_name in chain_data["chain"]:
+            if parser_name.startswith(f"[{DataSourceType.WEB}]"):
+                parser_type = DataSourceType.WEB
+                getter = loaded_plugins.get_web_audio_getter(parser_name[3 + len(DataSourceType.WEB):])
+            elif parser_name.startswith(f"[{DataSourceType.LOCAL}]"):
+                parser_type = DataSourceType.LOCAL
+                getter = loaded_plugins.get_local_audio_getter(parser_name[3 + len(DataSourceType.LOCAL):])
+            else:
+                raise NotImplementedError(f"Audio getter of unknown type: {parser_name}")
+            self.parsers_data.append((parser_type, getter.get_audios))
+            parser_configs.append(getter.config)
+
+        self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "image_parsers",
+                                  config_name=chain_data["config_name"],
+                                  name_config_pairs=[(name, config) for name, config in
+                                                     zip(chain_data["chain"], parser_configs)])
+
+    def get_audios(self, word: str, dict_tags: dict) -> tuple[str, AudioData]:
+        source = []
+        additional_info = []
+        error_message = ""
+        parser_type = DataSourceType.WEB  # arbitrary type
+        for parser_type, audio_getting_function in self.parsers_data:
+            (source, additional_info), error_message = audio_getting_function(word, dict_tags)
+            if source:
+                break
+        return parser_type, ((source, additional_info), error_message)

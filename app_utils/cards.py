@@ -71,11 +71,6 @@ class CardGenerator(ABC):
         self.config = config
         self.scheme_docs = scheme_docs
 
-    @property
-    @abstractmethod
-    def type(self):
-        pass
-
     @abstractmethod
     def _get_search_subset(self, query: str) -> list[tuple[str, dict]]:
         pass
@@ -120,10 +115,6 @@ class LocalCardGenerator(CardGenerator):
         with open(local_dict_path, "r", encoding="UTF-8") as f:
             self.local_dictionary: list[(str, dict)] = json.load(f)
 
-    @property
-    def type(self):
-        return DataSourceType.LOCAL
-
     def _get_search_subset(self, query: str) -> list[tuple[str, dict]]:
         return self.local_dictionary
 
@@ -140,10 +131,6 @@ class WebCardGenerator(CardGenerator):
                                                config=config,
                                                scheme_docs=scheme_docs)
         self.parsing_function = parsing_function
-
-    @property
-    def type(self):
-        return DataSourceType.WEB
 
     def _get_search_subset(self, query: str) -> list[tuple[str, dict]]:
         return self.parsing_function(query)

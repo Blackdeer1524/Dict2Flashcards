@@ -7,8 +7,10 @@ Credits:
 import requests.utils
 
 from plugins_management.config_management import LoadableConfig
+from plugins_management.parsers_return_types import AudioData
 from .consts import _PLUGIN_NAME, _PLUGIN_LOCATION
 from .page_processing import get_forvo_page, get_audio_link
+
 
 _CONFIG_DOCS = """
 language_code
@@ -30,7 +32,7 @@ config = LoadableConfig(config_location=_PLUGIN_LOCATION,
                 docs=_CONFIG_DOCS)
 
 
-def get_web_audios(word: str, dict_tags: dict) -> tuple[tuple[list[str], list[str]], str]:
+def get_audios(word: str, dict_tags: dict) -> AudioData:
     audio_links = []
     additional_info = []
     wordEncoded = requests.utils.requote_uri(word)

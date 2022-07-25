@@ -222,12 +222,12 @@ To create an image parser, create a python file inside **./plugins/parsers/image
 ### [Audio getters](#parsers)
 #### [Web](#audio-getters)
 To register web audio getter, create a python file inside **./plugins/parsers/audio_getters/web/** with the following protocol:
-  * get_web_audios(word: str, dict_tags: dict) -> tuple[tuple[list[str], list[str]], str] function that takes word to whick audio is needed and dict_tags for the additional info and returns ((audio_urls, additional_information_to_be_displayed), error_message). len(audio_urls) = len(additional_information_to_be_displayed)!
+  * get_audios(word: str, dict_tags: dict) -> tuple[tuple[list[str], list[str]], str] function that takes word to whick audio is needed and dict_tags for the additional info and returns ((audio_urls, additional_information_to_be_displayed), error_message). len(audio_urls) = len(additional_information_to_be_displayed)!
 
 #### [Local](#audio-getters)
 To register folder with audio files, create a python file inside **./plugins/parsers/audio_getters/local/** with the following protocol:
   * AUDIO_FOLDER: str - relative path to the folder with audio files that is located inside ./media folder
-  * get_local_audios(word: str, dict_tags: dict) -> list\[str] function that takes word to whick audio is needed and dict_tags for the additional info
+  * get_audios(word: str, dict_tags: dict) -> list\[str] function that takes word to whick audio is needed and dict_tags for the additional info
   and returns a list of paths.
 
 ## [Saving](#plugins)

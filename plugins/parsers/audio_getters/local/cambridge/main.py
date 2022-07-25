@@ -3,6 +3,7 @@ import os
 from app_utils.string_utils import remove_special_chars
 from consts.paths import LOCAL_MEDIA_DIR
 from plugins_management.config_management import LoadableConfig
+from plugins_management.parsers_return_types import AudioData
 
 _CONFIG_DOCS = \
 """
@@ -30,7 +31,7 @@ _LETTERS = frozenset("abcdefghijklmnopqrstuvwxyz")
 _AUDIO_NAME_SPEC_CHARS = '/\\:*?\"<>| '
 
 
-def get_local_audios(word, dict_tags: dict) -> tuple[tuple[list[str], list[str]], str]:
+def get_audios(word, dict_tags: dict) -> AudioData:
     word = word.strip()
     if not word:
         return ([], []), ""

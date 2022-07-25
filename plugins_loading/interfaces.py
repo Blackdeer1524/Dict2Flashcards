@@ -268,7 +268,7 @@ class LocalAudioGetterInterface(Protocol):
     AUDIO_FOLDER: str
 
     @staticmethod
-    def get_local_audios(word: str, dict_tags: dict) -> list[str]:
+    def get_audios(word: str, dict_tags: dict) -> list[str]:
         ...
 
 
@@ -276,6 +276,6 @@ class WebAudioGetterInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def get_web_audios(word: str, dict_tags: dict) -> tuple[tuple[list[str], list[str]], str]:
+    def get_audios(word: str, dict_tags: dict) -> tuple[tuple[list[str], list[str]], str]:
         """returns ((<audio urls>, <additional information>), <error_message>)"""
         ...

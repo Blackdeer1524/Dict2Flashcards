@@ -23,7 +23,7 @@ from tkinterdnd2 import Tk
 from app_utils.audio_utils import AudioDownloader
 from app_utils.cards import Card
 from app_utils.cards import Deck, SentenceFetcher, SavedDataDeck, CardStatus, DataSourceType
-from app_utils.chaining_adapters import ImageParsersChain, CardGeneratorsChain, SentenceParsersChain
+from app_utils.chaining_adapters import ImageParsersChain, CardGeneratorsChain, SentenceParsersChain, AudioGettersChain
 from app_utils.error_handling import create_exception_message
 from app_utils.error_handling import error_handler
 from app_utils.global_bindings import Binder
@@ -117,11 +117,14 @@ class App(Tk):
 
         self.image_parser = loaded_plugins.get_image_parser(self.configurations["scrappers"]["image"]["name"])
 
-        if (local_audio_getter_name := self.configurations["scrappers"]["audio"]["name"]):
+        if (audio_getter_name := self.configurations["scrappers"]["audio"]["name"]):
             if self.configurations["scrappers"]["audio"]["type"] == DataSourceType.LOCAL:
-                self.audio_getter = loaded_plugins.get_local_audio_getter(local_audio_getter_name)
+                self.audio_getter = loaded_plugins.get_local_audio_getter(audio_getter_name)
             elif self.configurations["scrappers"]["audio"]["type"] == DataSourceType.WEB:
-                self.audio_getter = loaded_plugins.get_web_audio_getter(local_audio_getter_name)
+                self.audio_getter = loaded_plugins.get_web_audio_getter(audio_getter_name)
+            elif self.configurations["scrappers"]["audio"]["type"] == "chain":
+                self.audio_getter = AudioGettersChain(name=audio_getter_name,
+                                                      chain_data=self.chaining_data["audio_getters"][audio_getter_name])
             else:
                 self.configurations["scrappers"]["audio"]["type"] = "default"
                 self.configurations["scrappers"]["audio"]["name"] = ""
@@ -562,10 +565,7 @@ saving_image_height
                                                      command=chain_type_window.destroy)
             exit_chain_creation_button.pack(side="right", pady=(0, 10))
 
-
-
-
-        main_menu.add_command(label="asdf", command=chain_dialog)
+        main_menu.add_command(label="Создать цепь", command=chain_dialog)
         main_menu.add_command(label=self.lang_pack.exit_menu_label, command=self.on_closing)
         self.config(menu=main_menu)
 
@@ -1454,19 +1454,21 @@ saving_image_height
         @error_handler(self.show_errors)
         def pick_word_parser(typed_parser: str):
             if typed_parser.startswith(WEB_PREF):
+                self.configurations["scrappers"]["word"]["type"] = DataSourceType.WEB
                 raw_name = typed_parser[len(WEB_PREF) + 1:]
                 self.card_generator = loaded_plugins.get_web_card_generator(raw_name)
             elif typed_parser.startswith(LOCAL_PREF):
+                self.configurations["scrappers"]["word"]["type"] = DataSourceType.LOCAL
                 raw_name = typed_parser[len(LOCAL_PREF) + 1:]
                 self.card_generator = loaded_plugins.get_local_card_generator(raw_name)
             elif typed_parser.startswith(CHAIN_PREF):
+                self.configurations["scrappers"]["word"]["type"] = "chain"
                 raw_name = typed_parser[len(CHAIN_PREF) + 1:]
                 self.card_generator = CardGeneratorsChain(name=raw_name,
                                                           chain_data=self.chaining_data["word_parsers"][raw_name])
             else:
                 raise NotImplementedError(f"Parser of unknown type: {typed_parser}")
 
-            self.configurations["scrappers"]["word"]["type"] = self.card_generator.type
             self.configurations["scrappers"]["word"]["name"] = raw_name
             self.typed_word_parser_name = typed_parser
             self.deck.update_card_generator(self.card_generator)
@@ -1524,10 +1526,18 @@ saving_image_height
                 raw_name = typed_getter[len(WEB_PREF) + 1:]
                 self.audio_getter = loaded_plugins.get_web_audio_getter(raw_name)
                 self.configurations["scrappers"]["audio"]["type"] = DataSourceType.WEB
-            else:
+            elif typed_getter.startswith(LOCAL_PREF):
                 raw_name = typed_getter[len(LOCAL_PREF) + 1:]
                 self.audio_getter = loaded_plugins.get_local_audio_getter(raw_name)
                 self.configurations["scrappers"]["audio"]["type"] = DataSourceType.LOCAL
+                self.audio_getter.get_audios()
+            elif typed_getter.startswith(CHAIN_PREF):
+                raw_name = typed_getter[len(CHAIN_PREF) + 1:]
+                self.audio_getter = AudioGettersChain(name=raw_name,
+                                                      chain_data=self.chaining_data["audio_getters"][raw_name])
+                self.configurations["scrappers"]["audio"]["type"] = "chain"
+            else:
+                raise NotImplementedError(f"Audio getter with unknown type: {typed_getter}")
 
             self.configurations["scrappers"]["audio"]["name"] = raw_name
             configure_audio_getter_button["state"] = "normal"
@@ -1646,12 +1656,17 @@ saving_image_height
             additional[SavedDataDeck.USER_TAGS] = user_tags
 
         audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-        if self.audio_getter is not None and audio_getter_type in (DataSourceType.WEB, DataSourceType.LOCAL):
+        if self.audio_getter is not None and audio_getter_type in (DataSourceType.WEB, DataSourceType.LOCAL, "chain"):
             if audio_getter_type == DataSourceType.WEB:
-                audio_data = self.audio_getter.get_web_audios(word, dict_tags)
+                audio_data = self.audio_getter.get_audios(word, dict_tags)
+            elif audio_getter_type == DataSourceType.LOCAL:
+                audio_data = self.audio_getter.get_audios(word, dict_tags)
+            elif audio_getter_type == "chain":
+                audio_getter_type, audio_data = self.audio_getter.get_audios(word, dict_tags)
             else:
-                audio_data = self.audio_getter.get_local_audios(word, dict_tags)
-            ((audio_links, additional_data), error_message) = audio_data
+                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
+
+            (audio_links, additional_data), error_message = audio_data
             if audio_links:
                 additional[SavedDataDeck.AUDIO_DATA] = {}
                 additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS] = audio_links
@@ -1761,16 +1776,21 @@ saving_image_height
         word = self.word
         dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
         if self.audio_getter is not None:
-            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-            if audio_getter_type not in (DataSourceType.WEB, DataSourceType.LOCAL):
-                raise NotImplementedError("Unknown audio parser type: {}".format(audio_getter_type))
+            type2playsound_corr = {DataSourceType.WEB:   web_playsound,
+                                   DataSourceType.LOCAL: local_playsound}
 
+            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
             if audio_getter_type == DataSourceType.WEB:
-                ((audio_sources, additional_info), error_message) = self.audio_getter.get_web_audios(word, dict_tags)
-                playsound_function = web_playsound
+                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word, dict_tags)
+            elif audio_getter_type == DataSourceType.LOCAL:
+                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word, dict_tags)
+            elif audio_getter_type == "chain":
+                audio_getter_type, audio_data = self.audio_getter.get_audios(word, dict_tags)
+                (audio_sources, additional_info), error_message = audio_data
             else:
-                ((audio_sources, additional_info), error_message) = self.audio_getter.get_local_audios(word, dict_tags)
-                playsound_function = local_playsound
+                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
+
+            playsound_function = type2playsound_corr[audio_getter_type]
 
             if error_message:
                 messagebox.showerror(title=self.lang_pack.error_title, message=error_message)

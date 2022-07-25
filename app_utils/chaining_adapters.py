@@ -6,6 +6,7 @@ from consts.paths import *
 from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import ImageGenerator, SentenceGenerator, AudioData
+from consts.card_fields import FIELDS
 
 
 class ChainConfig(LoadableConfig):
@@ -155,8 +156,15 @@ class AudioGettersChain:
                  chain_data: dict[str, str | list[str]]):
         self.name = name
         self.parsers_data = []
+        names = []
         parser_configs = []
         for parser_name in chain_data["chain"]:
+            if parser_name == "default":
+                parser_type = "default"
+                self.parsers_data.append((parser_type, None))
+                continue
+
+            names.append(parser_name)
             if parser_name.startswith(f"[{DataSourceType.WEB}]"):
                 parser_type = DataSourceType.WEB
                 getter = loaded_plugins.get_web_audio_getter(parser_name[3 + len(DataSourceType.WEB):])
@@ -171,15 +179,19 @@ class AudioGettersChain:
         self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "image_parsers",
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(name, config) for name, config in
-                                                     zip(chain_data["chain"], parser_configs)])
+                                                     zip(names, parser_configs)])
 
-    def get_audios(self, word: str, dict_tags: dict) -> tuple[str, AudioData]:
+    def get_audios(self, word: str, card_data: dict) -> tuple[str, AudioData]:
         source = []
         additional_info = []
         error_message = ""
         parser_type = DataSourceType.WEB  # arbitrary type
         for parser_type, audio_getting_function in self.parsers_data:
-            (source, additional_info), error_message = audio_getting_function(word, dict_tags)
+            if parser_type == "default":
+                source = additional_info = card_data.get(FIELDS.audio_links, [])
+                error_message = ""
+            else:
+                (source, additional_info), error_message = audio_getting_function(word, card_data)
             if source:
                 break
         return parser_type, ((source, additional_info), error_message)

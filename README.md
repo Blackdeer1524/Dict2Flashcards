@@ -222,12 +222,12 @@ To create an image parser, create a python file inside **./plugins/parsers/image
 ### [Audio getters](#parsers)
 #### [Web](#audio-getters)
 To register web audio getter, create a python file inside **./plugins/parsers/audio_getters/web/** with the following protocol:
-  * get_audios(word: str, dict_tags: dict) -> tuple[tuple[list[str], list[str]], str] function that takes word to whick audio is needed and dict_tags for the additional info and returns ((audio_urls, additional_information_to_be_displayed), error_message). len(audio_urls) = len(additional_information_to_be_displayed)!
+  * get_audios(word: str, card_data: dict) -> tuple[tuple[list[str], list[str]], str] function that takes word to whick audio is needed and current card data for the additional info and returns ((audio_urls, additional_information_to_be_displayed), error_message). len(audio_urls) = len(additional_information_to_be_displayed)!
 
 #### [Local](#audio-getters)
 To register folder with audio files, create a python file inside **./plugins/parsers/audio_getters/local/** with the following protocol:
   * AUDIO_FOLDER: str - relative path to the folder with audio files that is located inside ./media folder
-  * get_audios(word: str, dict_tags: dict) -> list\[str] function that takes word to whick audio is needed and dict_tags for the additional info
+  * get_audios(word: str, card_data: dict) -> list\[str] function that takes word to whick audio is needed and current card data for the additional info
   and returns a list of paths.
 
 ## [Saving](#plugins)
@@ -235,9 +235,9 @@ To register folder with audio files, create a python file inside **./plugins/par
 You may want to create special card processors to other applications from Anki. These apps may have special requirements for card format. For
 Example, to add an audio file to anki, one has to wrap its file name in \[sound:\<filename>].
 To create a card processor, create a python file inside **./plugins/saving/card_processors/** with the following protocol:
-  * get_save_image_name(word: str, image_source: str, image_parser_name: str, dict_tags: dict) -> str function that returns saving image file name
+  * get_save_image_name(word: str, image_source: str, image_parser_name: str, card_data: dict) -> str function that returns saving image file name
   * get_card_image_name(saved_image_path: str) -> str function that returns wrapped saved_image_path (this path is *absolute*)
-  * get_save_audio_name(word: str, audio_provider: str, multiple_postfix: str, dict_tags: dict) -> str function that returns saving audio file name
+  * get_save_audio_name(word: str, audio_provider: str, multiple_postfix: str, card_data: dict) -> str function that returns saving audio file name
   * get_card_audio_name(saved_audio_path: str) -> str function that returns wrapped saved_audio_path (this path is *absolute*)
   * process_card(card: dict) -> None function that processes card in-place
 

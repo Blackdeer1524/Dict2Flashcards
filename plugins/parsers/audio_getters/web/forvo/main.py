@@ -32,7 +32,7 @@ config = LoadableConfig(config_location=_PLUGIN_LOCATION,
                 docs=_CONFIG_DOCS)
 
 
-def get_audios(word: str, dict_tags: dict) -> AudioData:
+def get_audios(word: str, card_data: dict) -> AudioData:
     audio_links = []
     additional_info = []
     wordEncoded = requests.utils.requote_uri(word)

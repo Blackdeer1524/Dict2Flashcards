@@ -2,6 +2,7 @@ import os
 
 from app_utils.string_utils import remove_special_chars
 from consts.paths import LOCAL_MEDIA_DIR
+from consts.card_fields import FIELDS
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import AudioData
 
@@ -31,7 +32,7 @@ _LETTERS = frozenset("abcdefghijklmnopqrstuvwxyz")
 _AUDIO_NAME_SPEC_CHARS = '/\\:*?\"<>| '
 
 
-def get_audios(word, dict_tags: dict) -> AudioData:
+def get_audios(word, card_data: dict) -> AudioData:
     word = word.strip()
     if not word:
         return ([], []), ""
@@ -43,7 +44,10 @@ def get_audios(word, dict_tags: dict) -> AudioData:
     search_root = os.path.join(LOCAL_MEDIA_DIR, audio_folder, letter_group)
 
     if config["pos_search"]:
-        pos = remove_special_chars(dict_tags.get("pos", "").lower(), '-', _AUDIO_NAME_SPEC_CHARS)
+        pos = remove_special_chars(card_data.get(FIELDS.dict_tags, {})
+                                            .get("pos", "")
+                                            .lower(),
+                                   '-', _AUDIO_NAME_SPEC_CHARS)
         res = os.path.join(search_root, pos, name)
         if os.path.exists(res):
             if os.path.isfile(res):

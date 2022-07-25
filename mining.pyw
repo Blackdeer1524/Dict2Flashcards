@@ -489,6 +489,7 @@ saving_image_height
                 elif chain_type == "audio_getters":
                     displaying_options = \
                         itertools.chain(
+                            ("default", ),
                             (f"[{DataSourceType.WEB}] {name}" for name in loaded_plugins.web_audio_getters.loaded),
                             (f"[{DataSourceType.LOCAL}] {name}" for name in loaded_plugins.local_audio_getters.loaded))
                 else:
@@ -1530,7 +1531,6 @@ saving_image_height
                 raw_name = typed_getter[len(LOCAL_PREF) + 1:]
                 self.audio_getter = loaded_plugins.get_local_audio_getter(raw_name)
                 self.configurations["scrappers"]["audio"]["type"] = DataSourceType.LOCAL
-                self.audio_getter.get_audios()
             elif typed_getter.startswith(CHAIN_PREF):
                 raw_name = typed_getter[len(CHAIN_PREF) + 1:]
                 self.audio_getter = AudioGettersChain(name=raw_name,
@@ -1641,7 +1641,6 @@ saving_image_height
     @error_handler(show_errors)
     def choose_sentence(self, sentence_number: int):
         word = self.word
-        dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
         self.dict_card_data[FIELDS.word] = word
         self.dict_card_data[FIELDS.definition] = self.definition
 
@@ -1658,11 +1657,11 @@ saving_image_height
         audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
         if self.audio_getter is not None and audio_getter_type in (DataSourceType.WEB, DataSourceType.LOCAL, "chain"):
             if audio_getter_type == DataSourceType.WEB:
-                audio_data = self.audio_getter.get_audios(word, dict_tags)
+                audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
             elif audio_getter_type == DataSourceType.LOCAL:
-                audio_data = self.audio_getter.get_audios(word, dict_tags)
+                audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
             elif audio_getter_type == "chain":
-                audio_getter_type, audio_data = self.audio_getter.get_audios(word, dict_tags)
+                audio_getter_type, audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
             else:
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 
@@ -1680,7 +1679,7 @@ saving_image_height
                                                           audio_getter_type,
                                                           self.audio_getter.name),
                                                       str(i),
-                                                      dict_tags))
+                                                      self.dict_card_data))
                     for i in range(len(audio_links))
                 ]
         elif (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
@@ -1692,7 +1691,7 @@ saving_image_height
                              self.card_processor.get_save_audio_name(word,
                                                                      self.typed_word_parser_name,
                                                                      f"{i}",
-                                                                     dict_tags))
+                                                                     self.dict_card_data))
                 for i in range(len(web_audios))
             ]
 
@@ -1758,7 +1757,7 @@ saving_image_height
             audio_name = self.card_processor.get_save_audio_name(word,
                                                                  self.typed_word_parser_name,
                                                                  postfix,
-                                                                 dict_tags)
+                                                                 self.dict_card_data)
 
             temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name)
             success = AudioDownloader.fetch_audio(url=src,
@@ -1774,18 +1773,17 @@ saving_image_height
             playsound(src)
 
         word = self.word
-        dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
         if self.audio_getter is not None:
             type2playsound_corr = {DataSourceType.WEB:   web_playsound,
                                    DataSourceType.LOCAL: local_playsound}
 
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
             if audio_getter_type == DataSourceType.WEB:
-                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word, dict_tags)
+                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word, self.dict_card_data)
             elif audio_getter_type == DataSourceType.LOCAL:
-                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word, dict_tags)
+                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word, self.dict_card_data)
             elif audio_getter_type == "chain":
-                audio_getter_type, audio_data = self.audio_getter.get_audios(word, dict_tags)
+                audio_getter_type, audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
                 (audio_sources, additional_info), error_message = audio_data
             else:
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
@@ -1937,8 +1935,6 @@ saving_image_height
                     if os.path.isfile(path):
                         os.remove(path)
 
-            dict_tags = self.dict_card_data.get(FIELDS.dict_tags, {})
-
             names: list[str] = []
             for i in range(len(instance.working_state)):
                 if instance.working_state[i]:
@@ -1948,7 +1944,7 @@ saving_image_height
                                 .get_save_image_name(word,
                                                      instance.images_source[i],
                                                      self.configurations["scrappers"]["image"]["name"],
-                                                     dict_tags))
+                                                     self.dict_card_data))
                     instance.preprocess_image(img=instance.saving_images[i],
                                               width=self.configurations["image_search"]["saving_image_width"],
                                               height=self.configurations["image_search"]["saving_image_height"])\

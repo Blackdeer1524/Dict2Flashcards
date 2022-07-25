@@ -323,10 +323,10 @@ saving_image_height
             chain_type_window.grab_set()
             chain_type_window.title()
 
-            chaining_options = {"Парсеры слов"       : "word_parsers",
-                                "Парсеры Предложений": "sentence_parsers",
-                                "Изображения"        : "image_parsers",
-                                "Аудио"              : "audio_getters"}
+            chaining_options = {"Парсеры слов"        : "word_parsers",
+                                "Парсеры Предложений" : "sentence_parsers",
+                                "Изображения"         : "image_parsers",
+                                "Аудио"               : "audio_getters"}
 
             def select_chain_type(picked_value: str) -> None:
                 exit_chain_creation_button["state"] = create_chain_of_selected_type_button["state"] = "normal"
@@ -379,7 +379,7 @@ saving_image_height
                         choosing_widgets_data[i].select_button.configure(command=lambda ind=i: add_to_chain(ind))
 
                     new_chain_ind = len(chain_data) * 3
-                    a = self.Label(ordering_frame, text=removed_name, justify='center')
+                    a = self.Label(ordering_inner_frame, text=removed_name, justify='center')
 
                     def place(item, next_3i: int):
                         item[1].grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
@@ -438,17 +438,17 @@ saving_image_height
                             chain_data[i].down_button.grid(row=3 * i + 2, column=1, sticky="news", pady=(0, pady))
 
                         new_choosing_ind = len(choosing_widgets_data)
-                        a = self.Label(choosing_frame, text=removed_name, justify='center')
+                        a = self.Label(choosing_inner_frame, text=removed_name, justify='center')
                         a.grid(row=new_choosing_ind, column=0, sticky="news", pady=pady)
-                        b = self.Button(choosing_frame, text=">",
+                        b = self.Button(choosing_inner_frame, text=">",
                                         command=lambda ind=new_choosing_ind: add_to_chain(ind))
                         b.grid(row=new_choosing_ind, column=1, sticky="news", pady=pady)
                         choosing_widgets_data.append(ChoosingData(name=removed_name, label=a, select_button=b))
 
-                    up = self.Button(ordering_frame, text="∧")
-                    back = self.Button(ordering_frame, text="✕",
+                    up = self.Button(ordering_inner_frame, text="∧")
+                    back = self.Button(ordering_inner_frame, text="✕",
                                        command=lambda ind=new_chain_ind: return_back(ind // 3))
-                    down = self.Button(ordering_frame, text="∨")
+                    down = self.Button(ordering_inner_frame, text="∨")
 
                     if chain_data:
                         chain_data[-1].down_button["state"] = "normal"
@@ -456,25 +456,25 @@ saving_image_height
                     chain_data.append(ChainData(name=removed_name, label=a,
                                                 up_button=up, deselect_button=back, down_button=down))
                     place(chain_data[-1], new_chain_ind)
-
                 chaining_window = self.Toplevel(self)
+                chaining_window.geometry(f"{self.winfo_screenwidth() // 3}x{self.winfo_screenheight() // 3}")
                 chaining_window.grab_set()
                 chaining_window.grid_columnconfigure(0, weight=1)
                 chaining_window.grid_columnconfigure(1, weight=1)
                 chaining_window.grid_rowconfigure(1, weight=1)
 
-                spawn_window_in_center(self, chaining_window,
-                                       desired_window_width=self.winfo_width(),
-                                       desired_window_height=self.winfo_height() * 2 // 3)
-
                 chain_name_entry = self.Entry(chaining_window, placeholder="Имя цепи")
                 chain_name_entry.grid(row=0, column=0, columnspan=2, sticky="we", padx=10, pady=10)
+                
+                choosing_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical")
+                choosing_main_frame.grid(row=1, column=0, sticky="news", padx=10, pady=(0, 10))
+                choosing_main_frame.bind_scroll_wheel(choosing_main_frame)
+                choosing_inner_frame = choosing_main_frame.display_widget(self.Frame,
+                                                                  fit_width=True, fit_height=True,
+                                                                  bg="grey")
+                choosing_inner_frame.grid_columnconfigure(0, weight=1)
 
-                choosing_frame: Frame = self.Frame(chaining_window, bg="blue")
-                choosing_frame.grid_columnconfigure(0, weight=1)
-                choosing_frame.grid(row=1, column=0, sticky="news", padx=10, pady=(0, 10))
                 choosing_widgets_data: list[ChoosingData] = []
-
                 chain_data: list[ChainData] = []
 
                 if chain_type == "word_parsers":
@@ -496,17 +496,21 @@ saving_image_height
                     raise NotImplementedError(f"Unknown chain type: {chain_type}")
 
                 for i, parser_name in enumerate(displaying_options):
-                    a = self.Label(choosing_frame, text=parser_name, justify='center')
+                    a = self.Label(choosing_inner_frame, text=parser_name, justify='center')
                     a.grid(row=i, column=0, sticky="news", pady=pady)
-                    b = self.Button(choosing_frame, text=">", command=lambda ind=i: add_to_chain(ind))
+                    b = self.Button(choosing_inner_frame, text=">", command=lambda ind=i: add_to_chain(ind))
                     b.grid(row=i, column=1, sticky="news", pady=pady)
                     choosing_widgets_data.append(ChoosingData(name=parser_name, label=a, select_button=b))
+                
+                ordering_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical")
+                ordering_main_frame.grid(row=1, column=1, sticky="news", padx=10, pady=(0, 10))
+                ordering_main_frame.bind_scroll_wheel(ordering_main_frame)
+                ordering_inner_frame = ordering_main_frame.display_widget(self.Frame,
+                                                                  fit_width=True, fit_height=True,
+                                                                  bg="grey")
+                ordering_inner_frame.grid_columnconfigure(0, weight=1)
 
-                ordering_frame: Frame = self.Frame(chaining_window, bg="red")
-                ordering_frame.grid_columnconfigure(0, weight=1)
-                ordering_frame.grid(row=1, column=1, sticky="news", padx=10, pady=10)
-
-                command_frame: Frame = self.Frame(chaining_window, bg="green", height=30)
+                command_frame: Frame = self.Frame(chaining_window, height=30, bg="grey")
                 command_frame.grid(row=2, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 10))
 
                 def save_chain_sequence():

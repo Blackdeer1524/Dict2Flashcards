@@ -141,6 +141,7 @@ class ScrolledFrame(Frame):
 
         # Whether to fit the interior widget's width to the canvas
         self._fit_width = False
+        self._fit_height = False
 
         # Which scrollbars to provide
         if "scrollbars" in kw:
@@ -269,7 +270,7 @@ class ScrolledFrame(Frame):
     # Also override this alias for configure()
     config = configure
 
-    def display_widget(self, widget_class, fit_width=False, **kw):
+    def display_widget(self, widget_class, fit_width=False, fit_height=False, **kw):
         """Create and display a new widget.
         If fit_width == True, the interior widget will be stretched as
         needed to fit the width of the frame.
@@ -282,6 +283,8 @@ class ScrolledFrame(Frame):
 
         # Set width fitting
         self._fit_width = fit_width
+
+        self._fit_height = fit_height
 
         # Set the new interior widget
         self._interior = widget_class(self._canvas, **kw)
@@ -321,6 +324,7 @@ class ScrolledFrame(Frame):
 
         # Reset width fitting
         self._fit_width = False
+        self._fit_height = False
 
     def scroll_to_top(self):
         """Scroll to the top-left corner of the canvas."""
@@ -333,17 +337,30 @@ class ScrolledFrame(Frame):
     def _resize_interior(self, event=None):
         """Resize the interior widget to fit the canvas."""
 
-        if self._fit_width and self._interior_id:
-            # The current width of the canvas
-            canvas_width = self._canvas.winfo_width()
+        if self._interior_id:
+            if self._fit_width:
+                # The current width of the canvas
+                canvas_width = self._canvas.winfo_width()
 
-            # The interior widget's requested width
-            requested_width = self._interior.winfo_reqwidth()
+                # The interior widget's requested width
+                requested_width = self._interior.winfo_reqwidth()
 
-            if requested_width != canvas_width:
-                # Resize the interior widget
-                new_width = max(canvas_width, requested_width)
-                self._canvas.itemconfigure(self._interior_id, width=new_width)
+                if requested_width != canvas_width:
+                    # Resize the interior widget
+                    new_width = max(canvas_width, requested_width)
+                    self._canvas.itemconfigure(self._interior_id, width=new_width)
+
+            if self._fit_height:
+                # The current width of the canvas
+                canvas_height = self._canvas.winfo_height()
+
+                # The interior widget's requested width
+                requested_height = self._interior.winfo_reqheight()
+
+                if requested_height != canvas_height:
+                    # Resize the interior widget
+                    new_height = max(canvas_height, requested_height)
+                    self._canvas.itemconfigure(self._interior_id, height=new_height)
 
     def _scroll_canvas(self, event):
         """Scroll the canvas."""

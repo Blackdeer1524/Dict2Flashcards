@@ -23,7 +23,7 @@ from tkinterdnd2 import Tk
 from app_utils.audio_utils import AudioDownloader
 from app_utils.cards import Card
 from app_utils.cards import Deck, SentenceFetcher, SavedDataDeck, CardStatus, DataSourceType
-from app_utils.chaining_adapters import ImageParsersChain
+from app_utils.chaining_adapters import ImageParsersChain, CardGeneratorsChain
 from app_utils.error_handling import create_exception_message
 from app_utils.error_handling import error_handler
 from app_utils.global_bindings import Binder
@@ -96,6 +96,9 @@ class App(Tk):
             self.card_generator = loaded_plugins.get_web_card_generator(wp_name)
         elif wp_type == DataSourceType.LOCAL:
             self.card_generator = loaded_plugins.get_local_card_generator(wp_name)
+        elif wp_type == "chain":
+            self.card_generator = CardGeneratorsChain(name=wp_name,
+                                                      chain_data=self.chaining_data["word_parsers"][wp_name])
         else:
             raise NotImplemented("Unknown word_parser_type: {}!"
                                  .format(self.configurations["scrappers"]["word"]["type"]))
@@ -776,7 +779,7 @@ saving_image_height
         {
             "scrappers": {
                 "word": {
-                    "type": (DataSourceType.WEB, [str], [DataSourceType.WEB, DataSourceType.LOCAL]),
+                    "type": (DataSourceType.WEB, [str], [DataSourceType.WEB, DataSourceType.LOCAL, "chain"]),
                     "name": ("cambridge", [str], [])
                 },
                 "sentence": {
@@ -786,7 +789,7 @@ saving_image_height
                     "name": ("google", [str], [])
                 },
                 "audio": {
-                    "type": ("default", [str], ["default", DataSourceType.WEB, DataSourceType.LOCAL]),
+                    "type": ("default", [str], ["default", DataSourceType.WEB, DataSourceType.LOCAL, "chain"]),
                     "name": ("", [str], [])
                 }
             },
@@ -1010,9 +1013,11 @@ saving_image_height
         self.configurations.save()
 
         self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position() - 1
-        self.deck.save()
         with open(HISTORY_FILE_PATH, "w") as saving_f:
             json.dump(self.history, saving_f, indent=4)
+
+        self.chaining_data.save()
+        self.deck.save()
 
         deck_name = os.path.basename(self.configurations["directories"]["last_open_file"]).split(sep=".")[0]
         saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name)
@@ -1431,6 +1436,7 @@ saving_image_height
     def configure_dictionary(self):
         WEB_PREF = f"[{DataSourceType.WEB}]"
         LOCAL_PREF = f"[{DataSourceType.LOCAL}]"
+        CHAIN_PREF = "[chain]"
         DEFAULT_AUDIO_SRC = "default"
 
         @error_handler(self.show_errors)
@@ -1438,11 +1444,17 @@ saving_image_height
             if typed_parser.startswith(WEB_PREF):
                 raw_name = typed_parser[len(WEB_PREF) + 1:]
                 self.card_generator = loaded_plugins.get_web_card_generator(raw_name)
-                self.configurations["scrappers"]["word"]["type"] = self.card_generator.type
-            else:
+            elif typed_parser.startswith(LOCAL_PREF):
                 raw_name = typed_parser[len(LOCAL_PREF) + 1:]
                 self.card_generator = loaded_plugins.get_local_card_generator(raw_name)
-                self.configurations["scrappers"]["word"]["type"] = self.card_generator.type
+            elif typed_parser.startswith(CHAIN_PREF):
+                raw_name = typed_parser[len(CHAIN_PREF) + 1:]
+                self.card_generator = CardGeneratorsChain(name=raw_name,
+                                                          chain_data=self.chaining_data["word_parsers"][raw_name])
+            else:
+                raise NotImplementedError(f"Parser of unknown type: {typed_parser}")
+
+            self.configurations["scrappers"]["word"]["type"] = self.card_generator.type
             self.configurations["scrappers"]["word"]["name"] = raw_name
             self.typed_word_parser_name = typed_parser
             self.deck.update_card_generator(self.card_generator)
@@ -1716,13 +1728,11 @@ saving_image_height
                                                                  dict_tags)
 
             temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name)
-            success = True
-            if not os.path.exists(temp_audio_path):
-                success = AudioDownloader.fetch_audio(url=src,
-                                                      save_path=temp_audio_path,
-                                                      timeout=5,
-                                                      headers=self.headers,
-                                                      exception_action=lambda exc: show_download_error(exc))
+            success = AudioDownloader.fetch_audio(url=src,
+                                                  save_path=temp_audio_path,
+                                                  timeout=5,
+                                                  headers=self.headers,
+                                                  exception_action=lambda exc: show_download_error(exc))
             if success:
                 playsound(temp_audio_path)
 

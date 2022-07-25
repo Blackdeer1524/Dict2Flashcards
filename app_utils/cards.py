@@ -7,7 +7,7 @@ from typing import Callable, Union, Any
 from app_utils.storages import FrozenDictJSONEncoder
 from app_utils.storages import PointerList, FrozenDict
 from consts.card_fields import FIELDS
-from plugins_management.config_management import LoadableConfig, ChainConfig
+from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import SentenceGenerator
 
 
@@ -147,28 +147,6 @@ class WebCardGenerator(CardGenerator):
 
     def _get_search_subset(self, query: str) -> list[tuple[str, dict]]:
         return self.parsing_function(query)
-
-
-class CardGeneratorChain:
-    def __init__(self, *card_generators: CardGenerator):
-        self.card_generators = card_generators
-        scheme_docs_list = []
-        name_config_pairs = {}
-        for generator in self.card_generators:
-            scheme_docs_list.append("{}:\n{}".format(generator.name, generator.scheme_docs.replace('\n', '\n |\t')))
-            name_config_pairs[generator.name] = generator.config
-        self.scheme_docs = "\n".join(scheme_docs_list)
-        self.config = ChainConfig(name_config_pairs=name_config_pairs)
-
-    def get(self,
-            query: str,
-            word_filter: Callable[[str], bool],
-            additional_filter: Callable[[Card], bool] = None) -> list[Card]:
-        current_result = []
-        for generator in self.card_generators:
-            if (current_result := generator.get(query, word_filter, additional_filter)):
-                break
-        return current_result
 
 
 class Deck(PointerList):

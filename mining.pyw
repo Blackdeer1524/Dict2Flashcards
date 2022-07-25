@@ -23,6 +23,7 @@ from tkinterdnd2 import Tk
 from app_utils.audio_utils import AudioDownloader
 from app_utils.cards import Card
 from app_utils.cards import Deck, SentenceFetcher, SavedDataDeck, CardStatus, DataSourceType
+from app_utils.chaining_adapters import ImageParsersChain
 from app_utils.error_handling import create_exception_message
 from app_utils.error_handling import error_handler
 from app_utils.global_bindings import Binder
@@ -290,6 +291,7 @@ saving_image_height
                                                                 plugin_name=self.lang_pack
                                                                    .settings_image_search_configuration_label_text,
                                                                 plugin_config=get_image_search_conf(),
+                                                                plugin_load_function=lambda conf: None,
                                                                 saving_action=lambda config:
                                                                     save_image_search_conf(config))
                                                             )
@@ -312,6 +314,7 @@ saving_image_height
         def chain_dialog():
             chain_type_window: Toplevel = self.Toplevel(self)
             chain_type_window.grid_columnconfigure(0, weight=1)
+            chain_type_window.grab_set()
             chain_type_window.title()
 
             chaining_options = {"Парсеры слов"       : "word_parsers",
@@ -322,8 +325,8 @@ saving_image_height
             def select_chain_type(picked_value: str) -> None:
                 exit_chain_creation_button["state"] = create_chain_of_selected_type_button["state"] = "normal"
                 existing_chains_treeview.delete(*existing_chains_treeview.get_children())
-                for i, (name, chain) in enumerate(self.chaining_data[chaining_options[picked_value]]):
-                    existing_chains_treeview.insert(parent="", index=i, values=(name, "->".join(chain)))
+                for i, (name, chain_data) in enumerate(self.chaining_data[chaining_options[picked_value]].items()):
+                    existing_chains_treeview.insert(parent="", index=i, values=(name, "->".join(chain_data["chain"])))
 
             chain_type_label = self.Label(chain_type_window, text="Тип цепи", anchor="w")
             chain_type_label.grid(row=0, column=0, sticky="we", padx=10, pady=10)
@@ -449,6 +452,7 @@ saving_image_height
                     place(chain_data[-1], new_chain_ind)
 
                 chaining_window = self.Toplevel(self)
+                chaining_window.grab_set()
                 chaining_window.grid_columnconfigure(0, weight=1)
                 chaining_window.grid_columnconfigure(1, weight=1)
                 chaining_window.grid_rowconfigure(1, weight=1)
@@ -504,9 +508,25 @@ saving_image_height
                         messagebox.showerror(title=self.lang_pack.error_title, 
                                              message="Пустое имя цепи!")
                         return 
+                    if self.chaining_data[chain_type].get(chain_name) is not None:
+                        messagebox.showerror(title=self.lang_pack.error_title,
+                                             message="Цепь с таким именем уже существует!")
+                        return
 
                     chain = [item.name for item in chain_data]
-                    self.chaining_data[chain_type].append([chain_name, chain])
+                    self.chaining_data[chain_type][chain_name] = {}
+                    self.chaining_data[chain_type][chain_name]["config_name"] = f"{remove_special_chars(chain_name)}.json"
+                    self.chaining_data[chain_type][chain_name]["chain"] = chain
+
+                    chain_label = f"[chain] {chain_name}"
+                    if chain_type == "sentence_parsers":
+                        self.sentence_parser_option_menu["menu"].add_command(label=chain_label,
+                                                                             command=lambda parser_name=chain_label:
+                                                                             self.change_sentence_parser(parser_name))
+                    elif chain_type == "image_parsers":
+                        self.image_parser_option_menu["menu"].add_command(label=chain_label,
+                                                                          command=lambda parser_name=chain_label:
+                                                                          self.change_image_parser(parser_name))
 
                     existing_chains_treeview.insert("", "end", values=(chain_name, "->".join(chain)))
                     chaining_window.destroy()
@@ -523,7 +543,8 @@ saving_image_height
                                                                state="disabled")
             create_chain_of_selected_type_button.pack(side="right", padx=10, pady=(0, 10))
 
-            exit_chain_creation_button = self.Button(command_panel, text="Выход", state="disabled")
+            exit_chain_creation_button = self.Button(command_panel, text="Выход", state="disabled",
+                                                     command=chain_type_window.destroy)
             exit_chain_creation_button.pack(side="right", pady=(0, 10))
 
 
@@ -547,7 +568,9 @@ saving_image_height
 
         self.image_parser_option_menu = self.get_option_menu(self,
                                                              init_text=self.image_parser.name,
-                                                             values=self.image_word_parsers_names,
+                                                             values=itertools.chain(
+                                                                 self.image_word_parsers_names,
+                                                                 [f"[chain] {name}" for name in self.chaining_data["image_parsers"]]),
                                                              command=lambda parser_name:
                                                              self.change_image_parser(parser_name))
         self.configure_image_parser_button = self.Button(self,
@@ -555,6 +578,7 @@ saving_image_height
                                                          command=lambda: self.call_configuration_window(
                                                              plugin_name=self.image_parser.name,
                                                              plugin_config=self.image_parser.config,
+                                                             plugin_load_function=lambda conf: conf.load(),
                                                              saving_action=lambda conf: conf.save()))
 
         self.sentence_button_text = self.lang_pack.sentence_button_text
@@ -564,7 +588,9 @@ saving_image_height
 
         self.sentence_parser_option_menu = self.get_option_menu(self,
                                                                 init_text=self.sentence_parser.name,
-                                                                values=loaded_plugins.web_sent_parsers.loaded,
+                                                                values=itertools.chain(
+                                                                    loaded_plugins.web_sent_parsers.loaded,
+                                                                    [f"[chain] {name}" for name in self.chaining_data["sentence_parsers"]]),
                                                                 command=lambda parser_name:
                                                                 self.change_sentence_parser(parser_name))
         self.configure_sentence_parser_button = self.Button(self,
@@ -572,6 +598,7 @@ saving_image_height
                                                             command=lambda: self.call_configuration_window(
                                                                 plugin_name=self.sentence_parser.name,
                                                                 plugin_config=self.sentence_parser.config,
+                                                                plugin_load_function=lambda conf: conf.load(),
                                                                 saving_action=lambda conf: conf.save()))
 
         self.word_text = self.Text(self, placeholder=self.lang_pack.word_text_placeholder, height=2)
@@ -837,10 +864,10 @@ saving_image_height
     def load_chaining_data(self) -> LoadableConfig:
         validation_scheme = \
         {
-            "word_parsers":     ([], [list], []),
-            "sentence_parsers": ([], [list], []),
-            "image_parsers":    ([], [list], []),
-            "audio_getters":    ([], [list], [])
+            "word_parsers":     ({}, [dict], []),
+            "sentence_parsers": ({}, [dict], []),
+            "image_parsers":    ({}, [dict], []),
+            "audio_getters":    ({}, [dict], [])
         }
         chaining_data_file_dir = os.path.dirname(CHAIN_DATA_FILE_PATH)
         chaining_data_file_name = os.path.basename(CHAIN_DATA_FILE_PATH)
@@ -1294,7 +1321,10 @@ saving_image_height
     def call_configuration_window(self,
                                   plugin_name: str,
                                   plugin_config: Config,
+                                  plugin_load_function: Callable[[Config], None],
                                   saving_action: Callable[[Config], None]):
+        plugin_load_function(plugin_config)
+
         conf_window = self.Toplevel(self)
         conf_window.title(f"{plugin_name} {self.lang_pack.configuration_window_conf_window_title}")
 
@@ -1420,6 +1450,7 @@ saving_image_height
                 lambda: self.call_configuration_window(
                     plugin_name=typed_parser,
                     plugin_config=self.card_generator.config,
+                    plugin_load_function=lambda conf: conf.load(),
                     saving_action=lambda conf: conf.save()
                     )
 
@@ -1435,7 +1466,8 @@ saving_image_height
             dict_configuration_window,
             init_text=self.typed_word_parser_name,
             values=[f"{WEB_PREF} {item}" for item in loaded_plugins.web_word_parsers.loaded] +
-                   [f"{LOCAL_PREF} {item}" for item in loaded_plugins.local_word_parsers.loaded],
+                   [f"{LOCAL_PREF} {item}" for item in loaded_plugins.local_word_parsers.loaded] +
+                   [f"[chain] {name}" for name in self.chaining_data["word_parsers"]],
             command=lambda typed_parser: pick_word_parser(typed_parser))
         choose_wp_option.grid(row=0, column=1, sticky="news")
 
@@ -1444,6 +1476,7 @@ saving_image_height
                                                    command=lambda: self.call_configuration_window(
                                                        plugin_name=self.card_generator.name,
                                                        plugin_config=self.card_generator.config,
+                                                       plugin_load_function=lambda conf: conf.load(),
                                                        saving_action=lambda conf: conf.save()))
         configure_word_parser_button.grid(row=0, column=2, sticky="news")
 
@@ -1478,6 +1511,7 @@ saving_image_height
                 lambda: self.call_configuration_window(
                     plugin_name=typed_getter,
                     plugin_config=self.audio_getter.config,
+                    plugin_load_function=lambda conf: conf.load(),
                     saving_action=lambda conf: conf.save())
 
         choose_audio_option = self.get_option_menu(
@@ -1487,7 +1521,8 @@ saving_image_height
                                                               self.audio_getter.name),
             values=[DEFAULT_AUDIO_SRC] +
                    [f"{WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
-                   [f"{LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded],
+                   [f"{LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                   [f"[chain] {name}" for name in self.chaining_data["audio_getters"]],
             command=lambda getter: pick_audio_getter(getter))
         choose_audio_option.grid(row=1, column=1, sticky="news")
 
@@ -1499,6 +1534,7 @@ saving_image_height
                 lambda: self.call_configuration_window(
                     plugin_name=self.audio_getter.name,
                     plugin_config=self.audio_getter.config,
+                    plugin_load_function=lambda conf: conf.load(),
                     saving_action=lambda conf: conf.save())
         else:
             configure_audio_getter_button["state"] = "disabled"
@@ -1545,9 +1581,16 @@ saving_image_height
 
     @error_handler(show_errors)
     def change_image_parser(self, given_image_parser_name: str):
-        self.image_parser = loaded_plugins.get_image_parser(given_image_parser_name)
         self.configurations["scrappers"]["image"]["name"] = given_image_parser_name
-    
+        if not given_image_parser_name.startswith("[chain]"):
+            self.image_parser = loaded_plugins.get_image_parser(given_image_parser_name)
+            return
+
+        given_image_parser_name = given_image_parser_name[8:]
+        chain_data = self.chaining_data["image_parsers"][given_image_parser_name]
+        self.image_parser = ImageParsersChain(name=given_image_parser_name,
+                                              chain_data=chain_data)
+
     @error_handler(show_errors)
     def change_sentence_parser(self, given_sentence_parser_name: str):
         self.sentence_parser = loaded_plugins.get_sentence_parser(given_sentence_parser_name)

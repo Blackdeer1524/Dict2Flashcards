@@ -35,6 +35,6 @@ def get_option_menu(master, init_text, values, command, option_menu_cfg=None, op
     var.set(init_text)
     option_menu = OptionMenu(master, var, *values, command=command)
     option_menu.configure(**option_menu_cfg)
-    for submenu_index in range(len(values)):
+    for submenu_index, _ in enumerate(values):
         option_menu["menu"].entryconfig(submenu_index, **option_submenu_cfg)
     return option_menu

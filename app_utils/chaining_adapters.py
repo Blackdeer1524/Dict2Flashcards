@@ -6,6 +6,7 @@ from consts.paths import *
 from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import ImageGenerator
+from plugins_management.parsers_return_types import SentenceGenerator
 
 
 class ChainConfig(LoadableConfig):
@@ -86,6 +87,36 @@ class CardGeneratorsChain:
         return current_result
 
 
+class SentenceParsersChain:
+    def __init__(self,
+                 name: str,
+                 chain_data: dict[str, str | list[str]]):
+        self.name = name
+        self.get_sentence_batch_functions: list[Callable[[str, int], SentenceGenerator]] = []
+        parser_configs = []
+        for parser_name in chain_data["chain"]:
+            plugin_container = loaded_plugins.get_sentence_parser(parser_name)
+            self.get_sentence_batch_functions.append(plugin_container.get_sentence_batch)
+            parser_configs.append(plugin_container.config)
+        self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "sentence_parsers",
+                                  config_name=chain_data["config_name"],
+                                  name_config_pairs=[(name, config) for name, config in
+                                                     zip(chain_data["chain"], parser_configs)])
+
+    def get_sentence_batch(self, word: str, size: int) -> SentenceGenerator:
+        yielded_once = False
+        for get_sentence_batch_f in self.get_sentence_batch_functions:
+            sent_generator = get_sentence_batch_f(word, size)
+            for sentence_list, error_message in sent_generator:
+                if not sentence_list:
+                    yielded_once = False
+                    break
+                yield sentence_list, error_message
+                yielded_once = True
+        if not yielded_once:
+            return [], ""
+
+
 class ImageParsersChain:
     def __init__(self,
                  name: str,
@@ -107,7 +138,9 @@ class ImageParsersChain:
         batch_size = yield
         for url_getting_function in self.url_getting_functions:
             url_generator = url_getting_function(word)
-            next(url_generator)
+            starting_error_message = next(url_generator)
+            if starting_error_message:
+                continue
             while True:
                 try:
                     batch_size = yield url_generator.send(batch_size)

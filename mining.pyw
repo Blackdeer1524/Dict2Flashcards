@@ -23,7 +23,7 @@ from tkinterdnd2 import Tk
 from app_utils.audio_utils import AudioDownloader
 from app_utils.cards import Card
 from app_utils.cards import Deck, SentenceFetcher, SavedDataDeck, CardStatus, DataSourceType
-from app_utils.chaining_adapters import ImageParsersChain, CardGeneratorsChain
+from app_utils.chaining_adapters import ImageParsersChain, CardGeneratorsChain, SentenceParsersChain
 from app_utils.error_handling import create_exception_message
 from app_utils.error_handling import error_handler
 from app_utils.global_bindings import Binder
@@ -521,15 +521,27 @@ saving_image_height
                     self.chaining_data[chain_type][chain_name]["config_name"] = f"{remove_special_chars(chain_name)}.json"
                     self.chaining_data[chain_type][chain_name]["chain"] = chain
 
+                    def set_text(opt_menu, text: str, command: Callable[[], None]):
+                        opt_menu.setvar(opt_menu.cget("textvariable"), value=text)
+                        command()
+
                     chain_label = f"[chain] {chain_name}"
                     if chain_type == "sentence_parsers":
-                        self.sentence_parser_option_menu["menu"].add_command(label=chain_label,
-                                                                             command=lambda parser_name=chain_label:
-                                                                             self.change_sentence_parser(parser_name))
+                        self.sentence_parser_option_menu["menu"]\
+                            .add_command(label=chain_label,
+                                         command=partial(set_text,
+                                                         opt_menu=self.sentence_parser_option_menu,
+                                                         text=chain_label,
+                                                         command=lambda parser_name=chain_label:
+                                                         self.change_sentence_parser(parser_name)))
                     elif chain_type == "image_parsers":
-                        self.image_parser_option_menu["menu"].add_command(label=chain_label,
-                                                                          command=lambda parser_name=chain_label:
-                                                                          self.change_image_parser(parser_name))
+                        self.image_parser_option_menu["menu"]\
+                            .add_command(label=chain_label,
+                                         command=partial(set_text,
+                                                         opt_menu=self.image_parser_option_menu,
+                                                         text=chain_label,
+                                                         command=lambda parser_name=chain_label:
+                                                         self.change_image_parser(parser_name)))
 
                     existing_chains_treeview.insert("", "end", values=(chain_name, "->".join(chain)))
                     chaining_window.destroy()
@@ -1605,7 +1617,13 @@ saving_image_height
 
     @error_handler(show_errors)
     def change_sentence_parser(self, given_sentence_parser_name: str):
-        self.sentence_parser = loaded_plugins.get_sentence_parser(given_sentence_parser_name)
+        if given_sentence_parser_name.startswith("[chain]"):
+            given_sentence_parser_name = given_sentence_parser_name[8:]
+            self.sentence_parser = SentenceParsersChain(
+                name=given_sentence_parser_name,
+                chain_data=self.chaining_data["sentence_parsers"][given_sentence_parser_name])
+        else:
+            self.sentence_parser = loaded_plugins.get_sentence_parser(given_sentence_parser_name)
         self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch,
                                                 sentence_batch_size=self.sentence_batch_size)
         self.configurations["scrappers"]["sentence"]["name"] = given_sentence_parser_name

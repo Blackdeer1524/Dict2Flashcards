@@ -75,9 +75,7 @@ class CardGeneratorsChain:
                  name: str,
                  chain_data: dict[str, str | list[str]]):
         self.name = name
-
         self.enum_name2generator: dict[str, CardGenerator] = {}
-        self.card_generators: list[CardGenerator] = []
 
         parser_configs = []
         scheme_docs_list = []
@@ -91,8 +89,7 @@ class CardGeneratorsChain:
 
             self.enum_name2generator[enum_parser_name] = generator
             parser_configs.append(generator.config)
-            scheme_docs_list.append("{}\n{}".format(parser_name,
-                                                    self.card_generators[-1].scheme_docs.replace("\n", "\n |\t")))
+            scheme_docs_list.append("{}\n{}".format(parser_name, generator.scheme_docs.replace("\n", "\n |\t")))
         self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "word_parsers",
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(parser_name, config) for parser_name, config in
@@ -104,7 +101,8 @@ class CardGeneratorsChain:
             word_filter: Callable[[str], bool],
             additional_filter: Callable[[Card], bool] = None) -> list[Card]:
         current_result = []
-        for generator in self.card_generators:
+        for enum_name, generator in self.enum_name2generator:
+            self.config.update_config(enum_name)
             if (current_result := generator.get(query, word_filter, additional_filter)):
                 break
         return current_result

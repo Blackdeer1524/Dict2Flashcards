@@ -827,7 +827,7 @@ saving_image_height
             }
         }
         conf_file = LoadableConfig(config_location=os.path.dirname(__file__),
-                                   validation_scheme=validation_scheme,
+                                   validation_scheme=validation_scheme,  # type: ignore
                                    docs="")
 
         lang_pack = loaded_plugins.get_language_package(conf_file["app"]["language_package"])
@@ -1335,20 +1335,32 @@ saving_image_height
         conf_window = self.Toplevel(self)
         conf_window.title(f"{plugin_name} {self.lang_pack.configuration_window_conf_window_title}")
 
-        text_pane_win = PanedWindow(conf_window, **self.theme.frame_cfg)
+        text_pane_win = PanedWindow(conf_window, **self.theme.frame_cfg)        
         text_pane_win.pack(side="top", expand=1, fill="both", anchor="n")
-        conf_text = self.Text(text_pane_win)
+        
+        conf_sf = ScrolledFrame(text_pane_win, scrollbars="both")
+        text_pane_win.add(conf_sf, stretch="always", sticky="news")
+        conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
+        conf_sf.bind_scroll_wheel(conf_inner_frame)
+        
+        conf_text = self.Text(conf_inner_frame)
         conf_text.insert(1.0, json.dumps(plugin_config.data, indent=4))
-        text_pane_win.add(conf_text, stretch="always", sticky="news")
+        conf_text.pack(fill="both", expand=True)
 
-        label_pane_win = PanedWindow(text_pane_win, orient="vertical",
+        docs_pane_win = PanedWindow(text_pane_win, orient="vertical",
                                      showhandle=True, **self.theme.frame_cfg)
-        conf_docs_label = self.Text(label_pane_win)
+        
+        docs_sf = ScrolledFrame(text_pane_win, scrollbars="both")
+        docs_pane_win.add(docs_sf, stretch="always", sticky="news")
+        docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
+        docs_sf.bind_scroll_wheel(docs_inner_frame)
+        
+        conf_docs_label = self.Text(docs_inner_frame)
         conf_docs_label.insert(1.0, plugin_config.docs)
         conf_docs_label["state"] = "disabled"
-        label_pane_win.add(conf_docs_label, stretch="always", sticky="news")
+        conf_docs_label.pack(fill="both", expand=True)
 
-        text_pane_win.add(label_pane_win, stretch="always")
+        text_pane_win.add(docs_pane_win, stretch="always")
 
         @error_handler(self.show_errors)
         def restore_defaults():
@@ -1430,8 +1442,7 @@ saving_image_height
         conf_window.bind("<Escape>", lambda event: conf_window.destroy())
         conf_window.bind("<Return>", lambda event: done())
         spawn_window_in_center(self, conf_window,
-                                 desired_window_width=self.winfo_width())
-        conf_window.resizable(0, 0)
+                               desired_window_width=self.winfo_width())
         conf_window.grab_set()
 
     @error_handler(show_errors)

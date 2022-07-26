@@ -345,7 +345,10 @@ saving_image_height
             chain_type_option_menu.configure(anchor='w')
             chain_type_option_menu.grid(row=1, column=0, sticky="we", padx=10, pady=(0, 10))
 
-            existing_chains_treeview = Treeview(chain_type_window, columns=["Имя", "Цепь"], show="headings")
+            existing_chains_treeview = Treeview(chain_type_window,
+                                                columns=["Имя", "Цепь"],
+                                                show="headings",
+                                                selectmode="browse")
             existing_chains_treeview.grid(row=2, column=0, sticky="news", padx=10, pady=(0, 10))
             chain_type_window.grid_rowconfigure(2, weight=1)
 
@@ -355,10 +358,49 @@ saving_image_height
             existing_chains_treeview.column("#1", anchor="center", stretch=True)
             existing_chains_treeview.column("#2", anchor="center", stretch=True)
 
+            def do_popup(event):
+                if not existing_chains_treeview.focus():
+                    return
+
+                def edit_selected_chain():
+                    selected_item_index = existing_chains_treeview.focus()
+                    if not selected_item_index:
+                        return
+                    chain_name, _ = existing_chains_treeview.item(selected_item_index)["values"]
+                    chain_data = self.chaining_data[chaining_options[chain_type_option_menu["text"]]][chain_name]
+
+                    def replace_current_row(new_chain_name: str, chain: list[str]):
+                        self.chaining_data[chaining_options[chain_type_option_menu["text"]]].pop(chain_name)
+                        existing_chains_treeview.set(selected_item_index, "#1", value=new_chain_name)
+                        existing_chains_treeview.set(selected_item_index, "#2", value="->".join(chain))
+
+                    build_chain(chain_name=chain_name,
+                                initial_chain=chain_data["chain"],
+                                treeview_insertion=replace_current_row)
+
+                m = Menu(root, tearoff=0)
+                m.add_command(label="Edit", command=edit_selected_chain)
+                m.add_command(label="Delete")
+
+                def popup_FocusOut(event=None):
+                    m.grab_release()
+                    m.destroy()
+
+                m.bind("<FocusOut>", popup_FocusOut)
+
+                try:
+                    m.tk_popup(event.x_root, event.y_root)
+                finally:
+                    m.grab_release()
+
+            existing_chains_treeview.bind("<Button-3>", do_popup)
+
             command_panel: Frame = self.Frame(chain_type_window)
             command_panel.grid(row=3, column=0, sticky="we")
 
-            def build_chain():
+            def build_chain(chain_name: str,
+                            initial_chain: list[str],
+                            treeview_insertion: Callable[[str, list[str]], None]):
                 pady = 2
 
                 chain_type = chaining_options[chain_type_option_menu["text"]]
@@ -366,10 +408,9 @@ saving_image_height
                 ChoosingData = namedtuple("ChoosingData", ("name", "label", "select_button"))
                 ChainData = namedtuple("ChainData", ("name", "label", "up_button", "deselect_button", "down_button"))
 
-                def add_to_chain(ind: int):
-                    removed_name = choosing_widgets_data[ind].name
+                def add_to_chain(placing_name: str):
                     new_chain_ind = len(chain_data) * 3
-                    a = self.Label(ordering_inner_frame, text=removed_name, justify='center')
+                    a = self.Label(ordering_inner_frame, text=placing_name, justify='center')
 
                     def place_widget_to_chain(item: ChainData, next_3i: int):
                         item.label.grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
@@ -394,7 +435,7 @@ saving_image_height
                                 command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
                                                                         direction=1))
 
-                    def swap_places(current_ind: ind, direction: int):
+                    def swap_places(current_ind: int, direction: int):
                         current = chain_data[current_ind]
                         operand = chain_data[current_ind + direction]
 
@@ -434,7 +475,7 @@ saving_image_height
                     if chain_data:
                         chain_data[-1].down_button["state"] = "normal"
 
-                    chain_data.append(ChainData(name=removed_name, 
+                    chain_data.append(ChainData(name=placing_name,
                                                 label=a,
                                                 up_button=up_button, 
                                                 deselect_button=deselect_button, 
@@ -448,7 +489,9 @@ saving_image_height
                 chaining_window.grid_columnconfigure(1, weight=1)
                 chaining_window.grid_rowconfigure(1, weight=1)
 
-                chain_name_entry = self.Entry(chaining_window, placeholder="Имя цепи")
+                chain_name_entry: Entry = self.Entry(chaining_window, placeholder="Имя цепи")
+                chain_name_entry.insert(0, chain_name)
+
                 chain_name_entry.grid(row=0, column=0, columnspan=2, sticky="we", padx=10, pady=10)
                 
                 choosing_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical")
@@ -483,10 +526,11 @@ saving_image_height
                 for i, parser_name in enumerate(displaying_options):
                     a = self.Label(choosing_inner_frame, text=parser_name, justify='center')
                     a.grid(row=i, column=0, sticky="news", pady=pady)
-                    b = self.Button(choosing_inner_frame, text=">", command=lambda ind=i: add_to_chain(ind))
+                    b = self.Button(choosing_inner_frame, text=">",
+                                    command=lambda name=parser_name: add_to_chain(name))
                     b.grid(row=i, column=1, sticky="news", pady=pady)
                     choosing_widgets_data.append(ChoosingData(name=parser_name, label=a, select_button=b))
-                
+
                 ordering_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical")
                 ordering_main_frame.grid(row=1, column=1, sticky="news", padx=10, pady=(0, 10))
                 ordering_main_frame.bind_scroll_wheel(ordering_main_frame)
@@ -494,6 +538,9 @@ saving_image_height
                                                                   fit_width=True, fit_height=True,
                                                                   bg="grey")
                 ordering_inner_frame.grid_columnconfigure(0, weight=1)
+
+                for name in initial_chain:
+                    add_to_chain(name)
 
                 command_frame: Frame = self.Frame(chaining_window, height=30, bg="grey")
                 command_frame.grid(row=2, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 10))
@@ -535,8 +582,8 @@ saving_image_height
                                                          text=chain_label,
                                                          command=lambda parser_name=chain_label:
                                                          self.change_image_parser(parser_name)))
-
-                    existing_chains_treeview.insert("", "end", values=(chain_name, "->".join(chain)))
+                    treeview_insertion(chain_name, chain)
+                    # existing_chains_treeview.insert("", "end", values=(chain_name, "->".join(chain)))
                     chaining_window.destroy()
 
                 done_button = self.Button(command_frame, text="Готово", command=save_chain_sequence)
@@ -545,9 +592,15 @@ saving_image_height
                 cancel_button = self.Button(command_frame, text="Отмена", command=chaining_window.destroy)
                 cancel_button.pack(side="right", padx=5, pady=5)
 
+            def insert_at_the_end(chain_name: str, chain: list[str]):
+                existing_chains_treeview.insert("", "end", values=(chain_name, "->".join(chain)))
+
             create_chain_of_selected_type_button = self.Button(command_panel,
                                                                text="Создать новую цепь",
-                                                               command=build_chain,
+                                                               command=lambda:
+                                                                   build_chain(chain_name="",
+                                                                               initial_chain=[],
+                                                                               treeview_insertion=insert_at_the_end),
                                                                state="disabled")
             create_chain_of_selected_type_button.pack(side="right", padx=10, pady=(0, 10))
 

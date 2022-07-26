@@ -327,27 +327,28 @@ saving_image_height
             settings_window.bind("<Escape>", lambda event: settings_window.destroy())
             settings_window.bind("<Return>", lambda event: settings_window.destroy())
 
-
         main_menu.add_command(label=self.lang_pack.settings_menu_label, command=settings_dialog)
 
         def chain_dialog():
             chain_type_window: Toplevel = self.Toplevel(self)
             chain_type_window.grid_columnconfigure(0, weight=1)
             chain_type_window.grab_set()
-            chain_type_window.title()
+            chain_type_window.title(self.lang_pack.chain_management_menu_label)
 
-            chaining_options = {"Парсеры слов"        : "word_parsers",
-                                "Парсеры Предложений" : "sentence_parsers",
-                                "Изображения"         : "image_parsers",
-                                "Аудио"               : "audio_getters"}
+            chaining_options = {self.lang_pack.chain_management_word_parsers_option     : "word_parsers",
+                                self.lang_pack.chain_management_sentence_parsers_option : "sentence_parsers",
+                                self.lang_pack.chain_management_image_parsers_option    : "image_parsers",
+                                self.lang_pack.chain_management_audio_getters_option    : "audio_getters"}
 
             def select_chain_type(picked_value: str) -> None:
-                exit_chain_creation_button["state"] = create_chain_of_selected_type_button["state"] = "normal"
+                close_chain_type_selection_button["state"] = call_chain_building_button["state"] = "normal"
                 existing_chains_treeview.delete(*existing_chains_treeview.get_children())
                 for i, (name, chain_data) in enumerate(self.chaining_data[chaining_options[picked_value]].items()):
                     existing_chains_treeview.insert(parent="", index=i, values=(name, "->".join(chain_data["chain"])))
 
-            chain_type_label = self.Label(chain_type_window, text="Тип цепи", anchor="w")
+            chain_type_label = self.Label(chain_type_window,
+                                          text=self.lang_pack.chain_management_chain_type_label_text,
+                                          anchor="w")
             chain_type_label.grid(row=0, column=0, sticky="we", padx=10, pady=10)
 
             chain_type_option_menu = self.get_option_menu(master=chain_type_window,
@@ -358,15 +359,19 @@ saving_image_height
             chain_type_option_menu.configure(anchor='w')
             chain_type_option_menu.grid(row=1, column=0, sticky="we", padx=10, pady=(0, 10))
 
-            existing_chains_treeview = Treeview(chain_type_window,
-                                                columns=["Имя", "Цепь"],
-                                                show="headings",
-                                                selectmode="browse")
+            existing_chains_treeview = Treeview(
+                chain_type_window,
+                columns=[self.lang_pack.chain_management_existing_chains_treeview_name_column,
+                         self.lang_pack.chain_management_existing_chains_treeview_chain_column],
+                         show="headings",
+                         selectmode="browse")
             existing_chains_treeview.grid(row=2, column=0, sticky="news", padx=10, pady=(0, 10))
             chain_type_window.grid_rowconfigure(2, weight=1)
 
-            existing_chains_treeview.heading("Имя", text="Имя")
-            existing_chains_treeview.heading("Цепь", text="Цепь")
+            existing_chains_treeview.heading(self.lang_pack.chain_management_existing_chains_treeview_name_column,
+                                             text=self.lang_pack.chain_management_existing_chains_treeview_name_column)
+            existing_chains_treeview.heading(self.lang_pack.chain_management_existing_chains_treeview_chain_column,
+                                             text=self.lang_pack.chain_management_existing_chains_treeview_chain_column)
 
             existing_chains_treeview.column("#1", anchor="center", stretch=True)
             existing_chains_treeview.column("#2", anchor="center", stretch=True)
@@ -421,7 +426,7 @@ saving_image_height
                                 initial_chain=chain_data["chain"],
                                 treeview_insertion=replace_current_row)
 
-                def delete_selected_chain():
+                def remove_selected_chain():
                     selected_item_index = existing_chains_treeview.focus()
                     if not selected_item_index:
                         return
@@ -430,8 +435,10 @@ saving_image_height
                     remove_option(str(chain_name))
 
                 m = Menu(root, tearoff=0)
-                m.add_command(label="Изменить", command=edit_selected_chain)
-                m.add_command(label="Удалить", command=delete_selected_chain)
+                m.add_command(label=self.lang_pack.chain_management_pop_up_menu_edit_label,
+                              command=edit_selected_chain)
+                m.add_command(label=self.lang_pack.chain_management_pop_up_menu_remove_label, 
+                              command=remove_selected_chain)
 
                 def popup_FocusOut(event=None):
                     m.grab_release()
@@ -534,13 +541,16 @@ saving_image_height
                     place_widget_to_chain(chain_data[-1], new_chain_ind)
 
                 chaining_window = self.Toplevel(self)
+                chaining_window.title(self.lang_pack.chain_management_menu_label)
                 chaining_window.geometry(f"{self.winfo_screenwidth() // 3}x{self.winfo_screenheight() // 3}")
                 chaining_window.grab_set()
                 chaining_window.grid_columnconfigure(0, weight=1)
                 chaining_window.grid_columnconfigure(1, weight=1)
                 chaining_window.grid_rowconfigure(1, weight=1)
 
-                chain_name_entry: Entry = self.Entry(chaining_window, placeholder="Имя цепи")
+                chain_name_entry: Entry = self.Entry(
+                    chaining_window, 
+                    placeholder=self.lang_pack.chain_management_chain_name_entry_placeholder)
                 chain_name_entry.insert(0, chain_name)
 
                 chain_name_entry.grid(row=0, column=0, columnspan=2, sticky="we", padx=10, pady=10)
@@ -600,11 +610,11 @@ saving_image_height
                     chain_name = chain_name_entry.get().strip()
                     if not chain_name:
                         messagebox.showerror(title=self.lang_pack.error_title, 
-                                             message="Пустое имя цепи!")
+                                             message=self.lang_pack.chain_management_empty_chain_name_entry_message)
                         return 
                     if self.chaining_data[chain_type].get(chain_name) is not None:
                         messagebox.showerror(title=self.lang_pack.error_title,
-                                             message="Цепь с таким именем уже существует!")
+                                             message=self.lang_pack.chain_management_chain_already_exists_message)
                         return
 
                     chain = [item.name for item in chain_data]
@@ -634,32 +644,40 @@ saving_image_height
                                                          command=lambda parser_name=chain_label:
                                                          self.change_image_parser(parser_name)))
                     treeview_insertion(chain_name, chain)
-                    # existing_chains_treeview.insert("", "end", values=(chain_name, "->".join(chain)))
                     chaining_window.destroy()
 
-                done_button = self.Button(command_frame, text="Готово", command=save_chain_sequence)
-                done_button.pack(side="right", padx=5, pady=5)
+                save_chain_button = self.Button(
+                    command_frame, 
+                    text=self.lang_pack.chain_management_save_chain_button_text, 
+                    command=save_chain_sequence)
+                save_chain_button.pack(side="right", padx=5, pady=5)
 
-                cancel_button = self.Button(command_frame, text="Отмена", command=chaining_window.destroy)
-                cancel_button.pack(side="right", padx=5, pady=5)
+                close_chain_building_button = self.Button(
+                    command_frame,
+                    text=self.lang_pack.chain_management_close_chain_building_button_text,
+                    command=chaining_window.destroy)
+                close_chain_building_button.pack(side="right", padx=5, pady=5)
 
             def insert_at_the_end(chain_name: str, chain: list[str]):
                 existing_chains_treeview.insert("", "end", values=(chain_name, "->".join(chain)))
 
-            create_chain_of_selected_type_button = self.Button(command_panel,
-                                                               text="Создать",
-                                                               command=lambda:
-                                                                   build_chain(chain_name="",
-                                                                               initial_chain=[],
-                                                                               treeview_insertion=insert_at_the_end),
-                                                               state="disabled")
-            create_chain_of_selected_type_button.pack(side="right", padx=10, pady=(0, 10))
+            call_chain_building_button = self.Button(
+                command_panel,
+                text=self.lang_pack.chain_management_call_chain_building_button_text,
+                command=lambda: build_chain(chain_name="",
+                                            initial_chain=[],
+                                            treeview_insertion=insert_at_the_end),
+                                            state="disabled")
+            call_chain_building_button.pack(side="right", padx=10, pady=(0, 10))
 
-            exit_chain_creation_button = self.Button(command_panel, text="Выход", state="disabled",
-                                                     command=chain_type_window.destroy)
-            exit_chain_creation_button.pack(side="right", pady=(0, 10))
+            close_chain_type_selection_button = self.Button(
+                command_panel,
+                text=self.lang_pack.chain_management_close_chain_type_selection_button,
+                state="disabled",
+                command=chain_type_window.destroy)
+            close_chain_type_selection_button.pack(side="right", pady=(0, 10))
 
-        main_menu.add_command(label="Цепи", command=chain_dialog)
+        main_menu.add_command(label=self.lang_pack.chain_management_menu_label, command=chain_dialog)
         main_menu.add_command(label=self.lang_pack.exit_menu_label, command=self.on_closing)
         self.config(menu=main_menu)
 
@@ -986,7 +1004,6 @@ saving_image_height
                                        config_location=chaining_data_file_dir,
                                        _config_file_name=chaining_data_file_name)
         return chaining_data
-
 
     @property
     @error_handler(show_errors)
@@ -1337,10 +1354,10 @@ saving_image_height
                 right = self.Button(rotate_window, text=">", command=lambda: rotate(1))
                 right.grid(row=0, column=2, sticky="we")
 
-                done_button_text = self.Button(rotate_window,
-                                               text=self.lang_pack.find_dialog_done_button_text,
+                save_chain_button_text = self.Button(rotate_window,
+                                               text=self.lang_pack.find_dialog_save_chain_button_text,
                                                command=lambda: rotate_window.destroy())
-                done_button_text.grid(row=0, column=1, sticky="we")
+                save_chain_button_text.grid(row=0, column=1, sticky="we")
                 spawn_window_in_center(self, rotate_window)
                 rotate_window.resizable(0, 0)
                 rotate_window.grab_set()
@@ -1481,11 +1498,11 @@ saving_image_height
             text=self.lang_pack.configuration_window_restore_defaults_button_text,
             command=restore_defaults)
         conf_restore_defaults_button.pack(side="left")
-        conf_cancel_button = self.Button(
+        conf_close_chain_building_button = self.Button(
             conf_window_control_panel,
-            text=self.lang_pack.configuration_window_cancel_button_text,
+            text=self.lang_pack.configuration_window_close_chain_building_button_text,
             command=conf_window.destroy)
-        conf_cancel_button.pack(side="right")
+        conf_close_chain_building_button.pack(side="right")
 
         @error_handler(self.show_errors)
         def done():
@@ -1535,10 +1552,10 @@ saving_image_height
             self.show_window(title=self.lang_pack.error_title,
                              text=config_error_message)
 
-        conf_done_button = self.Button(conf_window_control_panel,
-                                       text=self.lang_pack.configuration_window_done_button_text,
+        conf_save_chain_button = self.Button(conf_window_control_panel,
+                                       text=self.lang_pack.configuration_window_save_chain_button_text,
                                        command=done)
-        conf_done_button.pack(side="right")
+        conf_save_chain_button.pack(side="right")
 
         for i in range(3):
             conf_window.grid_columnconfigure(i, weight=1)

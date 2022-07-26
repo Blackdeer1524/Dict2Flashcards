@@ -32,6 +32,25 @@ class LanguagePackageInterface(Protocol):
     settings_language_label_text: str
     settings_configure_anki_button_text: str
     settings_image_search_configuration_label_text: str
+
+    chain_management_menu_label: str
+    chain_management_word_parsers_option: str
+    chain_management_sentence_parsers_option: str
+    chain_management_image_parsers_option: str
+    chain_management_audio_getters_option: str
+    chain_management_chain_type_label_text: str
+    chain_management_existing_chains_treeview_name_column: str
+    chain_management_existing_chains_treeview_chain_column: str
+    chain_management_pop_up_menu_edit_label: str
+    chain_management_pop_up_menu_remove_label: str
+    chain_management_chain_name_entry_placeholder: str
+    chain_management_empty_chain_name_entry_message: str
+    chain_management_chain_already_exists_message: str
+    chain_management_save_chain_button_text: str
+    chain_management_close_chain_building_button_text: str
+    chain_management_call_chain_building_button_text: str
+    chain_management_close_chain_type_selection_button: str
+
     exit_menu_label: str
 
     # widgets

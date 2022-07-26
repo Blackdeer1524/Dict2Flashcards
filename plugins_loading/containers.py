@@ -53,8 +53,42 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
         object.__setattr__(self, "settings_language_label_text", source_module.settings_language_label_text)
         object.__setattr__(self, "settings_configure_anki_button_text", source_module.settings_configure_anki_button_text)
         object.__setattr__(self, "settings_menu_label", source_module.settings_menu_label)
-
         object.__setattr__(self, "settings_image_search_configuration_label_text", source_module.settings_image_search_configuration_label_text)
+        
+        object.__setattr__(self, "chain_management_menu_label", source_module.chain_management_menu_label)
+        object.__setattr__(self, "chain_management_word_parsers_option",
+                           source_module.chain_management_word_parsers_option)
+        object.__setattr__(self, "chain_management_sentence_parsers_option",
+                           source_module.chain_management_sentence_parsers_option)
+        object.__setattr__(self, "chain_management_image_parsers_option",
+                           source_module.chain_management_image_parsers_option)
+        object.__setattr__(self, "chain_management_audio_getters_option",
+                           source_module.chain_management_audio_getters_option)
+        object.__setattr__(self, "chain_management_chain_type_label_text",
+                           source_module.chain_management_chain_type_label_text)
+        object.__setattr__(self, "chain_management_existing_chains_treeview_name_column",
+                           source_module.chain_management_existing_chains_treeview_name_column)
+        object.__setattr__(self, "chain_management_existing_chains_treeview_chain_column",
+                           source_module.chain_management_existing_chains_treeview_chain_column)
+        object.__setattr__(self, "chain_management_pop_up_menu_edit_label",
+                           source_module.chain_management_pop_up_menu_edit_label)
+        object.__setattr__(self, "chain_management_pop_up_menu_remove_label",
+                           source_module.chain_management_pop_up_menu_remove_label)
+        object.__setattr__(self, "chain_management_chain_name_entry_placeholder",
+                           source_module.chain_management_chain_name_entry_placeholder)
+        object.__setattr__(self, "chain_management_empty_chain_name_entry_message",
+                           source_module.chain_management_empty_chain_name_entry_message)
+        object.__setattr__(self, "chain_management_chain_already_exists_message",
+                           source_module.chain_management_chain_already_exists_message)
+        object.__setattr__(self, "chain_management_save_chain_button_text",
+                           source_module.chain_management_save_chain_button_text)
+        object.__setattr__(self, "chain_management_close_chain_building_button_text",
+                           source_module.chain_management_close_chain_building_button_text)
+        object.__setattr__(self, "chain_management_call_chain_building_button_text",
+                           source_module.chain_management_call_chain_building_button_text)
+        object.__setattr__(self, "chain_management_close_chain_type_selection_button",
+                           source_module.chain_management_close_chain_type_selection_button)
+
         object.__setattr__(self, "exit_menu_label", source_module.exit_menu_label)
 
         # widgets

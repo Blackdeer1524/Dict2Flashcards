@@ -3,6 +3,7 @@ import re
 
 import bs4
 import requests
+
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import ImageGenerator
 

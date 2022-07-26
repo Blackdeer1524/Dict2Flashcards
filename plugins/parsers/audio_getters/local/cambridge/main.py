@@ -1,8 +1,8 @@
 import os
 
 from app_utils.string_utils import remove_special_chars
-from consts.paths import LOCAL_MEDIA_DIR
 from consts.card_fields import FIELDS
+from consts.paths import LOCAL_MEDIA_DIR
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import AudioData
 

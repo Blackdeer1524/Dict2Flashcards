@@ -11,7 +11,6 @@ from plugins_management.parsers_return_types import AudioData
 from .consts import _PLUGIN_NAME, _PLUGIN_LOCATION
 from .page_processing import get_forvo_page, get_audio_link
 
-
 _CONFIG_DOCS = """
 language_code
     audio language to fetch

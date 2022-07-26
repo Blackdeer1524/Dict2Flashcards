@@ -1,15 +1,15 @@
+import re
+from collections import Counter
+from typing import Iterable
 from typing import Optional, Callable
 
 from app_utils.cards import Card, CardGenerator
-from app_utils.cards import DataSourceType
+from consts import parser_types
+from consts.card_fields import FIELDS
 from consts.paths import *
 from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import ImageGenerator, SentenceGenerator, AudioData
-from consts.card_fields import FIELDS
-from collections import Counter
-import re
-from typing import Iterable
 
 
 def get_enumerated_names(names: Iterable[str]) -> list[str]:
@@ -80,10 +80,10 @@ class CardGeneratorsChain:
         parser_configs = []
         scheme_docs_list = []
         for parser_name, enum_parser_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
-            if parser_name.startswith(f"[{DataSourceType.WEB}]"):
-                generator = loaded_plugins.get_web_card_generator(parser_name[3 + len(DataSourceType.WEB):])
-            elif parser_name.startswith(f"[{DataSourceType.LOCAL}]"):
-                generator = loaded_plugins.get_local_card_generator(parser_name[3 + len(DataSourceType.LOCAL):])
+            if parser_name.startswith(f"[{parser_types.WEB}]"):
+                generator = loaded_plugins.get_web_card_generator(parser_name[3 + len(parser_types.WEB):])
+            elif parser_name.startswith(f"[{parser_types.LOCAL}]"):
+                generator = loaded_plugins.get_local_card_generator(parser_name[3 + len(parser_types.LOCAL):])
             else:
                 raise NotImplementedError(f"Word parser of unknown type: {parser_name}")
 
@@ -188,12 +188,12 @@ class AudioGettersChain:
                 continue
 
             names.append(parser_name)
-            if parser_name.startswith(f"[{DataSourceType.WEB}]"):
-                parser_type = DataSourceType.WEB
-                getter = loaded_plugins.get_web_audio_getter(parser_name[3 + len(DataSourceType.WEB):])
-            elif parser_name.startswith(f"[{DataSourceType.LOCAL}]"):
-                parser_type = DataSourceType.LOCAL
-                getter = loaded_plugins.get_local_audio_getter(parser_name[3 + len(DataSourceType.LOCAL):])
+            if parser_name.startswith(f"[{parser_types.WEB}]"):
+                parser_type = parser_types.WEB
+                getter = loaded_plugins.get_web_audio_getter(parser_name[3 + len(parser_types.WEB):])
+            elif parser_name.startswith(f"[{parser_types.LOCAL}]"):
+                parser_type = parser_types.LOCAL
+                getter = loaded_plugins.get_local_audio_getter(parser_name[3 + len(parser_types.LOCAL):])
             else:
                 raise NotImplementedError(f"Audio getter of unknown type: {parser_name}")
             self.enum_name2parsers_data[enum_name] = (parser_type, getter.get_audios)
@@ -208,7 +208,7 @@ class AudioGettersChain:
         source = []
         additional_info = []
         error_message = ""
-        parser_type = DataSourceType.WEB  # arbitrary type
+        parser_type = parser_types.WEB  # arbitrary type
         for enum_name, (parser_type, audio_getting_function) in self.enum_name2parsers_data.items():
             if parser_type == "default":
                 source = additional_info = card_data.get(FIELDS.audio_links, [])

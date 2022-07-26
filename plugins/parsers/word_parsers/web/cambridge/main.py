@@ -1,4 +1,5 @@
 import os
+
 from app_utils.preprocessing import remove_empty_keys
 from consts.card_fields import FIELDS
 from plugins_management.config_management import LoadableConfig

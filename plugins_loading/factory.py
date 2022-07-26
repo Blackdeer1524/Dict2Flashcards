@@ -16,20 +16,20 @@ import plugins.parsers.word_parsers.web
 import plugins.saving.card_processors
 import plugins.saving.format_processors
 import plugins.themes
+from app_utils.cards import WebCardGenerator, LocalCardGenerator
+from consts.paths import LOCAL_MEDIA_DIR
 from plugins_loading.containers import CardProcessorContainer
 from plugins_loading.containers import DeckSavingFormatContainer
 from plugins_loading.containers import ImageParserContainer
 from plugins_loading.containers import LanguagePackageContainer
 from plugins_loading.containers import LocalAudioGetterContainer
-from plugins_loading.containers import WebAudioGetterContainer
 from plugins_loading.containers import LocalWordParserContainer
 from plugins_loading.containers import ThemeContainer
+from plugins_loading.containers import WebAudioGetterContainer
 from plugins_loading.containers import WebSentenceParserContainer
 from plugins_loading.containers import WebWordParserContainer
 from plugins_loading.exceptions import LoaderError
 from plugins_loading.exceptions import UnknownPluginName
-from app_utils.cards import WebCardGenerator, LocalCardGenerator
-from consts.paths import LOCAL_MEDIA_DIR
 
 
 def parse_namespace(namespace, postfix: str = "") -> dict:

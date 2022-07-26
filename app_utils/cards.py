@@ -55,11 +55,6 @@ class Card(FrozenDict):
         return " ".join(tags_container)
 
 
-class DataSourceType:
-    LOCAL = "local"
-    WEB = "web"
-
-
 class CardGenerator(ABC):
     def __init__(self,
                  name: str,

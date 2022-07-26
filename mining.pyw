@@ -22,7 +22,7 @@ from tkinterdnd2 import Tk
 
 from app_utils.audio_utils import AudioDownloader
 from app_utils.cards import Card
-from app_utils.cards import Deck, SentenceFetcher, SavedDataDeck, CardStatus, DataSourceType
+from app_utils.cards import Deck, SentenceFetcher, SavedDataDeck, CardStatus
 from app_utils.chaining_adapters import ImageParsersChain, CardGeneratorsChain, SentenceParsersChain, AudioGettersChain
 from app_utils.error_handling import create_exception_message
 from app_utils.error_handling import error_handler
@@ -36,6 +36,7 @@ from app_utils.widgets import ScrolledFrame
 from app_utils.widgets import TextWithPlaceholder as Text
 from app_utils.window_utils import get_option_menu
 from app_utils.window_utils import spawn_window_in_center
+from consts import parser_types
 from consts.card_fields import FIELDS
 from consts.paths import *
 from plugins_loading.containers import LanguagePackageContainer
@@ -105,11 +106,11 @@ class App(Tk):
                                        option_submenu_cfg=self.theme.option_submenus_cfg)
 
         wp_name = self.configurations["scrappers"]["word"]["name"]
-        if (wp_type := self.configurations["scrappers"]["word"]["type"]) == DataSourceType.WEB:
+        if (wp_type := self.configurations["scrappers"]["word"]["type"]) == parser_types.WEB:
             self.card_generator = loaded_plugins.get_web_card_generator(wp_name)
-        elif wp_type == DataSourceType.LOCAL:
+        elif wp_type == parser_types.LOCAL:
             self.card_generator = loaded_plugins.get_local_card_generator(wp_name)
-        elif wp_type == "chain":
+        elif wp_type == parser_types.CHAIN:
             self.card_generator = CardGeneratorsChain(name=wp_name,
                                                       chain_data=self.chaining_data["word_parsers"][wp_name])
         else:
@@ -131,11 +132,11 @@ class App(Tk):
         self.image_parser = loaded_plugins.get_image_parser(self.configurations["scrappers"]["image"]["name"])
 
         if (audio_getter_name := self.configurations["scrappers"]["audio"]["name"]):
-            if self.configurations["scrappers"]["audio"]["type"] == DataSourceType.LOCAL:
+            if self.configurations["scrappers"]["audio"]["type"] == parser_types.LOCAL:
                 self.audio_getter = loaded_plugins.get_local_audio_getter(audio_getter_name)
-            elif self.configurations["scrappers"]["audio"]["type"] == DataSourceType.WEB:
+            elif self.configurations["scrappers"]["audio"]["type"] == parser_types.WEB:
                 self.audio_getter = loaded_plugins.get_web_audio_getter(audio_getter_name)
-            elif self.configurations["scrappers"]["audio"]["type"] == "chain":
+            elif self.configurations["scrappers"]["audio"]["type"] == parser_types.CHAIN:
                 self.audio_getter = AudioGettersChain(name=audio_getter_name,
                                                       chain_data=self.chaining_data["audio_getters"][audio_getter_name])
             else:
@@ -344,7 +345,8 @@ saving_image_height
                 close_chain_type_selection_button["state"] = call_chain_building_button["state"] = "normal"
                 existing_chains_treeview.delete(*existing_chains_treeview.get_children())
                 for i, (name, chain_data) in enumerate(self.chaining_data[chaining_options[picked_value]].items()):
-                    existing_chains_treeview.insert(parent="", index=i, values=(name, "->".join(chain_data["chain"])))
+                    existing_chains_treeview.insert(parent="", index=i,
+                                                    values=(name, "->".join(chain_data["chain"])))
 
             chain_type_label = self.Label(chain_type_window,
                                           text=self.lang_pack.chain_management_chain_type_label_text,
@@ -388,7 +390,7 @@ saving_image_height
                                                                                 init_text=self.sentence_parser.name,
                                                                                 values=itertools.chain(
                                                                                     loaded_plugins.web_sent_parsers.loaded,
-                                                                                    [f"[chain] {name}" for name in
+                                                                                    [f"[{parser_types.CHAIN}] {name}" for name in
                                                                                      self.chaining_data[
                                                                                          "sentence_parsers"]]),
                                                                                 command=lambda parser_name:
@@ -403,7 +405,7 @@ saving_image_height
                                                                              init_text=self.image_parser.name,
                                                                              values=itertools.chain(
                                                                                  self.image_word_parsers_names,
-                                                                                 [f"[chain] {name}" for name in
+                                                                                 [f"[{parser_types.CHAIN}] {name}" for name in
                                                                                   self.chaining_data["image_parsers"]]),
                                                                              command=lambda parser_name:
                                                                              self.change_image_parser(parser_name))
@@ -569,8 +571,8 @@ saving_image_height
                 if chain_type == "word_parsers":
                     displaying_options = \
                         itertools.chain(
-                            (f"[{DataSourceType.WEB}] {name}" for name in loaded_plugins.web_word_parsers.loaded),
-                            (f"[{DataSourceType.LOCAL}] {name}" for name in loaded_plugins.local_word_parsers.loaded))
+                            (f"[{parser_types.WEB}] {name}" for name in loaded_plugins.web_word_parsers.loaded),
+                            (f"[{parser_types.LOCAL}] {name}" for name in loaded_plugins.local_word_parsers.loaded))
                 elif chain_type == "sentence_parsers":
                     displaying_options = loaded_plugins.web_sent_parsers.loaded
                 elif chain_type == "image_parsers":
@@ -579,8 +581,8 @@ saving_image_height
                     displaying_options = \
                         itertools.chain(
                             ("default", ),
-                            (f"[{DataSourceType.WEB}] {name}" for name in loaded_plugins.web_audio_getters.loaded),
-                            (f"[{DataSourceType.LOCAL}] {name}" for name in loaded_plugins.local_audio_getters.loaded))
+                            (f"[{parser_types.WEB}] {name}" for name in loaded_plugins.web_audio_getters.loaded),
+                            (f"[{parser_types.LOCAL}] {name}" for name in loaded_plugins.local_audio_getters.loaded))
                 else:
                     raise NotImplementedError(f"Unknown chain type: {chain_type}")
 
@@ -626,7 +628,7 @@ saving_image_height
                         opt_menu.setvar(opt_menu.cget("textvariable"), value=text)
                         command()
 
-                    chain_label = f"[chain] {chain_name}"
+                    chain_label = f"[{parser_types.CHAIN}] {chain_name}"
                     if chain_type == "sentence_parsers":
                         self.sentence_parser_option_menu["menu"]\
                             .add_command(label=chain_label,
@@ -697,7 +699,7 @@ saving_image_height
                                                              init_text=self.image_parser.name,
                                                              values=itertools.chain(
                                                                  self.image_word_parsers_names,
-                                                                 [f"[chain] {name}" for name in self.chaining_data["image_parsers"]]),
+                                                                 [f"[{parser_types.CHAIN}] {name}" for name in self.chaining_data["image_parsers"]]),
                                                              command=lambda parser_name:
                                                              self.change_image_parser(parser_name))
         self.configure_image_parser_button = self.Button(self,
@@ -717,7 +719,7 @@ saving_image_height
                                                                 init_text=self.sentence_parser.name,
                                                                 values=itertools.chain(
                                                                     loaded_plugins.web_sent_parsers.loaded,
-                                                                    [f"[chain] {name}" for name in self.chaining_data["sentence_parsers"]]),
+                                                                    [f"[{parser_types.CHAIN}] {name}" for name in self.chaining_data["sentence_parsers"]]),
                                                                 command=lambda parser_name:
                                                                 self.change_sentence_parser(parser_name))
         self.configure_sentence_parser_button = self.Button(self,
@@ -903,7 +905,7 @@ saving_image_height
         {
             "scrappers": {
                 "word": {
-                    "type": (DataSourceType.WEB, [str], [DataSourceType.WEB, DataSourceType.LOCAL, "chain"]),
+                    "type": (parser_types.WEB, [str], [parser_types.WEB, parser_types.LOCAL, parser_types.CHAIN]),
                     "name": ("cambridge", [str], [])
                 },
                 "sentence": {
@@ -913,7 +915,7 @@ saving_image_height
                     "name": ("google", [str], [])
                 },
                 "audio": {
-                    "type": ("default", [str], ["default", DataSourceType.WEB, DataSourceType.LOCAL, "chain"]),
+                    "type": ("default", [str], ["default", parser_types.WEB, parser_types.LOCAL, parser_types.CHAIN]),
                     "name": ("", [str], [])
                 }
             },
@@ -1568,23 +1570,23 @@ saving_image_height
 
     @error_handler(show_errors)
     def configure_dictionary(self):
-        WEB_PREF = f"[{DataSourceType.WEB}]"
-        LOCAL_PREF = f"[{DataSourceType.LOCAL}]"
-        CHAIN_PREF = "[chain]"
+        WEB_PREF = f"[{parser_types.WEB}]"
+        LOCAL_PREF = f"[{parser_types.LOCAL}]"
+        CHAIN_PREF = f"[{parser_types.CHAIN}]"
         DEFAULT_AUDIO_SRC = "default"
 
         @error_handler(self.show_errors)
         def pick_word_parser(typed_parser: str):
             if typed_parser.startswith(WEB_PREF):
-                self.configurations["scrappers"]["word"]["type"] = DataSourceType.WEB
+                self.configurations["scrappers"]["word"]["type"] = parser_types.WEB
                 raw_name = typed_parser[len(WEB_PREF) + 1:]
                 self.card_generator = loaded_plugins.get_web_card_generator(raw_name)
             elif typed_parser.startswith(LOCAL_PREF):
-                self.configurations["scrappers"]["word"]["type"] = DataSourceType.LOCAL
+                self.configurations["scrappers"]["word"]["type"] = parser_types.LOCAL
                 raw_name = typed_parser[len(LOCAL_PREF) + 1:]
                 self.card_generator = loaded_plugins.get_local_card_generator(raw_name)
             elif typed_parser.startswith(CHAIN_PREF):
-                self.configurations["scrappers"]["word"]["type"] = "chain"
+                self.configurations["scrappers"]["word"]["type"] = parser_types.CHAIN
                 raw_name = typed_parser[len(CHAIN_PREF) + 1:]
                 self.card_generator = CardGeneratorsChain(name=raw_name,
                                                           chain_data=self.chaining_data["word_parsers"][raw_name])
@@ -1615,7 +1617,7 @@ saving_image_height
             init_text=self.typed_word_parser_name,
             values=[f"{WEB_PREF} {item}" for item in loaded_plugins.web_word_parsers.loaded] +
                    [f"{LOCAL_PREF} {item}" for item in loaded_plugins.local_word_parsers.loaded] +
-                   [f"[chain] {name}" for name in self.chaining_data["word_parsers"]],
+                   [f"{CHAIN_PREF} {name}" for name in self.chaining_data["word_parsers"]],
             command=lambda typed_parser: pick_word_parser(typed_parser))
         choose_wp_option.grid(row=0, column=1, sticky="news")
 
@@ -1647,16 +1649,16 @@ saving_image_height
             if typed_getter.startswith(WEB_PREF):
                 raw_name = typed_getter[len(WEB_PREF) + 1:]
                 self.audio_getter = loaded_plugins.get_web_audio_getter(raw_name)
-                self.configurations["scrappers"]["audio"]["type"] = DataSourceType.WEB
+                self.configurations["scrappers"]["audio"]["type"] = parser_types.WEB
             elif typed_getter.startswith(LOCAL_PREF):
                 raw_name = typed_getter[len(LOCAL_PREF) + 1:]
                 self.audio_getter = loaded_plugins.get_local_audio_getter(raw_name)
-                self.configurations["scrappers"]["audio"]["type"] = DataSourceType.LOCAL
+                self.configurations["scrappers"]["audio"]["type"] = parser_types.LOCAL
             elif typed_getter.startswith(CHAIN_PREF):
                 raw_name = typed_getter[len(CHAIN_PREF) + 1:]
                 self.audio_getter = AudioGettersChain(name=raw_name,
                                                       chain_data=self.chaining_data["audio_getters"][raw_name])
-                self.configurations["scrappers"]["audio"]["type"] = "chain"
+                self.configurations["scrappers"]["audio"]["type"] = parser_types.CHAIN
             else:
                 raise NotImplementedError(f"Audio getter with unknown type: {typed_getter}")
 
@@ -1677,7 +1679,7 @@ saving_image_height
             values=[DEFAULT_AUDIO_SRC] +
                    [f"{WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
                    [f"{LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
-                   [f"[chain] {name}" for name in self.chaining_data["audio_getters"]],
+                   [f"{CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
             command=lambda getter: pick_audio_getter(getter))
         choose_audio_option.grid(row=1, column=1, sticky="news")
 
@@ -1737,7 +1739,7 @@ saving_image_height
     @error_handler(show_errors)
     def change_image_parser(self, given_image_parser_name: str):
         self.configurations["scrappers"]["image"]["name"] = given_image_parser_name
-        if not given_image_parser_name.startswith("[chain]"):
+        if not given_image_parser_name.startswith(f"[{parser_types.CHAIN}]"):
             self.image_parser = loaded_plugins.get_image_parser(given_image_parser_name)
             return
 
@@ -1748,7 +1750,7 @@ saving_image_height
 
     @error_handler(show_errors)
     def change_sentence_parser(self, given_sentence_parser_name: str):
-        if given_sentence_parser_name.startswith("[chain]"):
+        if given_sentence_parser_name.startswith(f"[{parser_types.CHAIN}]"):
             given_sentence_parser_name = given_sentence_parser_name[8:]
             self.sentence_parser = SentenceParsersChain(
                 name=given_sentence_parser_name,
@@ -1776,12 +1778,12 @@ saving_image_height
             additional[SavedDataDeck.USER_TAGS] = user_tags
 
         audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-        if self.audio_getter is not None and audio_getter_type in (DataSourceType.WEB, DataSourceType.LOCAL, "chain"):
-            if audio_getter_type == DataSourceType.WEB:
+        if self.audio_getter is not None and audio_getter_type in (parser_types.WEB, parser_types.LOCAL, parser_types.CHAIN):
+            if audio_getter_type == parser_types.WEB:
                 audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
-            elif audio_getter_type == DataSourceType.LOCAL:
+            elif audio_getter_type == parser_types.LOCAL:
                 audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
-            elif audio_getter_type == "chain":
+            elif audio_getter_type == parser_types.CHAIN:
                 audio_getter_type, audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
             else:
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
@@ -1806,7 +1808,7 @@ saving_image_height
         elif (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
             additional[SavedDataDeck.AUDIO_DATA] = {}
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS] = web_audios
-            additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE] = DataSourceType.WEB
+            additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE] = parser_types.WEB
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SAVING_PATHS] = [
                 os.path.join(self.configurations["directories"]["media_dir"],
                              self.card_processor.get_save_audio_name(word,
@@ -1895,15 +1897,15 @@ saving_image_height
 
         word = self.word
         if self.audio_getter is not None:
-            type2playsound_corr = {DataSourceType.WEB:   web_playsound,
-                                   DataSourceType.LOCAL: local_playsound}
+            type2playsound_corr = {parser_types.WEB:   web_playsound,
+                                   parser_types.LOCAL: local_playsound}
 
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-            if audio_getter_type == DataSourceType.WEB:
+            if audio_getter_type == parser_types.WEB:
                 ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word, self.dict_card_data)
-            elif audio_getter_type == DataSourceType.LOCAL:
+            elif audio_getter_type == parser_types.LOCAL:
                 ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word, self.dict_card_data)
-            elif audio_getter_type == "chain":
+            elif audio_getter_type == parser_types.CHAIN:
                 audio_getter_type, audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
                 (audio_sources, additional_info), error_message = audio_data
             else:

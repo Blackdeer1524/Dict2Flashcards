@@ -8,9 +8,9 @@ from plugins_loading.interfaces import DeckSavingFormatInterface
 from plugins_loading.interfaces import ImageParserInterface
 from plugins_loading.interfaces import LanguagePackageInterface
 from plugins_loading.interfaces import LocalAudioGetterInterface
-from plugins_loading.interfaces import WebAudioGetterInterface
 from plugins_loading.interfaces import LocalWordParserInterface
 from plugins_loading.interfaces import ThemeInterface
+from plugins_loading.interfaces import WebAudioGetterInterface
 from plugins_loading.interfaces import WebSentenceParserInterface
 from plugins_loading.interfaces import WebWordParserInterface
 from plugins_management.config_management import LoadableConfig

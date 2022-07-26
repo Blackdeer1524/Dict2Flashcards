@@ -1,7 +1,8 @@
 import os
-from plugins_management.config_management import LoadableConfig
+
 from app_utils.preprocessing import remove_empty_keys
 from consts.card_fields import FIELDS
+from plugins_management.config_management import LoadableConfig
 
 DICTIONARY_PATH = "wordset"
 SCHEME_DOCS = """

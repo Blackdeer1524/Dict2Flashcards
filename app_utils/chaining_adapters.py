@@ -7,22 +7,44 @@ from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import ImageGenerator, SentenceGenerator, AudioData
 from consts.card_fields import FIELDS
+from collections import Counter
+import re
+from typing import Iterable
+
+
+def get_enumerated_names(names: Iterable[str]) -> list[str]:
+    seen_names_count = Counter(names)
+    seen_so_far = {key: value for key, value in seen_names_count.items()}
+    enum_names = []
+    for name in names:
+        if seen_names_count[name] == 1:
+            enum_names.append(name)
+        else:
+            seen_so_far[name] -= 1
+            enum_names.append(f"{name} [{seen_names_count[name] - seen_so_far[name]}]")
+    return enum_names
 
 
 class ChainConfig(LoadableConfig):
+    _MULTIPLE_NAMES_POSTFIX_REGEX = re.compile(r".*\[\d+]$")
+
     def __init__(self,
                  config_dir: str,
                  config_name: str,
                  name_config_pairs: list[tuple[str, LoadableConfig]]):
-        self.name_config_pairs = name_config_pairs
-        validation_scheme = {}
-        data = {}
+        seen_config_ids = set()
         docs_list = []
-        for name, config in self.name_config_pairs:
-            data[name] = config.data
-            validation_scheme[name] = config.validation_scheme
-            docs_list.append("{}:\n{}".format(name, config.docs.replace('\n', '\n |\t')))
+        validation_scheme = {}
+        self.enum_name2config = {}
+        for enum_name, (name, config) in zip(get_enumerated_names([item[0] for item in name_config_pairs]),
+                                             name_config_pairs):
+            self.enum_name2config[enum_name] = config
+            validation_scheme[enum_name] = config.validation_scheme
+            if id(config) not in seen_config_ids:
+                docs_list.append("{}:\n{}".format(name, config.docs.replace('\n', '\n |\t')))
+                seen_config_ids.add(id(config))
             config.save()
+
         docs = "\n".join(docs_list)
         super(ChainConfig, self).__init__(validation_scheme=validation_scheme,  # type: ignore
                                           docs=docs,
@@ -31,8 +53,12 @@ class ChainConfig(LoadableConfig):
         self.load()
 
     def update_children_configs(self):
-        for name, config in self.name_config_pairs:
-            config.data = self[name]
+        for enum_name, config in self.enum_name2config.items():
+            config.data = self[enum_name]
+
+    def update_config(self, enum_name: str):
+        if re.match(self._MULTIPLE_NAMES_POSTFIX_REGEX, enum_name):
+            self.enum_name2config[enum_name].data = self[enum_name]
 
     def load(self) -> Optional[LoadableConfig.SchemeCheckResults]:
         errors = super(ChainConfig, self).load()
@@ -49,32 +75,29 @@ class CardGeneratorsChain:
                  name: str,
                  chain_data: dict[str, str | list[str]]):
         self.name = name
+
+        self.enum_name2generator: dict[str, CardGenerator] = {}
         self.card_generators: list[CardGenerator] = []
+
         parser_configs = []
         scheme_docs_list = []
-        for parser_name in chain_data["chain"]:
+        for parser_name, enum_parser_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
             if parser_name.startswith(f"[{DataSourceType.WEB}]"):
-                self.card_generators.append(
-                    loaded_plugins.get_web_card_generator(parser_name[3 + len(DataSourceType.WEB):]))
+                generator = loaded_plugins.get_web_card_generator(parser_name[3 + len(DataSourceType.WEB):])
             elif parser_name.startswith(f"[{DataSourceType.LOCAL}]"):
-                self.card_generators.append(
-                    loaded_plugins.get_local_card_generator(parser_name[3 + len(DataSourceType.LOCAL):]))
+                generator = loaded_plugins.get_local_card_generator(parser_name[3 + len(DataSourceType.LOCAL):])
             else:
                 raise NotImplementedError(f"Word parser of unknown type: {parser_name}")
-            parser_configs.append(self.card_generators[-1].config)
+
+            self.enum_name2generator[enum_parser_name] = generator
+            parser_configs.append(generator.config)
             scheme_docs_list.append("{}\n{}".format(parser_name,
                                                     self.card_generators[-1].scheme_docs.replace("\n", "\n |\t")))
         self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "word_parsers",
                                   config_name=chain_data["config_name"],
-                                  name_config_pairs=[(name, config) for name, config in
+                                  name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
-
-
         self.scheme_docs = "\n".join(scheme_docs_list)
-
-    @property
-    def type(self):
-        return "chain"
 
     def get(self,
             query: str,
@@ -92,20 +115,21 @@ class SentenceParsersChain:
                  name: str,
                  chain_data: dict[str, str | list[str]]):
         self.name = name
-        self.get_sentence_batch_functions: list[Callable[[str, int], SentenceGenerator]] = []
+        self.enum_name2get_sentence_batch_functions: dict[str, Callable[[str, int], SentenceGenerator]] = {}
         parser_configs = []
-        for parser_name in chain_data["chain"]:
+        for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
             plugin_container = loaded_plugins.get_sentence_parser(parser_name)
-            self.get_sentence_batch_functions.append(plugin_container.get_sentence_batch)
+            self.enum_name2get_sentence_batch_functions[enum_name] = plugin_container.get_sentence_batch
             parser_configs.append(plugin_container.config)
         self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "sentence_parsers",
                                   config_name=chain_data["config_name"],
-                                  name_config_pairs=[(name, config) for name, config in
+                                  name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
 
     def get_sentence_batch(self, word: str, size: int) -> SentenceGenerator:
         yielded_once = False
-        for get_sentence_batch_f in self.get_sentence_batch_functions:
+        for enum_name, get_sentence_batch_f in self.enum_name2get_sentence_batch_functions.items():
+            self.config.update_config(enum_name)
             sent_generator = get_sentence_batch_f(word, size)
             for sentence_list, error_message in sent_generator:
                 if not sentence_list:
@@ -122,21 +146,22 @@ class ImageParsersChain:
                  name: str,
                  chain_data: dict[str, str | list[str]]):
         self.name = name
-        self.url_getting_functions = []
+        self.enum_name2url_getting_functions: dict[str, Callable[[str], ImageGenerator]] = {}
         parser_configs = []
-        for parser_name in chain_data["chain"]:
+        for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
             parser = loaded_plugins.get_image_parser(parser_name)
-            self.url_getting_functions.append(parser.get_image_links)
+            self.enum_name2url_getting_functions[enum_name] = parser.get_image_links
             parser_configs.append(parser.config)
 
         self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "image_parsers",
                                   config_name=chain_data["config_name"],
-                                  name_config_pairs=[(name, config) for name, config in
+                                  name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
 
     def get_image_links(self, word: str) -> ImageGenerator:
         batch_size = yield
-        for url_getting_function in self.url_getting_functions:
+        for enum_name, url_getting_function in self.enum_name2url_getting_functions.items():
+            self.config.update_config(enum_name)
             url_generator = url_getting_function(word)
             try:
                 next(url_generator)
@@ -155,13 +180,13 @@ class AudioGettersChain:
                  name: str,
                  chain_data: dict[str, str | list[str]]):
         self.name = name
-        self.parsers_data = []
+        self.enum_name2parsers_data: dict[str, tuple[str, Callable[[str, dict], AudioData] | None]] = {}
         names = []
         parser_configs = []
-        for parser_name in chain_data["chain"]:
+        for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
             if parser_name == "default":
                 parser_type = "default"
-                self.parsers_data.append((parser_type, None))
+                self.enum_name2parsers_data[enum_name] = (parser_type, None)
                 continue
 
             names.append(parser_name)
@@ -173,24 +198,25 @@ class AudioGettersChain:
                 getter = loaded_plugins.get_local_audio_getter(parser_name[3 + len(DataSourceType.LOCAL):])
             else:
                 raise NotImplementedError(f"Audio getter of unknown type: {parser_name}")
-            self.parsers_data.append((parser_type, getter.get_audios))
+            self.enum_name2parsers_data[enum_name] = (parser_type, getter.get_audios)
             parser_configs.append(getter.config)
 
         self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "image_parsers",
                                   config_name=chain_data["config_name"],
-                                  name_config_pairs=[(name, config) for name, config in
-                                                     zip(names, parser_configs)])
+                                  name_config_pairs=[(parser_name, config) for parser_name, config
+                                                     in zip(names, parser_configs)])
 
     def get_audios(self, word: str, card_data: dict) -> tuple[str, AudioData]:
         source = []
         additional_info = []
         error_message = ""
         parser_type = DataSourceType.WEB  # arbitrary type
-        for parser_type, audio_getting_function in self.parsers_data:
+        for enum_name, (parser_type, audio_getting_function) in self.enum_name2parsers_data.items():
             if parser_type == "default":
                 source = additional_info = card_data.get(FIELDS.audio_links, [])
                 error_message = ""
             else:
+                self.config.update_config(enum_name)
                 (source, additional_info), error_message = audio_getting_function(word, card_data)
             if source:
                 break

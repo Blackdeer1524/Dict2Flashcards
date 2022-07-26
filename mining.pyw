@@ -367,62 +367,51 @@ saving_image_height
                 ChainData = namedtuple("ChainData", ("name", "label", "up_button", "deselect_button", "down_button"))
 
                 def add_to_chain(ind: int):
-                    choosing_widgets_data[ind].label.destroy()
-                    choosing_widgets_data[ind].select_button.destroy()
-                    removed_name = choosing_widgets_data.pop(ind).name
-
-                    for i in range(ind, len(choosing_widgets_data)):
-                        choosing_widgets_data[i].label.grid_forget()
-                        choosing_widgets_data[i].label.grid(row=i, column=0, sticky="news", pady=pady)
-                        choosing_widgets_data[i].select_button.grid_forget()
-                        choosing_widgets_data[i].select_button.grid(row=i, column=1, sticky="news", pady=pady)
-                        choosing_widgets_data[i].select_button.configure(command=lambda ind=i: add_to_chain(ind))
-
+                    removed_name = choosing_widgets_data[ind].name
                     new_chain_ind = len(chain_data) * 3
                     a = self.Label(ordering_inner_frame, text=removed_name, justify='center')
 
-                    def place(item, next_3i: int):
-                        item[1].grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
-                        item[2].grid(row=next_3i, column=1, sticky="news", pady=(pady, 0))
+                    def place_widget_to_chain(item: ChainData, next_3i: int):
+                        item.label.grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
+                        item.up_button.grid(row=next_3i, column=1, sticky="news", pady=(pady, 0))
                         if next_3i:
-                            item[2]["state"] = "normal"
-                            item[2].configure(
+                            item.up_button["state"] = "normal"
+                            item.up_button.configure(
                                 command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
-                                                                        direction=-3))
+                                                                        direction=-1))
                         else:
-                            item[2]["state"] = "disabled"
+                            item.up_button["state"] = "disabled"
 
-                        item[3].grid(row=next_3i + 1, column=1, sticky="news", pady=0)
-                        item[3].configure(command=lambda ind=next_3i: return_back(ind // 3))
-                        item[4].grid(row=next_3i + 2, column=1, sticky="news", pady=(0, pady))
+                        item.deselect_button.grid(row=next_3i + 1, column=1, sticky="news", pady=0)
+                        item.deselect_button.configure(command=lambda ind=next_3i: remove_from_chain(ind // 3))
+                        item.down_button.grid(row=next_3i + 2, column=1, sticky="news", pady=(0, pady))
 
                         if next_3i == 3 * (len(chain_data) - 1):
-                            item[4]["state"] = "disabled"
+                            item.down_button["state"] = "disabled"
                         else:
-                            item[4]["state"] = "normal"
-                            item[4].configure(
+                            item.down_button["state"] = "normal"
+                            item.down_button.configure(
                                 command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
-                                                                        direction=3))
+                                                                        direction=1))
 
                     def swap_places(current_ind: ind, direction: int):
                         current = chain_data[current_ind]
-                        operand = chain_data[current_ind + direction // 3]
+                        operand = chain_data[current_ind + direction]
 
                         for i in range(1, len(chain_data[current_ind])):
                             current[i].grid_forget()
                             operand[i].grid_forget()
 
                         old_3 = 3 * current_ind
-                        new_3 = old_3 + direction
-                        place(current, new_3)
-                        place(operand, old_3)
+                        new_3 = old_3 + direction * 3
+                        place_widget_to_chain(current, new_3)
+                        place_widget_to_chain(operand, old_3)
                         chain_data[old_3 // 3], chain_data[new_3 // 3] = chain_data[new_3 // 3], chain_data[old_3 // 3]
 
-                    def return_back(ind: int):
+                    def remove_from_chain(ind: int):
                         for i in range(1, len(chain_data[ind])):
                             chain_data[ind][i].destroy()
-                        removed_name = chain_data.pop(ind).name
-
+                        chain_data.pop(ind)
                         for i in range(ind, len(chain_data)):
                             chain_data[i].label.grid_forget()
                             chain_data[i].label.grid(row=3 * i, column=0, sticky="news", pady=pady, rowspan=3)
@@ -432,30 +421,26 @@ saving_image_height
 
                             chain_data[i].deselect_button.grid_forget()
                             chain_data[i].deselect_button.grid(row=3 * i + 1, column=1, sticky="news", pady=0)
-                            chain_data[i].deselect_button.configure(command=lambda ind=i: return_back(ind))
+                            chain_data[i].deselect_button.configure(command=lambda ind=i: remove_from_chain(ind))
 
                             chain_data[i].down_button.grid_forget()
                             chain_data[i].down_button.grid(row=3 * i + 2, column=1, sticky="news", pady=(0, pady))
 
-                        new_choosing_ind = len(choosing_widgets_data)
-                        a = self.Label(choosing_inner_frame, text=removed_name, justify='center')
-                        a.grid(row=new_choosing_ind, column=0, sticky="news", pady=pady)
-                        b = self.Button(choosing_inner_frame, text=">",
-                                        command=lambda ind=new_choosing_ind: add_to_chain(ind))
-                        b.grid(row=new_choosing_ind, column=1, sticky="news", pady=pady)
-                        choosing_widgets_data.append(ChoosingData(name=removed_name, label=a, select_button=b))
-
-                    up = self.Button(ordering_inner_frame, text="∧")
-                    back = self.Button(ordering_inner_frame, text="✕",
-                                       command=lambda ind=new_chain_ind: return_back(ind // 3))
-                    down = self.Button(ordering_inner_frame, text="∨")
+                    up_button = self.Button(ordering_inner_frame, text="∧")
+                    deselect_button = self.Button(ordering_inner_frame, text="✕",
+                                       command=lambda ind=new_chain_ind: remove_from_chain(ind // 3))
+                    down_button = self.Button(ordering_inner_frame, text="∨")
 
                     if chain_data:
                         chain_data[-1].down_button["state"] = "normal"
 
-                    chain_data.append(ChainData(name=removed_name, label=a,
-                                                up_button=up, deselect_button=back, down_button=down))
-                    place(chain_data[-1], new_chain_ind)
+                    chain_data.append(ChainData(name=removed_name, 
+                                                label=a,
+                                                up_button=up_button, 
+                                                deselect_button=deselect_button, 
+                                                down_button=down_button))
+                    place_widget_to_chain(chain_data[-1], new_chain_ind)
+
                 chaining_window = self.Toplevel(self)
                 chaining_window.geometry(f"{self.winfo_screenwidth() // 3}x{self.winfo_screenheight() // 3}")
                 chaining_window.grab_set()

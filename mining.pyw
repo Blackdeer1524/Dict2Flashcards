@@ -362,6 +362,36 @@ saving_image_height
                 if not existing_chains_treeview.focus():
                     return
 
+                def remove_option(option: str):
+                    self.chaining_data[chaining_options[chain_type_option_menu["text"]]].pop(option)
+                    if chaining_options[chain_type_option_menu["text"]] == "sentence_parsers":
+                        self.sentence_parser_option_menu.destroy()
+                        self.sentence_parser_option_menu = self.get_option_menu(self,
+                                                                                init_text=self.sentence_parser.name,
+                                                                                values=itertools.chain(
+                                                                                    loaded_plugins.web_sent_parsers.loaded,
+                                                                                    [f"[chain] {name}" for name in
+                                                                                     self.chaining_data[
+                                                                                         "sentence_parsers"]]),
+                                                                                command=lambda parser_name:
+                                                                                self.change_sentence_parser(
+                                                                                    parser_name))
+                        self.sentence_parser_option_menu.grid(row=5, column=3, columnspan=4, sticky="news", 
+                                                              padx=0, pady=self.text_pady)
+                        
+                    elif chaining_options[chain_type_option_menu["text"]] == "image_parsers":
+                        self.image_parser_option_menu.destroy()
+                        self.image_parser_option_menu = self.get_option_menu(self,
+                                                                             init_text=self.image_parser.name,
+                                                                             values=itertools.chain(
+                                                                                 self.image_word_parsers_names,
+                                                                                 [f"[chain] {name}" for name in
+                                                                                  self.chaining_data["image_parsers"]]),
+                                                                             command=lambda parser_name:
+                                                                             self.change_image_parser(parser_name))
+                        self.image_parser_option_menu.grid(row=3, column=3, columnspan=4, sticky="news",
+                                                           padx=0, pady=self.text_pady)
+
                 def edit_selected_chain():
                     selected_item_index = existing_chains_treeview.focus()
                     if not selected_item_index:
@@ -370,7 +400,7 @@ saving_image_height
                     chain_data = self.chaining_data[chaining_options[chain_type_option_menu["text"]]][chain_name]
 
                     def replace_current_row(new_chain_name: str, chain: list[str]):
-                        self.chaining_data[chaining_options[chain_type_option_menu["text"]]].pop(chain_name)
+                        remove_option(str(chain_name))
                         existing_chains_treeview.set(selected_item_index, "#1", value=new_chain_name)
                         existing_chains_treeview.set(selected_item_index, "#2", value="->".join(chain))
 
@@ -378,9 +408,17 @@ saving_image_height
                                 initial_chain=chain_data["chain"],
                                 treeview_insertion=replace_current_row)
 
+                def delete_selected_chain():
+                    selected_item_index = existing_chains_treeview.focus()
+                    if not selected_item_index:
+                        return
+                    chain_name, _ = existing_chains_treeview.item(selected_item_index)["values"]
+                    existing_chains_treeview.delete(selected_item_index)
+                    remove_option(str(chain_name))
+
                 m = Menu(root, tearoff=0)
-                m.add_command(label="Edit", command=edit_selected_chain)
-                m.add_command(label="Delete")
+                m.add_command(label="Изменить", command=edit_selected_chain)
+                m.add_command(label="Удалить", command=delete_selected_chain)
 
                 def popup_FocusOut(event=None):
                     m.grab_release()
@@ -596,7 +634,7 @@ saving_image_height
                 existing_chains_treeview.insert("", "end", values=(chain_name, "->".join(chain)))
 
             create_chain_of_selected_type_button = self.Button(command_panel,
-                                                               text="Создать новую цепь",
+                                                               text="Создать",
                                                                command=lambda:
                                                                    build_chain(chain_name="",
                                                                                initial_chain=[],
@@ -608,7 +646,7 @@ saving_image_height
                                                      command=chain_type_window.destroy)
             exit_chain_creation_button.pack(side="right", pady=(0, 10))
 
-        main_menu.add_command(label="Создать цепь", command=chain_dialog)
+        main_menu.add_command(label="Цепи", command=chain_dialog)
         main_menu.add_command(label=self.lang_pack.exit_menu_label, command=self.on_closing)
         self.config(menu=main_menu)
 
@@ -704,48 +742,48 @@ saving_image_height
         self.tag_prefix_field.insert(0, self.configurations["deck"]["tags_hierarchical_pref"])
         self.dict_tags_field = self.Text(self, relief="ridge", state="disabled", height=2)
 
-        Text_padx = 10
-        Text_pady = 2
-        self.browse_button.grid(row=0, column=0, padx=(Text_padx, 0), pady=(Text_pady, 0), sticky="news", columnspan=3)
-        self.configure_word_parser_button.grid(row=0, column=3, padx=(0, Text_padx), pady=(Text_pady, 0),
+        self.text_padx = 10
+        self.text_pady = 2
+        self.browse_button.grid(row=0, column=0, padx=(self.text_padx, 0), pady=(self.text_pady, 0), sticky="news", columnspan=3)
+        self.configure_word_parser_button.grid(row=0, column=3, padx=(0, self.text_padx), pady=(self.text_pady, 0),
                                             columnspan=5, sticky="news")
 
-        self.word_text.grid(row=1, column=0, padx=Text_padx, pady=Text_pady, columnspan=8, sticky="news")
+        self.word_text.grid(row=1, column=0, padx=self.text_padx, pady=self.text_pady, columnspan=8, sticky="news")
 
-        self.special_field.grid(row=2, column=0, padx=Text_padx, columnspan=8, sticky="news")
+        self.special_field.grid(row=2, column=0, padx=self.text_padx, columnspan=8, sticky="news")
 
-        self.find_image_button.grid(row=3, column=0, padx=(Text_padx, 0), pady=(Text_pady), sticky="news", columnspan=3)
-        self.image_parser_option_menu.grid(row=3, column=3, padx=0, pady=Text_pady, columnspan=4,
+        self.find_image_button.grid(row=3, column=0, padx=(self.text_padx, 0), pady=(self.text_pady), sticky="news", columnspan=3)
+        self.image_parser_option_menu.grid(row=3, column=3, padx=0, pady=self.text_pady, columnspan=4,
                                            sticky="news")
 
         self.configure_image_parser_button.grid(row=3, column=7,
-                                                padx=(0, Text_padx), pady=Text_pady, sticky="news")
+                                                padx=(0, self.text_padx), pady=self.text_pady, sticky="news")
 
-        self.definition_text.grid(row=4, column=0, padx=Text_padx, columnspan=8, sticky="news")
+        self.definition_text.grid(row=4, column=0, padx=self.text_padx, columnspan=8, sticky="news")
 
-        self.add_sentences_button.grid(row=5, column=0, padx=(Text_padx, 0), pady=Text_pady, sticky="news", columnspan=3)
-        self.sentence_parser_option_menu.grid(row=5, column=3, padx=0, pady=Text_pady, columnspan=4,
+        self.add_sentences_button.grid(row=5, column=0, padx=(self.text_padx, 0), pady=self.text_pady, sticky="news", columnspan=3)
+        self.sentence_parser_option_menu.grid(row=5, column=3, padx=0, pady=self.text_pady, columnspan=4,
                                               sticky="news")
         self.configure_sentence_parser_button.grid(row=5, column=7,
-                                                   padx=(0, Text_padx), pady=Text_pady, sticky="news")
+                                                   padx=(0, self.text_padx), pady=self.text_pady, sticky="news")
 
 
         for i in range(5):
-            c_pady = Text_pady if i % 2 else 0
-            self.sent_text_list[i].grid(row=6 + i, column=0, columnspan=6, padx=Text_padx, pady=c_pady, sticky="news")
+            c_pady = self.text_pady if i % 2 else 0
+            self.sent_text_list[i].grid(row=6 + i, column=0, columnspan=6, padx=self.text_padx, pady=c_pady, sticky="news")
             self.sent_button_list[i].grid(row=6 + i, column=6, padx=0, pady=c_pady, sticky="ns")
 
-        self.skip_button.grid(row=6, column=7, padx=Text_padx, pady=0, sticky="ns")
-        self.prev_button.grid(row=7, column=7, padx=Text_padx, pady=Text_pady, sticky="ns")
-        self.sound_button.grid(row=8, column=7, padx=Text_padx, pady=0, sticky="ns")
-        self.anki_button.grid(row=9, column=7, padx=Text_padx, pady=Text_pady, sticky="ns")
-        self.bury_button.grid(row=10, column=7, padx=Text_padx, pady=0, sticky="ns")
+        self.skip_button.grid(row=6, column=7, padx=self.text_padx, pady=0, sticky="ns")
+        self.prev_button.grid(row=7, column=7, padx=self.text_padx, pady=self.text_pady, sticky="ns")
+        self.sound_button.grid(row=8, column=7, padx=self.text_padx, pady=0, sticky="ns")
+        self.anki_button.grid(row=9, column=7, padx=self.text_padx, pady=self.text_pady, sticky="ns")
+        self.bury_button.grid(row=10, column=7, padx=self.text_padx, pady=0, sticky="ns")
 
-        self.user_tags_field.grid(row=11, column=0, padx=Text_padx, pady=Text_pady, columnspan=6,
+        self.user_tags_field.grid(row=11, column=0, padx=self.text_padx, pady=self.text_pady, columnspan=6,
                                   sticky="news")
-        self.tag_prefix_field.grid(row=11, column=6, padx=(0, Text_padx), pady=Text_pady, columnspan=2,
+        self.tag_prefix_field.grid(row=11, column=6, padx=(0, self.text_padx), pady=self.text_pady, columnspan=2,
                                    sticky="news")
-        self.dict_tags_field.grid(row=12, column=0, padx=Text_padx, pady=(0, Text_padx), columnspan=8,
+        self.dict_tags_field.grid(row=12, column=0, padx=self.text_padx, pady=(0, self.text_padx), columnspan=8,
                                   sticky="news")
         for i in range(6):
             self.grid_columnconfigure(i, weight=1)

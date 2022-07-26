@@ -233,8 +233,8 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
                            source_module.configuration_window_unknown_keys_field)
         object.__setattr__(self, "configuration_window_expected_prefix",
                            source_module.configuration_window_expected_prefix)
-        object.__setattr__(self, "configuration_window_done_button_text",
-                           source_module.configuration_window_done_button_text)
+        object.__setattr__(self, "configuration_window_save_button_text",
+                           source_module.configuration_window_save_button_text)
 
         # play_sound
         object.__setattr__(self, "play_sound_playsound_window_title",

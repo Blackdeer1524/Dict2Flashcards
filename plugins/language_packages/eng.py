@@ -375,7 +375,7 @@ configuration_window_wrong_value_field = "Wrong filed value"
 configuration_window_missing_keys_field = "Missing keys"
 configuration_window_unknown_keys_field = "Unknown keys"
 configuration_window_expected_prefix = "Expected"
-configuration_window_done_button_text = "Done"
+configuration_window_save_button_text = "Save"
 
 # play_sound
 play_sound_playsound_window_title = "Audio"

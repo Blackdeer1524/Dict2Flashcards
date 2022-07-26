@@ -165,7 +165,7 @@ class LanguagePackageInterface(Protocol):
     configuration_window_missing_keys_field: str
     configuration_window_unknown_keys_field: str
     configuration_window_expected_prefix: str
-    configuration_window_done_button_text: str
+    configuration_window_save_button_text: str
 
     # play_sound
     play_sound_playsound_window_title: str

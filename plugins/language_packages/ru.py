@@ -375,7 +375,7 @@ configuration_window_wrong_value_field = "Неверное значение по
 configuration_window_missing_keys_field = "Пропущенные поля"
 configuration_window_unknown_keys_field = "Неизвестные ключи"
 configuration_window_expected_prefix = "Ожидалось"
-configuration_window_done_button_text = "Готово"
+configuration_window_save_button_text = "Готово"
 
 # play_sound
 play_sound_playsound_window_title = "Аудио"

@@ -470,7 +470,7 @@ saving_image_height
 
                 def add_to_chain(placing_name: str):
                     new_chain_ind = len(chain_data) * 3
-                    a = self.Label(ordering_inner_frame, text=placing_name, justify='center')
+                    a = self.Label(built_chain_inner_frame, text=placing_name, justify='center')
 
                     def place_widget_to_chain(item: ChainData, next_3i: int):
                         item.label.grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
@@ -494,6 +494,10 @@ saving_image_height
                             item.down_button.configure(
                                 command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
                                                                         direction=1))
+                        # built_chain_inner_frame.update_idletasks()
+                        # built_chain_main_frame.update_idletasks()
+                        built_chain_main_frame._resize_interior()
+                        built_chain_main_frame._update_scroll_region(None)
 
                     def swap_places(current_ind: int, direction: int):
                         current = chain_data[current_ind]
@@ -527,10 +531,10 @@ saving_image_height
                             chain_data[i].down_button.grid_forget()
                             chain_data[i].down_button.grid(row=3 * i + 2, column=1, sticky="news", pady=(0, pady))
 
-                    up_button = self.Button(ordering_inner_frame, text="∧")
-                    deselect_button = self.Button(ordering_inner_frame, text="✕",
+                    up_button = self.Button(built_chain_inner_frame, text="∧")
+                    deselect_button = self.Button(built_chain_inner_frame, text="✕",
                                        command=lambda ind=new_chain_ind: remove_from_chain(ind // 3))
-                    down_button = self.Button(ordering_inner_frame, text="∨")
+                    down_button = self.Button(built_chain_inner_frame, text="∨")
 
                     if chain_data:
                         chain_data[-1].down_button["state"] = "normal"
@@ -561,7 +565,7 @@ saving_image_height
                 choosing_main_frame.grid(row=1, column=0, sticky="news", padx=10, pady=(0, 10))
                 choosing_main_frame.bind_scroll_wheel(choosing_main_frame)
                 choosing_inner_frame = choosing_main_frame.display_widget(self.Frame,
-                                                                  fit_width=True, fit_height=True,
+                                                                  fit_width=True,
                                                                   bg="grey")
                 choosing_inner_frame.grid_columnconfigure(0, weight=1)
 
@@ -594,13 +598,13 @@ saving_image_height
                     b.grid(row=i, column=1, sticky="news", pady=pady)
                     choosing_widgets_data.append(ChoosingData(name=parser_name, label=a, select_button=b))
 
-                ordering_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical")
-                ordering_main_frame.grid(row=1, column=1, sticky="news", padx=10, pady=(0, 10))
-                ordering_main_frame.bind_scroll_wheel(ordering_main_frame)
-                ordering_inner_frame = ordering_main_frame.display_widget(self.Frame,
-                                                                  fit_width=True, fit_height=True,
+                built_chain_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical")
+                built_chain_main_frame.grid(row=1, column=1, sticky="news", padx=10, pady=(0, 10))
+                built_chain_main_frame.bind_scroll_wheel(built_chain_main_frame)
+                built_chain_inner_frame = built_chain_main_frame.display_widget(self.Frame,
+                                                                  fit_width=True,
                                                                   bg="grey")
-                ordering_inner_frame.grid_columnconfigure(0, weight=1)
+                built_chain_inner_frame.grid_columnconfigure(0, weight=1)
 
                 for name in initial_chain:
                     add_to_chain(name)
@@ -1463,7 +1467,7 @@ saving_image_height
         
         conf_sf = ScrolledFrame(text_pane_win, scrollbars="both")
         text_pane_win.add(conf_sf, stretch="always", sticky="news")
-        conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
+        conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True)
         conf_sf.bind_scroll_wheel(conf_inner_frame)
         
         conf_text = self.Text(conf_inner_frame)
@@ -1475,7 +1479,7 @@ saving_image_height
         
         docs_sf = ScrolledFrame(text_pane_win, scrollbars="both")
         docs_pane_win.add(docs_sf, stretch="always", sticky="news")
-        docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
+        docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True)
         docs_sf.bind_scroll_wheel(docs_inner_frame)
         
         conf_docs_label = self.Text(docs_inner_frame)
@@ -1500,11 +1504,11 @@ saving_image_height
             text=self.lang_pack.configuration_window_restore_defaults_button_text,
             command=restore_defaults)
         conf_restore_defaults_button.pack(side="left")
-        conf_close_chain_building_button = self.Button(
+        configuration_window_cancel_button = self.Button(
             conf_window_control_panel,
-            text=self.lang_pack.configuration_window_close_chain_building_button_text,
+            text=self.lang_pack.configuration_window_cancel_button_text,
             command=conf_window.destroy)
-        conf_close_chain_building_button.pack(side="right")
+        configuration_window_cancel_button.pack(side="right")
 
         @error_handler(self.show_errors)
         def done():
@@ -1554,10 +1558,10 @@ saving_image_height
             self.show_window(title=self.lang_pack.error_title,
                              text=config_error_message)
 
-        conf_save_chain_button = self.Button(conf_window_control_panel,
-                                       text=self.lang_pack.configuration_window_save_chain_button_text,
-                                       command=done)
-        conf_save_chain_button.pack(side="right")
+        save_button = self.Button(conf_window_control_panel,
+                                  text=self.lang_pack.configuration_window_save_button_text,
+                                  command=done)
+        save_button.pack(side="right")
 
         for i in range(3):
             conf_window.grid_columnconfigure(i, weight=1)

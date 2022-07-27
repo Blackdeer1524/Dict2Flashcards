@@ -377,39 +377,42 @@ saving_image_height
             existing_chains_treeview.column("#1", anchor="center", stretch=True)
             existing_chains_treeview.column("#2", anchor="center", stretch=True)
 
+            def remove_option(option: str):
+                self.chaining_data[chaining_options[chain_type_option_menu["text"]]].pop(option)
+                if chaining_options[chain_type_option_menu["text"]] == "sentence_parsers":
+                    self.sentence_parser_option_menu.destroy()
+                    self.sentence_parser_option_menu = self.get_option_menu(self,
+                                                                            init_text=self.sentence_parser.name,
+                                                                            values=itertools.chain(
+                                                                                loaded_plugins.web_sent_parsers.loaded,
+                                                                                [f"[{parser_types.CHAIN}] {name}" for
+                                                                                 name in
+                                                                                 self.chaining_data[
+                                                                                     "sentence_parsers"]]),
+                                                                            command=lambda parser_name:
+                                                                            self.change_sentence_parser(
+                                                                                parser_name))
+                    self.sentence_parser_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
+                                                          padx=0, pady=self.text_pady)
+
+                elif chaining_options[chain_type_option_menu["text"]] == "image_parsers":
+                    self.image_parser_option_menu.destroy()
+                    self.image_parser_option_menu = self.get_option_menu(self,
+                                                                         init_text=self.image_parser.name,
+                                                                         values=itertools.chain(
+                                                                             self.image_word_parsers_names,
+                                                                             [f"[{parser_types.CHAIN}] {name}" for name
+                                                                              in
+                                                                              self.chaining_data["image_parsers"]]),
+                                                                         command=lambda parser_name:
+                                                                         self.change_image_parser(parser_name))
+                    self.image_parser_option_menu.grid(row=3, column=3, columnspan=4, sticky="news",
+                                                       padx=0, pady=self.text_pady)
+
             def do_popup(event):
                 if not existing_chains_treeview.focus():
                     return
 
-                def remove_option(option: str):
-                    self.chaining_data[chaining_options[chain_type_option_menu["text"]]].pop(option)
-                    if chaining_options[chain_type_option_menu["text"]] == "sentence_parsers":
-                        self.sentence_parser_option_menu.destroy()
-                        self.sentence_parser_option_menu = self.get_option_menu(self,
-                                                                                init_text=self.sentence_parser.name,
-                                                                                values=itertools.chain(
-                                                                                    loaded_plugins.web_sent_parsers.loaded,
-                                                                                    [f"[{parser_types.CHAIN}] {name}" for name in
-                                                                                     self.chaining_data[
-                                                                                         "sentence_parsers"]]),
-                                                                                command=lambda parser_name:
-                                                                                self.change_sentence_parser(
-                                                                                    parser_name))
-                        self.sentence_parser_option_menu.grid(row=5, column=3, columnspan=4, sticky="news", 
-                                                              padx=0, pady=self.text_pady)
-                        
-                    elif chaining_options[chain_type_option_menu["text"]] == "image_parsers":
-                        self.image_parser_option_menu.destroy()
-                        self.image_parser_option_menu = self.get_option_menu(self,
-                                                                             init_text=self.image_parser.name,
-                                                                             values=itertools.chain(
-                                                                                 self.image_word_parsers_names,
-                                                                                 [f"[{parser_types.CHAIN}] {name}" for name in
-                                                                                  self.chaining_data["image_parsers"]]),
-                                                                             command=lambda parser_name:
-                                                                             self.change_image_parser(parser_name))
-                        self.image_parser_option_menu.grid(row=3, column=3, columnspan=4, sticky="news",
-                                                           padx=0, pady=self.text_pady)
 
                 def edit_selected_chain():
                     selected_item_index = existing_chains_treeview.focus()
@@ -418,14 +421,9 @@ saving_image_height
                     chain_name, _ = existing_chains_treeview.item(selected_item_index)["values"]
                     chain_data = self.chaining_data[chaining_options[chain_type_option_menu["text"]]][chain_name]
 
-                    def replace_current_row(new_chain_name: str, chain: list[str]):
-                        remove_option(str(chain_name))
-                        existing_chains_treeview.set(selected_item_index, "#1", value=new_chain_name)
-                        existing_chains_treeview.set(selected_item_index, "#2", value="->".join(chain))
-
                     build_chain(chain_name=chain_name,
                                 initial_chain=chain_data["chain"],
-                                treeview_insertion=replace_current_row)
+                                edit_mode=True)
 
                 def remove_selected_chain():
                     selected_item_index = existing_chains_treeview.focus()
@@ -459,7 +457,7 @@ saving_image_height
 
             def build_chain(chain_name: str,
                             initial_chain: list[str],
-                            treeview_insertion: Callable[[str, list[str]], None]):
+                            edit_mode: bool = False):
                 pady = 2
 
                 chain_type = chaining_options[chain_type_option_menu["text"]]
@@ -615,26 +613,26 @@ saving_image_height
                 command_frame.grid(row=2, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 10))
 
                 def save_chain_sequence():
-                    chain_name = chain_name_entry.get().strip()
-                    if not chain_name:
+                    new_chain_name = chain_name_entry.get().strip()
+                    if not new_chain_name:
                         messagebox.showerror(title=self.lang_pack.error_title, 
                                              message=self.lang_pack.chain_management_empty_chain_name_entry_message)
                         return 
-                    if self.chaining_data[chain_type].get(chain_name) is not None:
+                    if not edit_mode and self.chaining_data[chain_type].get(new_chain_name) is not None:
                         messagebox.showerror(title=self.lang_pack.error_title,
                                              message=self.lang_pack.chain_management_chain_already_exists_message)
                         return
 
                     chain = [item.name for item in chain_data]
-                    self.chaining_data[chain_type][chain_name] = {}
-                    self.chaining_data[chain_type][chain_name]["config_name"] = f"{remove_special_chars(chain_name)}.json"
-                    self.chaining_data[chain_type][chain_name]["chain"] = chain
+                    self.chaining_data[chain_type][new_chain_name] = {}
+                    self.chaining_data[chain_type][new_chain_name]["config_name"] = f"{remove_special_chars(new_chain_name)}.json"
+                    self.chaining_data[chain_type][new_chain_name]["chain"] = chain
 
                     def set_text(opt_menu, text: str, command: Callable[[], None]):
                         opt_menu.setvar(opt_menu.cget("textvariable"), value=text)
                         command()
 
-                    chain_label = f"[{parser_types.CHAIN}] {chain_name}"
+                    chain_label = f"[{parser_types.CHAIN}] {new_chain_name}"
                     if chain_type == "sentence_parsers":
                         self.sentence_parser_option_menu["menu"]\
                             .add_command(label=chain_label,
@@ -651,7 +649,16 @@ saving_image_height
                                                          text=chain_label,
                                                          command=lambda parser_name=chain_label:
                                                          self.change_image_parser(parser_name)))
-                    treeview_insertion(chain_name, chain)
+
+                    if edit_mode:
+                        if chain_name != new_chain_name:
+                            remove_option(str(chain_name))
+                        selected_item_index = existing_chains_treeview.focus()
+                        existing_chains_treeview.set(selected_item_index, "#1", value=new_chain_name)
+                        existing_chains_treeview.set(selected_item_index, "#2", value="->".join(chain))
+                    else:
+                        existing_chains_treeview.insert("", "end", values=(new_chain_name, "->".join(chain)))
+
                     chaining_window.destroy()
 
                 save_chain_button = self.Button(
@@ -666,15 +673,11 @@ saving_image_height
                     command=chaining_window.destroy)
                 close_chain_building_button.pack(side="right", padx=5, pady=5)
 
-            def insert_at_the_end(chain_name: str, chain: list[str]):
-                existing_chains_treeview.insert("", "end", values=(chain_name, "->".join(chain)))
-
             call_chain_building_button = self.Button(
                 command_panel,
                 text=self.lang_pack.chain_management_call_chain_building_button_text,
                 command=lambda: build_chain(chain_name="",
-                                            initial_chain=[],
-                                            treeview_insertion=insert_at_the_end),
+                                            initial_chain=[]),
                                             state="disabled")
             call_chain_building_button.pack(side="right", padx=10, pady=(0, 10))
 
@@ -1903,8 +1906,8 @@ saving_image_height
 
         word = self.word
         if self.audio_getter is not None:
-            type2playsound_corr = {parser_types.WEB:   web_playsound,
-                                   parser_types.LOCAL: local_playsound}
+            type2playsound_corr = {parser_types.WEB   : web_playsound,
+                                   parser_types.LOCAL : local_playsound}
 
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
             if audio_getter_type == parser_types.WEB:

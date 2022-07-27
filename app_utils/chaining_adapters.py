@@ -101,7 +101,7 @@ class CardGeneratorsChain:
             word_filter: Callable[[str], bool],
             additional_filter: Callable[[Card], bool] = None) -> list[Card]:
         current_result = []
-        for enum_name, generator in self.enum_name2generator:
+        for enum_name, generator in self.enum_name2generator.items():
             self.config.update_config(enum_name)
             if (current_result := generator.get(query, word_filter, additional_filter)):
                 break
@@ -183,7 +183,7 @@ class AudioGettersChain:
         parser_configs = []
         for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
             if parser_name == "default":
-                parser_type = "default"
+                parser_type = "web"
                 self.enum_name2parsers_data[enum_name] = (parser_type, None)
                 continue
 
@@ -210,7 +210,7 @@ class AudioGettersChain:
         error_message = ""
         parser_type = parser_types.WEB  # arbitrary type
         for enum_name, (parser_type, audio_getting_function) in self.enum_name2parsers_data.items():
-            if parser_type == "default":
+            if audio_getting_function is None:
                 source = additional_info = card_data.get(FIELDS.audio_links, [])
                 error_message = ""
             else:

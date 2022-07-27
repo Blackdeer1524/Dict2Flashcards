@@ -471,6 +471,7 @@ saving_image_height
                 def add_to_chain(placing_name: str):
                     new_chain_ind = len(chain_data) * 3
                     a = self.Label(built_chain_inner_frame, text=placing_name, justify='center')
+                    built_chain_main_frame.bind_scroll_wheel(a)
 
                     def place_widget_to_chain(item: ChainData, next_3i: int):
                         item.label.grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
@@ -494,10 +495,6 @@ saving_image_height
                             item.down_button.configure(
                                 command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
                                                                         direction=1))
-                        # built_chain_inner_frame.update_idletasks()
-                        # built_chain_main_frame.update_idletasks()
-                        built_chain_main_frame._resize_interior()
-                        built_chain_main_frame._update_scroll_region(None)
 
                     def swap_places(current_ind: int, direction: int):
                         current = chain_data[current_ind]
@@ -532,9 +529,12 @@ saving_image_height
                             chain_data[i].down_button.grid(row=3 * i + 2, column=1, sticky="news", pady=(0, pady))
 
                     up_button = self.Button(built_chain_inner_frame, text="∧")
+                    built_chain_main_frame.bind_scroll_wheel(up_button)
                     deselect_button = self.Button(built_chain_inner_frame, text="✕",
                                        command=lambda ind=new_chain_ind: remove_from_chain(ind // 3))
+                    built_chain_main_frame.bind_scroll_wheel(deselect_button)
                     down_button = self.Button(built_chain_inner_frame, text="∨")
+                    built_chain_main_frame.bind_scroll_wheel(down_button)
 
                     if chain_data:
                         chain_data[-1].down_button["state"] = "normal"
@@ -563,10 +563,10 @@ saving_image_height
                 
                 choosing_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical")
                 choosing_main_frame.grid(row=1, column=0, sticky="news", padx=10, pady=(0, 10))
-                choosing_main_frame.bind_scroll_wheel(choosing_main_frame)
                 choosing_inner_frame = choosing_main_frame.display_widget(self.Frame,
                                                                   fit_width=True,
                                                                   bg="grey")
+                choosing_main_frame.bind_scroll_wheel(choosing_inner_frame)
                 choosing_inner_frame.grid_columnconfigure(0, weight=1)
 
                 choosing_widgets_data: list[ChoosingData] = []
@@ -593,17 +593,19 @@ saving_image_height
                 for i, parser_name in enumerate(displaying_options):
                     a = self.Label(choosing_inner_frame, text=parser_name, justify='center')
                     a.grid(row=i, column=0, sticky="news", pady=pady)
+                    choosing_main_frame.bind_scroll_wheel(a)
                     b = self.Button(choosing_inner_frame, text=">",
                                     command=lambda name=parser_name: add_to_chain(name))
                     b.grid(row=i, column=1, sticky="news", pady=pady)
+                    choosing_main_frame.bind_scroll_wheel(b)
                     choosing_widgets_data.append(ChoosingData(name=parser_name, label=a, select_button=b))
 
                 built_chain_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical")
                 built_chain_main_frame.grid(row=1, column=1, sticky="news", padx=10, pady=(0, 10))
-                built_chain_main_frame.bind_scroll_wheel(built_chain_main_frame)
                 built_chain_inner_frame = built_chain_main_frame.display_widget(self.Frame,
                                                                   fit_width=True,
                                                                   bg="grey")
+                built_chain_main_frame.bind_scroll_wheel(built_chain_inner_frame)
                 built_chain_inner_frame.grid_columnconfigure(0, weight=1)
 
                 for name in initial_chain:
@@ -1467,7 +1469,7 @@ saving_image_height
         
         conf_sf = ScrolledFrame(text_pane_win, scrollbars="both")
         text_pane_win.add(conf_sf, stretch="always", sticky="news")
-        conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True)
+        conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
         conf_sf.bind_scroll_wheel(conf_inner_frame)
         
         conf_text = self.Text(conf_inner_frame)
@@ -1479,7 +1481,7 @@ saving_image_height
         
         docs_sf = ScrolledFrame(text_pane_win, scrollbars="both")
         docs_pane_win.add(docs_sf, stretch="always", sticky="news")
-        docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True)
+        docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
         docs_sf.bind_scroll_wheel(docs_inner_frame)
         
         conf_docs_label = self.Text(docs_inner_frame)

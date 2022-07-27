@@ -1398,10 +1398,10 @@ saving_image_height
                 right = self.Button(rotate_window, text=">", command=lambda: rotate(1))
                 right.grid(row=0, column=2, sticky="we")
 
-                save_chain_button_text = self.Button(rotate_window,
-                                               text=self.lang_pack.find_dialog_save_chain_button_text,
+                end_rotation_button = self.Button(rotate_window,
+                                               text=self.lang_pack.find_dialog_end_rotation_button_text,
                                                command=lambda: rotate_window.destroy())
-                save_chain_button_text.grid(row=0, column=1, sticky="we")
+                end_rotation_button.grid(row=0, column=1, sticky="we")
                 spawn_window_in_center(self, rotate_window)
                 rotate_window.resizable(0, 0)
                 rotate_window.grab_set()

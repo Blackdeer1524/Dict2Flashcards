@@ -168,7 +168,7 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
         # find dialog
         object.__setattr__(self, "find_dialog_empty_query_message", source_module.find_dialog_empty_query_message)
         object.__setattr__(self, "find_dialog_wrong_move_message", source_module.find_dialog_wrong_move_message)
-        object.__setattr__(self, "find_dialog_done_button_text", source_module.find_dialog_done_button_text)
+        object.__setattr__(self, "find_dialog_end_rotation_button_text", source_module.find_dialog_end_rotation_button_text)
         object.__setattr__(self, "find_dialog_nothing_found_message", source_module.find_dialog_nothing_found_message)
         object.__setattr__(self, "find_dialog_find_window_title", source_module.find_dialog_find_window_title)
         object.__setattr__(self, "find_dialog_find_button_text", source_module.find_dialog_find_button_text)

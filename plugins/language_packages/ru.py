@@ -329,7 +329,7 @@ add_word_start_parsing_button_text = "Добавить"
 # find dialog
 find_dialog_empty_query_message = "Пустой запрос!"
 find_dialog_wrong_move_message = "Неверно задан переход!"
-find_dialog_done_button_text = "Готово"
+find_dialog_end_rotation_button_text = "Готово"
 find_dialog_nothing_found_message = "Ничего не найдено!"
 find_dialog_find_window_title = "Перейти"
 find_dialog_find_button_text = "Перейти"

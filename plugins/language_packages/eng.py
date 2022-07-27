@@ -329,7 +329,7 @@ add_word_start_parsing_button_text = "Add"
 # find dialog
 find_dialog_empty_query_message = "Empty query!"
 find_dialog_wrong_move_message = "Wrong move expression!"
-find_dialog_done_button_text = "Done"
+find_dialog_end_rotation_button_text = "Done"
 find_dialog_nothing_found_message = "Nothing found!"
 find_dialog_find_window_title = "Move"
 find_dialog_find_button_text = "Move"

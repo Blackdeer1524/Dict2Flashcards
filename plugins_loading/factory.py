@@ -161,16 +161,6 @@ class PluginFactory:
             raise UnknownPluginName(f"Unknown theme: {name}")
         return theme
 
-    # def get_web_word_parser(self, name: str) -> WebWordParserContainer:
-    #     if (web_parser := self.web_word_parsers.get(name)) is None:
-    #         raise UnknownPluginName(f"Unknown WebCardGenerator: {name}")
-    #     return web_parser
-    #
-    # def get_local_word_parser(self, name: str) -> LocalWordParserContainer:
-    #     if (local_parser := self.local_word_parsers.get(name)) is None:
-    #         raise UnknownPluginName(f"Unknown LocalCardGenerator: {name}")
-    #     return local_parser
-
     def get_web_card_generator(self, name: str) -> WebCardGenerator:
         if (web_parser := self.web_word_parsers.get(name)) is None:
             raise UnknownPluginName(f"Unknown web word parser: {name}")

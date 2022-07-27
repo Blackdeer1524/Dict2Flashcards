@@ -90,7 +90,7 @@ class CardGeneratorsChain:
             self.enum_name2generator[enum_parser_name] = generator
             parser_configs.append(generator.config)
             scheme_docs_list.append("{}\n{}".format(parser_name, generator.scheme_docs.replace("\n", "\n |\t")))
-        self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "word_parsers",
+        self.config = ChainConfig(config_dir=CHAIN_WORD_PARSERS_DATA_DIR,
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
@@ -119,7 +119,7 @@ class SentenceParsersChain:
             plugin_container = loaded_plugins.get_sentence_parser(parser_name)
             self.enum_name2get_sentence_batch_functions[enum_name] = plugin_container.get_sentence_batch
             parser_configs.append(plugin_container.config)
-        self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "sentence_parsers",
+        self.config = ChainConfig(config_dir=CHAIN_SENTENCE_PARSERS_DATA_DIR,
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
@@ -151,7 +151,7 @@ class ImageParsersChain:
             self.enum_name2url_getting_functions[enum_name] = parser.get_image_links
             parser_configs.append(parser.config)
 
-        self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "image_parsers",
+        self.config = ChainConfig(config_dir=CHAIN_IMAGE_PARSERS_DATA_DIR,
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
@@ -199,7 +199,7 @@ class AudioGettersChain:
             self.enum_name2parsers_data[enum_name] = (parser_type, getter.get_audios)
             parser_configs.append(getter.config)
 
-        self.config = ChainConfig(config_dir=CHAIN_DATA_DIR / "configs" / "image_parsers",
+        self.config = ChainConfig(config_dir=CHAIN_AUDIO_GETTERS_DATA_DIR,
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(parser_name, config) for parser_name, config
                                                      in zip(names, parser_configs)])

@@ -333,7 +333,6 @@ saving_image_height
         def chain_dialog():
             chain_type_window: Toplevel = self.Toplevel(self)
             chain_type_window.grid_columnconfigure(0, weight=1)
-            chain_type_window.grab_set()
             chain_type_window.title(self.lang_pack.chain_management_menu_label)
 
             chaining_options = {self.lang_pack.chain_management_word_parsers_option     : "word_parsers",
@@ -546,10 +545,11 @@ saving_image_height
                                                 down_button=down_button))
                     place_widget_to_chain(chain_data[-1], new_chain_ind)
 
-                chaining_window = self.Toplevel(self)
+                chaining_window = self.Toplevel(chain_type_window)
                 chaining_window.title(self.lang_pack.chain_management_menu_label)
                 chaining_window.geometry(f"{self.winfo_screenwidth() // 3}x{self.winfo_screenheight() // 3}")
                 chaining_window.grab_set()
+
                 chaining_window.grid_columnconfigure(0, weight=1)
                 chaining_window.grid_columnconfigure(1, weight=1)
                 chaining_window.grid_rowconfigure(1, weight=1)

@@ -125,11 +125,23 @@ class App(Tk):
         self.card_processor = loaded_plugins.get_card_processor("Anki")
         self.dict_card_data: dict = {}
         self.sentence_batch_size = 5
-        self.sentence_parser = loaded_plugins.get_sentence_parser(self.configurations["scrappers"]["sentence"]["name"])
+
+        if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
+            self.sentence_parser = loaded_plugins.get_sentence_parser(self.configurations["scrappers"]["sentence"]["name"])
+        elif self.configurations["scrappers"]["sentence"]["type"] == parser_types.CHAIN:
+            self.sentence_parser = SentenceParsersChain(
+                name=self.configurations["scrappers"]["sentence"]["name"],
+                chain_data=self.chaining_data["sentence_parsers"][self.configurations["scrappers"]["sentence"]["name"]])
+
         self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch,
                                                 sentence_batch_size=self.sentence_batch_size)
 
-        self.image_parser = loaded_plugins.get_image_parser(self.configurations["scrappers"]["image"]["name"])
+        if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
+            self.image_parser = loaded_plugins.get_image_parser(self.configurations["scrappers"]["image"]["name"])
+        else:
+            self.image_parser = ImageParsersChain(
+                name=self.configurations["scrappers"]["image"]["name"],
+                chain_data=self.chaining_data["image_parsers"][self.configurations["scrappers"]["image"]["name"]])
 
         if (audio_getter_name := self.configurations["scrappers"]["audio"]["name"]):
             if self.configurations["scrappers"]["audio"]["type"] == parser_types.LOCAL:
@@ -381,8 +393,13 @@ saving_image_height
                 self.chaining_data[chaining_options[chain_type_option_menu["text"]]].pop(option)
                 if chaining_options[chain_type_option_menu["text"]] == "sentence_parsers":
                     self.sentence_parser_option_menu.destroy()
+                    if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
+                        typed_sentence_parser_name = self.sentence_parser.name
+                    else:
+                        typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.sentence_parser.name}"
+
                     self.sentence_parser_option_menu = self.get_option_menu(self,
-                                                                            init_text=self.sentence_parser.name,
+                                                                            init_text=typed_sentence_parser_name,
                                                                             values=itertools.chain(
                                                                                 loaded_plugins.web_sent_parsers.loaded,
                                                                                 [f"[{parser_types.CHAIN}] {name}" for
@@ -397,8 +414,13 @@ saving_image_height
 
                 elif chaining_options[chain_type_option_menu["text"]] == "image_parsers":
                     self.image_parser_option_menu.destroy()
+                    if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
+                        typed_image_parser_name = self.image_parser.name
+                    else:
+                        typed_image_parser_name = f"[{parser_types.CHAIN}] {self.image_parser.name}"
+
                     self.image_parser_option_menu = self.get_option_menu(self,
-                                                                         init_text=self.image_parser.name,
+                                                                         init_text=typed_image_parser_name,
                                                                          values=itertools.chain(
                                                                              self.image_word_parsers_names,
                                                                              [f"[{parser_types.CHAIN}] {name}" for name
@@ -704,8 +726,12 @@ saving_image_height
 
         self.image_word_parsers_names = loaded_plugins.image_parsers.loaded
 
+        if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
+            typed_image_parser_name = self.image_parser.name
+        else:
+            typed_image_parser_name = f"[{parser_types.CHAIN}] {self.image_parser.name}"
         self.image_parser_option_menu = self.get_option_menu(self,
-                                                             init_text=self.image_parser.name,
+                                                             init_text=typed_image_parser_name,
                                                              values=itertools.chain(
                                                                  self.image_word_parsers_names,
                                                                  [f"[{parser_types.CHAIN}] {name}" for name in self.chaining_data["image_parsers"]]),
@@ -724,8 +750,13 @@ saving_image_height
                                                 text=self.sentence_button_text,
                                                 command=self.replace_sentences)
 
+        if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
+            typed_sentence_parser_name = self.sentence_parser.name
+        else:
+            typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.sentence_parser.name}"
+
         self.sentence_parser_option_menu = self.get_option_menu(self,
-                                                                init_text=self.sentence_parser.name,
+                                                                init_text=typed_sentence_parser_name,
                                                                 values=itertools.chain(
                                                                     loaded_plugins.web_sent_parsers.loaded,
                                                                     [f"[{parser_types.CHAIN}] {name}" for name in self.chaining_data["sentence_parsers"]]),
@@ -918,9 +949,11 @@ saving_image_height
                     "name": ("cambridge", [str], [])
                 },
                 "sentence": {
+                    "type": (parser_types.WEB, [str], [parser_types.WEB, parser_types.CHAIN]),
                     "name": ("sentencedict", [str], [])
                 },
                 "image": {
+                    "type": (parser_types.WEB, [str], [parser_types.WEB, parser_types.CHAIN]),
                     "name": ("google", [str], [])
                 },
                 "audio": {
@@ -1747,12 +1780,15 @@ saving_image_height
 
     @error_handler(show_errors)
     def change_image_parser(self, given_image_parser_name: str):
-        self.configurations["scrappers"]["image"]["name"] = given_image_parser_name
         if not given_image_parser_name.startswith(f"[{parser_types.CHAIN}]"):
+            self.configurations["scrappers"]["image"]["type"] = parser_types.WEB
+            self.configurations["scrappers"]["image"]["name"] = given_image_parser_name
             self.image_parser = loaded_plugins.get_image_parser(given_image_parser_name)
             return
 
         given_image_parser_name = given_image_parser_name[8:]
+        self.configurations["scrappers"]["image"]["type"] = parser_types.CHAIN
+        self.configurations["scrappers"]["image"]["name"] = given_image_parser_name
         chain_data = self.chaining_data["image_parsers"][given_image_parser_name]
         self.image_parser = ImageParsersChain(name=given_image_parser_name,
                                               chain_data=chain_data)
@@ -1760,11 +1796,13 @@ saving_image_height
     @error_handler(show_errors)
     def change_sentence_parser(self, given_sentence_parser_name: str):
         if given_sentence_parser_name.startswith(f"[{parser_types.CHAIN}]"):
+            self.configurations["scrappers"]["image"]["type"] = parser_types.CHAIN
             given_sentence_parser_name = given_sentence_parser_name[8:]
             self.sentence_parser = SentenceParsersChain(
                 name=given_sentence_parser_name,
                 chain_data=self.chaining_data["sentence_parsers"][given_sentence_parser_name])
         else:
+            self.configurations["scrappers"]["image"]["type"] = parser_types.WEB
             self.sentence_parser = loaded_plugins.get_sentence_parser(given_sentence_parser_name)
         self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch,
                                                 sentence_batch_size=self.sentence_batch_size)

@@ -46,7 +46,7 @@ exit_menu_label = "Exit"
 
 # widgets
 browse_button_text = "Find in browser"
-configure_word_parser_button_text = "Configure dictionary"
+configure_dictionary_button_text = "Configure dictionary"
 find_image_button_normal_text = "Add image"
 find_image_button_image_link_encountered_postfix = "★"
 sentence_button_text = "Add sentences"

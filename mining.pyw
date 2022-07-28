@@ -717,9 +717,9 @@ saving_image_height
         self.browse_button = self.Button(self,
                                          text=self.lang_pack.browse_button_text,
                                          command=self.web_search_command)
-        self.configure_word_parser_button = self.Button(self,
-                                                        text=self.lang_pack.configure_word_parser_button_text,
-                                                        command=self.configure_dictionary)
+        self.configure_dictionary_button = self.Button(self,
+                                                       text=self.lang_pack.configure_dictionary_button_text,
+                                                       command=self.configure_dictionary)
         self.find_image_button = self.Button(self,
                                              text=self.lang_pack.find_image_button_normal_text,
                                              command=self.start_image_search)
@@ -818,7 +818,7 @@ saving_image_height
         self.text_padx = 10
         self.text_pady = 2
         self.browse_button.grid(row=0, column=0, padx=(self.text_padx, 0), pady=(self.text_pady, 0), sticky="news", columnspan=3)
-        self.configure_word_parser_button.grid(row=0, column=3, padx=(0, self.text_padx), pady=(self.text_pady, 0),
+        self.configure_dictionary_button.grid(row=0, column=3, padx=(0, self.text_padx), pady=(self.text_pady, 0),
                                             columnspan=5, sticky="news")
 
         self.word_text.grid(row=1, column=0, padx=self.text_padx, pady=self.text_pady, columnspan=8, sticky="news")
@@ -1648,6 +1648,7 @@ saving_image_height
 
         # dict
         dict_configuration_window = self.Toplevel(self)
+        dict_configuration_window.title(self.lang_pack.configure_dictionary_button_text)
         dict_configuration_window.grid_columnconfigure(1, weight=1)
         dict_configuration_window.withdraw()
 
@@ -1726,7 +1727,7 @@ saving_image_height
         choose_audio_option.grid(row=1, column=1, sticky="news")
 
         configure_audio_getter_button = self.Button(dict_configuration_window,
-                                                   text="</>")
+                                                    text="</>")
         if self.audio_getter is not None:
             configure_audio_getter_button["state"] = "normal"
             configure_audio_getter_button["command"] = \
@@ -1751,9 +1752,9 @@ saving_image_height
             self.card_processor = loaded_plugins.get_card_processor(name)
 
         card_processor_option = self.get_option_menu(dict_configuration_window,
-                                                init_text=self.card_processor.name,
-                                                values=loaded_plugins.card_processors.loaded,
-                                                command=lambda processor: choose_card_processor(processor))
+                                                     init_text=self.card_processor.name,
+                                                     values=loaded_plugins.card_processors.loaded,
+                                                     command=lambda processor: choose_card_processor(processor))
         card_processor_option.grid(row=2, column=1, sticky="news")
 
         format_processor_label = self.Label(dict_configuration_window,
@@ -1766,9 +1767,9 @@ saving_image_height
             self.deck_saver = loaded_plugins.get_deck_saving_formats(name)
 
         format_processor_option = self.get_option_menu(dict_configuration_window,
-                                                  init_text=self.deck_saver.name,
-                                                  values=loaded_plugins.deck_saving_formats.loaded,
-                                                  command=lambda format: choose_format_processor(format))
+                                                       init_text=self.deck_saver.name,
+                                                       values=loaded_plugins.deck_saving_formats.loaded,
+                                                       command=lambda format: choose_format_processor(format))
         format_processor_option.grid(row=3, column=1, sticky="news")
 
         dict_configuration_window.bind("<Escape>", lambda event: dict_configuration_window.destroy())

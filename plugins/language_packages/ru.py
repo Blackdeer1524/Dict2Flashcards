@@ -46,7 +46,7 @@ exit_menu_label = "Выход"
 
 # widgets
 browse_button_text = "Найти в браузере"
-configure_word_parser_button_text = "Настроить словарь"
+configure_dictionary_button_text = "Настроить словарь"
 find_image_button_normal_text = "Добавить изображение"
 find_image_button_image_link_encountered_postfix = "★"
 sentence_button_text = "Добавить предложения"

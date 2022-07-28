@@ -55,7 +55,7 @@ class LanguagePackageInterface(Protocol):
 
     # widgets
     browse_button_text: str
-    configure_word_parser_button_text: str
+    configure_dictionary_button_text: str
     find_image_button_normal_text: str
     find_image_button_image_link_encountered_postfix: str
     sentence_button_text: str

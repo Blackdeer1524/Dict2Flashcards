@@ -93,8 +93,8 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
 
         # widgets
         object.__setattr__(self, "browse_button_text", source_module.browse_button_text)
-        object.__setattr__(self, "configure_word_parser_button_text",
-                           source_module.configure_word_parser_button_text)
+        object.__setattr__(self, "configure_dictionary_button_text",
+                           source_module.configure_dictionary_button_text)
         object.__setattr__(self, "find_image_button_normal_text", source_module.find_image_button_normal_text)
         object.__setattr__(self, "find_image_button_image_link_encountered_postfix",
                            source_module.find_image_button_image_link_encountered_postfix)

@@ -26,8 +26,6 @@ def get_enumerated_names(names: Iterable[str]) -> list[str]:
 
 
 class ChainConfig(LoadableConfig):
-    _MULTIPLE_NAMES_POSTFIX_REGEX = re.compile(r".*\[\d+]$")
-
     def __init__(self,
                  config_dir: str,
                  config_name: str,
@@ -41,11 +39,11 @@ class ChainConfig(LoadableConfig):
             self.enum_name2config[enum_name] = config
             validation_scheme[enum_name] = config.validation_scheme
             if id(config) not in seen_config_ids:
-                docs_list.append("{}:\n{}".format(name, config.docs.replace('\n', '\n |\t')))
+                docs_list.append("{}:\n{}".format(name, config.docs.replace("\n", "\n" + " " * 4)))
                 seen_config_ids.add(id(config))
             config.save()
 
-        docs = "\n".join(docs_list)
+        docs = "\n\n".join(docs_list)
         super(ChainConfig, self).__init__(validation_scheme=validation_scheme,  # type: ignore
                                           docs=docs,
                                           config_location=config_dir,
@@ -57,8 +55,7 @@ class ChainConfig(LoadableConfig):
             config.data = self[enum_name]
 
     def update_config(self, enum_name: str):
-        if re.match(self._MULTIPLE_NAMES_POSTFIX_REGEX, enum_name):
-            self.enum_name2config[enum_name].data = self[enum_name]
+        self.enum_name2config[enum_name].data = self[enum_name]
 
     def load(self) -> Optional[LoadableConfig.SchemeCheckResults]:
         errors = super(ChainConfig, self).load()

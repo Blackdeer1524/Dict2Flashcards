@@ -1506,25 +1506,25 @@ saving_image_height
         conf_sf = ScrolledFrame(text_pane_win, scrollbars="both")
         text_pane_win.add(conf_sf, stretch="always", sticky="news")
         conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
-        conf_sf.bind_scroll_wheel(conf_inner_frame)
         
         conf_text = self.Text(conf_inner_frame)
         conf_text.insert(1.0, json.dumps(plugin_config.data, indent=4))
         conf_text.pack(fill="both", expand=True)
-
+        conf_sf.bind_scroll_wheel(conf_text)
+        
         docs_pane_win = PanedWindow(text_pane_win, orient="vertical",
                                      showhandle=True, **self.theme.frame_cfg)
         
         docs_sf = ScrolledFrame(text_pane_win, scrollbars="both")
         docs_pane_win.add(docs_sf, stretch="always", sticky="news")
         docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
-        docs_sf.bind_scroll_wheel(docs_inner_frame)
         
-        conf_docs_label = self.Text(docs_inner_frame)
-        conf_docs_label.insert(1.0, plugin_config.docs)
-        conf_docs_label["state"] = "disabled"
-        conf_docs_label.pack(fill="both", expand=True)
-
+        conf_docs_text = self.Text(docs_inner_frame)
+        conf_docs_text.insert(1.0, plugin_config.docs)
+        conf_docs_text["state"] = "disabled"
+        conf_docs_text.pack(fill="both", expand=True)
+        docs_sf.bind_scroll_wheel(conf_docs_text)
+        
         text_pane_win.add(docs_pane_win, stretch="always")
 
         @error_handler(self.show_errors)

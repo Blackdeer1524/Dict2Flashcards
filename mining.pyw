@@ -2,7 +2,7 @@ import copy
 import itertools
 import json
 import re
-import tkinter
+import time
 import webbrowser
 from collections import namedtuple
 from datetime import datetime
@@ -848,8 +848,17 @@ saving_image_height
         self.text_and_audio_window.add(self.text_widgets_frame, stretch="always")
         self.text_widgets_frame.grid_columnconfigure(0, weight=1)
 
+        OPTIMAL_TEXT_HEIGHT = 80
+        DELAY = 0.1  # in seconds
+        last_call_time = DELAY
+
         def text_frame_resize():
-            OPTIMAL_TEXT_HEIGHT = 80
+            nonlocal DELAY, last_call_time, OPTIMAL_TEXT_HEIGHT
+
+            if (call_time := time.time()) - last_call_time < DELAY:
+                return
+
+            last_call_time = call_time
             self.text_widgets_frame.update()
             while True:
                 current_frame_height = self.text_widgets_frame.winfo_height() - (len(self.text_frames) + 1) // 2 * self.text_pady * 2
@@ -863,7 +872,6 @@ saving_image_height
                 next_index = len(self.text_frames) + 1
                 current_frame_height = self.text_widgets_frame.winfo_height() - next_index // 2 * self.text_pady * 2
                 if current_frame_height < next_index * OPTIMAL_TEXT_HEIGHT:
-                    self.after(100, text_frame_resize)
                     return
 
                 c_pady = self.text_pady if next_index % 2 else 0
@@ -889,12 +897,12 @@ saving_image_height
                 self.text_frames.append(choose_frame)
                 self.sent_button_list.append(choose_frame.choose_button)
 
+        self.text_widgets_frame.bind("<Configure>", lambda event: text_frame_resize())
         self.sound_sf = ScrolledFrame(self.text_and_audio_window, scrollbars="vertical", height=150)
-
+        self.text_and_audio_window.add(self.sound_sf, stretch="always")
         sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
         # sound_inner_frame.
 
-        self.text_and_audio_window.add(self.sound_sf, stretch="never")
 
         self.sound_button = self.Button(self,
                                         text=self.lang_pack.sound_button_text,

@@ -850,7 +850,7 @@ saving_image_height
 
         OPTIMAL_TEXT_HEIGHT = 80
         DELAY = 0.1  # in seconds
-        last_call_time = DELAY
+        last_call_time = -DELAY
 
         def text_frame_resize():
             nonlocal DELAY, last_call_time, OPTIMAL_TEXT_HEIGHT
@@ -899,10 +899,9 @@ saving_image_height
 
         self.text_widgets_frame.bind("<Configure>", lambda event: text_frame_resize())
         self.sound_sf = ScrolledFrame(self.text_and_audio_window, scrollbars="vertical", height=150)
-        self.text_and_audio_window.add(self.sound_sf, stretch="always")
+        self.text_and_audio_window.add(self.sound_sf, stretch="never")
         sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
         # sound_inner_frame.
-
 
         self.sound_button = self.Button(self,
                                         text=self.lang_pack.sound_button_text,

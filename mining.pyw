@@ -720,9 +720,6 @@ saving_image_height
         self.configure_dictionary_button = self.Button(self,
                                                        text=self.lang_pack.configure_dictionary_button_text,
                                                        command=self.configure_dictionary)
-        self.find_image_button = self.Button(self,
-                                             text=self.lang_pack.find_image_button_normal_text,
-                                             command=self.start_image_search)
 
         self.image_word_parsers_names = loaded_plugins.image_parsers.loaded
 
@@ -730,25 +727,22 @@ saving_image_height
             typed_image_parser_name = self.image_parser.name
         else:
             typed_image_parser_name = f"[{parser_types.CHAIN}] {self.image_parser.name}"
-        self.image_parser_option_menu = self.get_option_menu(self,
-                                                             init_text=typed_image_parser_name,
-                                                             values=itertools.chain(
-                                                                 self.image_word_parsers_names,
-                                                                 [f"[{parser_types.CHAIN}] {name}" for name in self.chaining_data["image_parsers"]]),
-                                                             command=lambda parser_name:
-                                                             self.change_image_parser(parser_name))
-        self.configure_image_parser_button = self.Button(self,
-                                                         text="</>",
-                                                         command=lambda: self.call_configuration_window(
-                                                             plugin_name=self.image_parser.name,
-                                                             plugin_config=self.image_parser.config,
-                                                             plugin_load_function=lambda conf: conf.load(),
-                                                             saving_action=lambda conf: conf.save()))
+        # self.image_parser_option_menu = self.get_option_menu(self,
+        #                                                      init_text=typed_image_parser_name,
+        #                                                      values=itertools.chain(
+        #                                                          self.image_word_parsers_names,
+        #                                                          [f"[{parser_types.CHAIN}] {name}" for name in self.chaining_data["image_parsers"]]),
+        #                                                      command=lambda parser_name:
+        #                                                      self.change_image_parser(parser_name))
+        # self.configure_image_parser_button = self.Button(self,
+        #                                                  text="</>",
+        #                                                  command=lambda: self.call_configuration_window(
+        #                                                      plugin_name=self.image_parser.name,
+        #                                                      plugin_config=self.image_parser.config,
+        #                                                      plugin_load_function=lambda conf: conf.load(),
+        #                                                      saving_action=lambda conf: conf.save()))
 
         self.sentence_button_text = self.lang_pack.sentence_button_text
-        self.add_sentences_button = self.Button(self,
-                                                text=self.sentence_button_text,
-                                                command=self.replace_sentences)
 
         if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
             typed_sentence_parser_name = self.sentence_parser.name
@@ -782,18 +776,10 @@ saving_image_height
                 self.Text(self, placeholder=f"{self.lang_pack.sentence_text_placeholder_prefix} {i + 1}"))
             self.sent_text_list[-1].fill_placeholder()
             self.sent_button_list.append(self.Button(self,
-                                                text=f"{i + 1}",
-                                                command=lambda x=i: self.choose_sentence(x),
-                                                width=button_width))
+                                         text=f"{i + 1}",
+                                         command=lambda x=i: self.choose_sentence(x),
+                                         width=button_width))
 
-        self.skip_button = self.Button(self,
-                                       text=self.lang_pack.skip_button_text,
-                                       command=self.skip_command,
-                                       width=button_width)
-        self.prev_button = self.Button(self,
-                                       text=self.lang_pack.prev_button_text,
-                                       command=lambda x=-1: self.replace_decks_pointers(x),
-                                       state="disabled", width=button_width)
         self.sound_button = self.Button(self,
                                         text=self.lang_pack.sound_button_text,
                                         command=self.play_sound,
@@ -801,10 +787,6 @@ saving_image_height
         self.anki_button = self.Button(self,
                                        text=self.lang_pack.anki_button_text,
                                        command=self.open_anki_browser,
-                                       width=button_width)
-        self.bury_button = self.Button(self,
-                                       text=self.lang_pack.bury_button_text,
-                                       command=self.bury_command,
                                        width=button_width)
 
         self.user_tags_field = self.Entry(self,
@@ -825,47 +807,111 @@ saving_image_height
 
         self.special_field.grid(row=2, column=0, padx=self.text_padx, columnspan=8, sticky="news")
 
-        self.find_image_button.grid(row=3, column=0, padx=(self.text_padx, 0), pady=(self.text_pady), sticky="news", columnspan=3)
-        self.image_parser_option_menu.grid(row=3, column=3, padx=0, pady=self.text_pady, columnspan=4,
-                                           sticky="news")
-
-        self.configure_image_parser_button.grid(row=3, column=7,
-                                                padx=(0, self.text_padx), pady=self.text_pady, sticky="news")
+        # self.image_parser_option_menu.grid(row=3, column=3, padx=0, pady=self.text_pady, columnspan=4,
+        #                                    sticky="news")
+        #
+        # self.configure_image_parser_button.grid(row=3, column=7,
+        #                                         padx=(0, self.text_padx), pady=self.text_pady, sticky="news")
 
         self.definition_text.grid(row=4, column=0, padx=self.text_padx, columnspan=8, sticky="news")
 
-        self.add_sentences_button.grid(row=5, column=0, padx=(self.text_padx, 0), pady=self.text_pady, sticky="news", columnspan=3)
-        self.sentence_parser_option_menu.grid(row=5, column=3, padx=0, pady=self.text_pady, columnspan=4,
-                                              sticky="news")
-        self.configure_sentence_parser_button.grid(row=5, column=7,
-                                                   padx=(0, self.text_padx), pady=self.text_pady, sticky="news")
-
+        # self.sentence_parser_option_menu.grid(row=5, column=3, padx=0, pady=self.text_pady, columnspan=4,
+        #                                       sticky="news")
+        # self.configure_sentence_parser_button.grid(row=5, column=7,
+        #                                            padx=(0, self.text_padx), pady=self.text_pady, sticky="news")
 
         for i in range(5):
             c_pady = self.text_pady if i % 2 else 0
-            self.sent_text_list[i].grid(row=6 + i, column=0, columnspan=6, padx=self.text_padx, pady=c_pady, sticky="news")
-            self.sent_button_list[i].grid(row=6 + i, column=6, padx=0, pady=c_pady, sticky="ns")
+            self.sent_text_list[i].grid(row=7 + i, column=0, columnspan=7, padx=self.text_padx, pady=c_pady, sticky="news")
+            self.sent_button_list[i].grid(row=7 + i, column=7, padx=(0, 10), pady=c_pady, sticky="news",
+                                          columnspan=1)
 
-        self.skip_button.grid(row=6, column=7, padx=self.text_padx, pady=0, sticky="ns")
-        self.prev_button.grid(row=7, column=7, padx=self.text_padx, pady=self.text_pady, sticky="ns")
-        self.sound_button.grid(row=8, column=7, padx=self.text_padx, pady=0, sticky="ns")
-        self.anki_button.grid(row=9, column=7, padx=self.text_padx, pady=self.text_pady, sticky="ns")
-        self.bury_button.grid(row=10, column=7, padx=self.text_padx, pady=0, sticky="ns")
+        a = self.Frame(self, bg="green")
+        a.grid(row=6, column=0, columnspan=8, padx=self.text_padx, pady=0, sticky="news")
 
-        self.user_tags_field.grid(row=11, column=0, padx=self.text_padx, pady=self.text_pady, columnspan=6,
+        for i in range(6):
+            a.columnconfigure(i, weight=1)
+
+        self.add_sentences_button = self.Button(a,
+                                                text=self.sentence_button_text,
+                                                command=self.replace_sentences)
+        self.add_sentences_button.grid(row=1, column=0, columnspan=3,
+                                       sticky="news")
+
+        self.find_image_button = self.Button(a,
+                                             text=self.lang_pack.find_image_button_normal_text,
+                                             command=self.start_image_search)
+        self.find_image_button.grid(row=1, column=3, sticky="news", columnspan=3)
+
+        from tkinter.font import Font
+
+        self.prev_button = self.Button(a,
+                                       text="🡰",  # self.lang_pack.prev_button_text,
+                                       command=lambda x=-1: self.replace_decks_pointers(x),
+                                       state="disabled", width=button_width,
+                                       font=Font(weight="bold"))
+        self.prev_button.grid(row=0, column=0, columnspan=2, sticky="news")
+
+        self.bury_button = self.Button(a,
+                                       text=self.lang_pack.bury_button_text,
+                                       command=self.bury_command,
+                                       width=button_width,
+                                       font=Font(size=10, weight="bold"))
+        self.bury_button.grid(row=0, column=2, columnspan=2, sticky="news")
+
+        self.skip_button = self.Button(a,
+                                       text="🡲",  # self.lang_pack.skip_button_text,
+                                       command=self.skip_command,
+                                       width=button_width,
+                                       font=Font(weight="bold"))
+        self.skip_button.grid(row=0, column=4, columnspan=2, sticky="news")
+
+        # self.add_sentences_button = self.Button(a,
+        #                                         text=self.sentence_button_text,
+        #                                         command=self.replace_sentences)
+        # self.add_sentences_button.grid(row=0, column=0,
+        #                                sticky="news")
+        #
+        # self.find_image_button = self.Button(a,
+        #                                      text=self.lang_pack.find_image_button_normal_text,
+        #                                      command=self.start_image_search)
+        # self.find_image_button.grid(row=0, column=1, sticky="news", padx=(0, 10))
+        #
+        # self.skip_button = self.Button(a,
+        #                                text=self.lang_pack.skip_button_text,
+        #                                command=self.skip_command,
+        #                                width=button_width)
+        # self.skip_button.grid(row=0, column=2, sticky="news", padx=(10, 0))
+        #
+        # self.prev_button = self.Button(a,
+        #                                text=self.lang_pack.prev_button_text,
+        #                                command=lambda x=-1: self.replace_decks_pointers(x),
+        #                                state="disabled", width=button_width)
+        # self.prev_button.grid(row=0, column=3, sticky="news")
+        #
+        # self.bury_button = self.Button(a,
+        #                                text=self.lang_pack.bury_button_text,
+        #                                command=self.bury_command,
+        #                                width=button_width)
+        # self.bury_button.grid(row=0, column=4, sticky="news")
+
+        # self.sound_button.grid(row=8, column=7, padx=self.text_padx, pady=0, sticky="ns")
+        # self.anki_button.grid(row=9, column=7, padx=self.text_padx, pady=self.text_pady, sticky="ns")
+
+        self.user_tags_field.grid(row=12, column=0, padx=self.text_padx, pady=self.text_pady, columnspan=6,
                                   sticky="news")
-        self.tag_prefix_field.grid(row=11, column=6, padx=(0, self.text_padx), pady=self.text_pady, columnspan=2,
+        self.tag_prefix_field.grid(row=12, column=6, padx=(0, self.text_padx), pady=self.text_pady, columnspan=2,
                                    sticky="news")
-        self.dict_tags_field.grid(row=12, column=0, padx=self.text_padx, pady=(0, self.text_padx), columnspan=8,
+        self.dict_tags_field.grid(row=13, column=0, padx=self.text_padx, pady=(0, self.text_padx), columnspan=8,
                                   sticky="news")
         for i in range(6):
             self.grid_columnconfigure(i, weight=1)
         self.grid_rowconfigure(4, weight=1)
-        self.grid_rowconfigure(6, weight=1)
         self.grid_rowconfigure(7, weight=1)
         self.grid_rowconfigure(8, weight=1)
         self.grid_rowconfigure(9, weight=1)
         self.grid_rowconfigure(10, weight=1)
+        self.grid_rowconfigure(11, weight=1)
 
         def focus_next_window(event):
             event.widget.tk_focusNext().focus()
@@ -926,6 +972,7 @@ saving_image_height
             self.after(AUTOSAVE_INTERVAL, autosave)
 
         self.after(AUTOSAVE_INTERVAL, autosave)
+        # self.minsize(0, 600)
 
     def show_window(self, title: str, text: str) -> Toplevel:
         text_window = self.Toplevel(self)

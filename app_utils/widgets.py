@@ -95,6 +95,16 @@ class EntryWithPlaceholder(Entry):
         self.fill_placeholder()
 
 
+class ChoosableText(Frame):
+    def __init__(self, index: int,
+                 button_params: dict, text_params: dict, frame_params: dict):
+        super(ChoosableText, self).__init__(**frame_params)
+
+
+
+
+
+
 class ScrolledFrame(Frame):
     """Implementation of the scrollable frame widget.
     Copyright (c) 2018 Benjamin Johnson

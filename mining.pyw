@@ -125,7 +125,6 @@ class App(Tk):
 
         self.card_processor = loaded_plugins.get_card_processor("Anki")
         self.dict_card_data: dict = {}
-        self.sentence_batch_size = 5
 
         if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
             self.sentence_parser = loaded_plugins.get_sentence_parser(self.configurations["scrappers"]["sentence"]["name"])
@@ -134,8 +133,7 @@ class App(Tk):
                 name=self.configurations["scrappers"]["sentence"]["name"],
                 chain_data=self.chaining_data["sentence_parsers"][self.configurations["scrappers"]["sentence"]["name"]])
 
-        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch,
-                                                sentence_batch_size=self.sentence_batch_size)
+        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch)
 
         if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
             self.image_parser = loaded_plugins.get_image_parser(self.configurations["scrappers"]["image"]["name"])
@@ -178,7 +176,7 @@ class App(Tk):
 
         file_menu.add_separator()
         file_menu.add_command(label=self.lang_pack.download_audio_menu_label,
-                             command=partial(self.download_audio, choose_file=True))
+                              command=partial(self.download_audio, choose_file=True))
         file_menu.add_separator()
         file_menu.add_command(label=self.lang_pack.change_media_folder_menu_label, command=self.change_media_dir)
         main_menu.add_cascade(label=self.lang_pack.file_master_menu_label, menu=file_menu)
@@ -720,12 +718,7 @@ saving_image_height
 
         for i in range(6):
             self.grid_columnconfigure(i, weight=1)
-        self.grid_rowconfigure(4, weight=1)
         self.grid_rowconfigure(7, weight=1)
-        self.grid_rowconfigure(8, weight=1)
-        self.grid_rowconfigure(9, weight=1)
-        self.grid_rowconfigure(10, weight=1)
-        self.grid_rowconfigure(11, weight=1)
 
         self.browse_button = self.Button(self,
                                          text=self.lang_pack.browse_button_text,
@@ -777,7 +770,7 @@ saving_image_height
         self.configure_image_parser_button.grid(row=3, column=7, sticky="news",
                                                 padx=(0, self.text_padx), pady=self.text_pady)
 
-        self.definition_text = self.Text(self, placeholder=self.lang_pack.definition_text_placeholder)
+        self.definition_text = self.Text(self, placeholder=self.lang_pack.definition_text_placeholder, height=4)
         self.definition_text.grid(row=4, column=0, columnspan=8, sticky="news", padx=self.text_padx)
 
         self.sentence_button_text = self.lang_pack.sentence_button_text
@@ -787,7 +780,7 @@ saving_image_height
             typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.sentence_parser.name}"
 
         # ======
-        a = self.Frame(self, bg="green")
+        a = self.Frame(self)
         a.grid(row=5, column=0, columnspan=8, padx=self.text_padx, pady=0, sticky="news")
 
         for i in range(3):
@@ -838,23 +831,54 @@ saving_image_height
         self.configure_sentence_parser_button.grid(row=6, column=7, sticky="news",
                                                    padx=(0, self.text_padx), pady=self.text_pady)
 
-        self.sent_text_list = []
+        self.text_frames = []
         self.sent_button_list = []
 
-        for i in range(5):
-            c_pady = self.text_pady if i % 2 else 0
+        self.text_widgets_frame = self.Frame(self)
+        self.text_widgets_frame.grid(row=7, column=0, columnspan=8, sticky="news",
+                                     padx=self.text_padx, pady=self.text_pady)
+        self.text_widgets_frame.grid_columnconfigure(0, weight=1)
 
-            self.sent_text_list.append(
-                self.Text(self, placeholder=f"{self.lang_pack.sentence_text_placeholder_prefix} {i + 1}"))
-            self.sent_text_list[-1].fill_placeholder()
-            self.sent_text_list[-1].grid(row=7 + i, column=0, columnspan=7, sticky="news",
-                                         padx=(self.text_padx, 0), pady=c_pady)
+        def text_frame_resize(event):
+            OPTIMAL_TEXT_HEIGHT = 80
+            while True:
+                current_frame_height = event.height - (len(self.text_frames) + 1) // 2 * self.text_pady * 2
+                if current_frame_height < len(self.text_frames) * OPTIMAL_TEXT_HEIGHT:
+                    self.text_frames[-1].destroy()
+                    self.text_frames.pop()
+                    continue
+                break
 
-            self.sent_button_list.append(self.Button(self,
-                                         text=f"{i + 1}",
-                                         command=lambda x=i: self.choose_sentence(x)))
-            self.sent_button_list[-1].grid(row=7 + i, column=7, sticky="news",
-                                          padx=(0, 10), pady=c_pady)
+            while True:
+                next_index = len(self.text_frames) + 1
+                current_frame_height = event.height - next_index // 2 * self.text_pady * 2
+                if current_frame_height < next_index * OPTIMAL_TEXT_HEIGHT:
+                    return
+
+                c_pady = self.text_pady if next_index % 2 else 0
+                choose_frame = self.Frame(self.text_widgets_frame, height=OPTIMAL_TEXT_HEIGHT)
+                choose_frame.grid(row=len(self.text_frames), column=0, sticky="we", pady=c_pady)
+
+                choose_frame.grid_columnconfigure(0, weight=1)
+                choose_frame.grid_rowconfigure(0, weight=1)
+                choose_frame.grid_propagate(False)
+
+                choose_frame.text = self.Text(
+                    choose_frame,
+                    placeholder=f"{self.lang_pack.sentence_text_placeholder_prefix} {next_index}")
+                choose_frame.text.grid(row=0, column=0, sticky="we")
+
+                choose_frame.choose_button = self.Button(choose_frame,
+                                                         text=f"{next_index}",
+                                                         command=lambda x=i: self.choose_sentence(x),
+                                                         width=6,
+                                                         height=8)
+                choose_frame.choose_button.grid(row=0, column=1)
+                choose_frame.update()
+                self.text_frames.append(choose_frame)
+                self.sent_button_list.append(choose_frame.choose_button)
+
+        self.text_widgets_frame.bind("<Configure>", text_frame_resize)
 
         self.sound_button = self.Button(self,
                                         text=self.lang_pack.sound_button_text,
@@ -868,16 +892,16 @@ saving_image_height
 
         self.user_tags_field = self.Entry(self, placeholder=self.lang_pack.user_tags_field_placeholder)
         self.user_tags_field.fill_placeholder()
-        self.user_tags_field.grid(row=12, column=0, columnspan=6, sticky="news",
+        self.user_tags_field.grid(row=8, column=0, columnspan=6, sticky="news",
                                   padx=(self.text_padx, 0), pady=self.text_pady)
 
         self.tag_prefix_field = self.Entry(self, justify="center", width=8)
         self.tag_prefix_field.insert(0, self.configurations["deck"]["tags_hierarchical_pref"])
-        self.tag_prefix_field.grid(row=12, column=7, columnspan=1, sticky="news",
+        self.tag_prefix_field.grid(row=8, column=7, columnspan=1, sticky="news",
                                    padx=(0, self.text_padx), pady=self.text_pady)
 
         self.dict_tags_field = self.Text(self, relief="ridge", state="disabled", height=2)
-        self.dict_tags_field.grid(row=13, column=0, columnspan=8, sticky="news",
+        self.dict_tags_field.grid(row=9, column=0, columnspan=8, sticky="news",
                                   padx=self.text_padx, pady=(0, self.text_padx))
 
         def focus_next_window(event):
@@ -889,7 +913,7 @@ saving_image_height
             return "break"
 
         self.new_order = [self.browse_button, self.word_text, self.find_image_button, self.definition_text,
-                          self.add_sentences_button] + self.sent_text_list + \
+                          self.add_sentences_button] + [text_frame.text for text_frame in self.text_frames] + \
                          [self.user_tags_field] + self.sent_button_list + [self.skip_button, self.prev_button,
                                                                        self.anki_button, self.bury_button,
                                                                        self.tag_prefix_field]
@@ -921,8 +945,8 @@ saving_image_height
 
         def paste_in_sentence_field():
             clipboard_text = self.clipboard_get()
-            self.sent_text_list[0].clear()
-            self.sent_text_list[0].insert(1.0, clipboard_text)
+            self.text_frames[0].text.clear()
+            self.text_frames[0].text.insert(1.0, clipboard_text)
 
         self.gb.bind("Control", "c", "Alt",
                      action=paste_in_sentence_field)
@@ -1082,7 +1106,7 @@ saving_image_height
 
     @error_handler(show_errors)
     def get_sentence(self, n: int):
-        return self.sent_text_list[n].get(1.0, "end").rstrip()
+        return self.text_frames[n].text.get(1.0, "end").rstrip()
 
     @error_handler(show_errors)
     def change_file(self):
@@ -1826,8 +1850,7 @@ saving_image_height
         else:
             self.configurations["scrappers"]["image"]["type"] = parser_types.WEB
             self.sentence_parser = loaded_plugins.get_sentence_parser(given_sentence_parser_name)
-        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch,
-                                                sentence_batch_size=self.sentence_batch_size)
+        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch)
         self.configurations["scrappers"]["sentence"]["name"] = given_sentence_parser_name
     
     @error_handler(show_errors)
@@ -2052,13 +2075,14 @@ saving_image_height
     
     @error_handler(show_errors)
     def replace_sentences(self) -> None:
-        sent_batch, error_message, local_flag = self.sentence_fetcher.get_sentence_batch(self.word)
-        for text_field in self.sent_text_list:
-            text_field.clear()
-            text_field.fill_placeholder()
+        sent_batch, error_message, local_flag = self.sentence_fetcher.get_sentence_batch(self.word,
+                                                                                         len(self.text_frames))
+        for text_frame in self.text_frames:
+            text_frame.text.clear()
+            text_frame.text.fill_placeholder()
         for i in range(len(sent_batch)):
-            self.sent_text_list[i].remove_placeholder()
-            self.sent_text_list[i].insert(1.0, sent_batch[i])
+            self.text_frames[i].text.remove_placeholder()
+            self.text_frames[i].text.insert(1.0, sent_batch[i])
         if error_message:
             self.sentence_fetcher.fetch_local()
             messagebox.showerror(title=self.lang_pack.error_title,

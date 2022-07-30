@@ -24,14 +24,13 @@ config = LoadableConfig(config_location=os.path.dirname(__file__),
                         docs=_CONF_DOCS)
 
 
-def get_sentence_batch(word: str, size: int = 5) -> SentenceGenerator:
+def get_sentence_batch(word: str) -> SentenceGenerator:
     try:
         page = requests.get(f"https://searchsentences.com/words/{word}-in-a-sentence",
                             timeout=config["timeout"])
         page.raise_for_status()
     except requests.RequestException as e:
-        yield [], f"{FILE_PATH} couldn't get a web page: {e}"
-        return
+        return [], f"{FILE_PATH} couldn't get a web page: {e}"
 
     soup = bs4.BeautifulSoup(page.content, "html.parser")
     src = soup.find_all("li", {"class": "sentence-row"})
@@ -44,5 +43,8 @@ def get_sentence_batch(word: str, size: int = 5) -> SentenceGenerator:
             sentences.append(text)
 
     sentences.sort(key=len)
-    for i in range(0, len(sentences), size):
-        yield sentences[i:i + size], ""
+    i = 0
+    size = yield
+    while i < len(sentences):
+        size = yield sentences[i:i + size], ""
+        i += size

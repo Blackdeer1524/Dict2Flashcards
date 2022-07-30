@@ -251,7 +251,7 @@ class App(Tk):
                 anki_window.bind("<Return>", lambda event: save_anki_settings_command())
                 anki_window.bind("<Escape>", lambda event: anki_window.destroy())
                 spawn_window_in_center(self, anki_window)
-                anki_window.resizable(0, 0)
+                anki_window.resizable(False, False)
                 anki_window.grab_set()
 
             image_search_configuration_label = self.Label(settings_window,
@@ -335,7 +335,7 @@ saving_image_height
             configure_anki_button.grid(row=3, column=0, columnspan=2, sticky="news")
 
             spawn_window_in_center(self, settings_window)
-            settings_window.resizable(0, 0)
+            settings_window.resizable(False, False)
             settings_window.grab_set()
             settings_window.bind("<Escape>", lambda event: settings_window.destroy())
             settings_window.bind("<Return>", lambda event: settings_window.destroy())
@@ -837,6 +837,7 @@ saving_image_height
 
         self.text_and_audio_window = PanedWindow(self,
                                                  orient="vertical",
+                                                 showhandle=True,
                                                  **self.theme.frame_cfg)
         self.text_and_audio_window.grid(row=7, column=0, columnspan=8, sticky="news",
                                         padx=self.text_padx, pady=self.text_pady)
@@ -847,7 +848,7 @@ saving_image_height
         self.text_and_audio_window.add(self.text_widgets_frame, stretch="always")
         self.text_widgets_frame.grid_columnconfigure(0, weight=1)
 
-        def text_frame_resize(event):
+        def text_frame_resize():
             OPTIMAL_TEXT_HEIGHT = 80
             self.text_widgets_frame.update()
             while True:
@@ -862,6 +863,7 @@ saving_image_height
                 next_index = len(self.text_frames) + 1
                 current_frame_height = self.text_widgets_frame.winfo_height() - next_index // 2 * self.text_pady * 2
                 if current_frame_height < next_index * OPTIMAL_TEXT_HEIGHT:
+                    self.after(100, text_frame_resize)
                     return
 
                 c_pady = self.text_pady if next_index % 2 else 0
@@ -886,8 +888,6 @@ saving_image_height
                 choose_frame.update()
                 self.text_frames.append(choose_frame)
                 self.sent_button_list.append(choose_frame.choose_button)
-
-        self.text_widgets_frame.bind("<Configure>", text_frame_resize)
 
         self.sound_sf = ScrolledFrame(self.text_and_audio_window, scrollbars="vertical", height=150)
 
@@ -970,6 +970,7 @@ saving_image_height
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.geometry(self.configurations["app"]["main_window_geometry"])
+        text_frame_resize()
         self.refresh()
 
         AUTOSAVE_INTERVAL = 300_000  # time in milliseconds
@@ -979,7 +980,6 @@ saving_image_height
             self.after(AUTOSAVE_INTERVAL, autosave)
 
         self.after(AUTOSAVE_INTERVAL, autosave)
-        # self.minsize(0, 600)
 
     def show_window(self, title: str, text: str) -> Toplevel:
         text_window = self.Toplevel(self)
@@ -1185,7 +1185,7 @@ saving_image_height
                 rewrite_encounter_button.grid(row=2, column=0, padx=5, pady=5, sticky="news")
                 copy_encounter.deiconify()
                 spawn_window_in_center(self, copy_encounter)
-                copy_encounter.resizable(0, 0)
+                copy_encounter.resizable(False, False)
                 copy_encounter.grab_set()
                 create_file_win.wait_window(copy_encounter)
 
@@ -1228,7 +1228,7 @@ saving_image_height
         name_button.grid(row=1, column=0, padx=5, pady=3, sticky="ns")
         create_file_win.deiconify()
         spawn_window_in_center(self, create_file_win)
-        create_file_win.resizable(0, 0)
+        create_file_win.resizable(False, False)
         create_file_win.grab_set()
         name_entry.focus()
         create_file_win.bind("<Escape>", lambda event: create_file_win.destroy())
@@ -1317,7 +1317,7 @@ saving_image_height
         if closing:
             audio_downloader.bind("<Destroy>", lambda event: self.destroy() if isinstance(event.widget, Toplevel) else None)
         spawn_window_in_center(self, audio_downloader)
-        audio_downloader.resizable(0, 0)
+        audio_downloader.resizable(False, False)
         audio_downloader.grab_set()
         audio_downloader.download_audio(audio_links_list)
 
@@ -1396,7 +1396,7 @@ saving_image_height
         add_word_window.deiconify()
         spawn_window_in_center(master=self, toplevel_widget=add_word_window,
                                  desired_window_width=self.winfo_width())
-        add_word_window.resizable(0, 0)
+        add_word_window.resizable(False, False)
         add_word_window.grab_set()
 
     @error_handler(show_errors)
@@ -1466,7 +1466,7 @@ saving_image_height
                                                command=lambda: rotate_window.destroy())
                 end_rotation_button.grid(row=0, column=1, sticky="we")
                 spawn_window_in_center(self, rotate_window)
-                rotate_window.resizable(0, 0)
+                rotate_window.resizable(False, False)
                 rotate_window.grab_set()
                 rotate_window.bind("<Escape>", lambda _: rotate_window.destroy())
                 return
@@ -1491,7 +1491,7 @@ saving_image_height
         find_window.bind("<Escape>", lambda _: find_window.destroy())
         find_window.deiconify()
         spawn_window_in_center(self, find_window, desired_window_width=self.winfo_width())
-        find_window.resizable(0, 0)
+        find_window.resizable(False, False)
         find_window.grab_set()
 
     @error_handler(show_errors)
@@ -1533,7 +1533,7 @@ saving_image_height
                             height=min(self.winfo_height(), current_frame_height))
         statistics_window.deiconify()
         spawn_window_in_center(self, statistics_window)
-        statistics_window.resizable(0, 0)
+        statistics_window.resizable(False, False)
         statistics_window.grab_set()
 
     @error_handler(show_errors)
@@ -1839,7 +1839,7 @@ saving_image_height
         dict_configuration_window.bind("<Return>", lambda event: dict_configuration_window.destroy())
         dict_configuration_window.deiconify()
         spawn_window_in_center(self, dict_configuration_window)
-        dict_configuration_window.resizable(0, 0)
+        dict_configuration_window.resizable(False, False)
         dict_configuration_window.grab_set()
 
     @error_handler(show_errors)
@@ -1976,9 +1976,8 @@ saving_image_height
             playsound_window.bind("<Escape>", lambda _: playsound_window.destroy())
             playsound_window.deiconify()
             spawn_window_in_center(self, playsound_window,
-                                     desired_window_width=self.winfo_width()
-                                     )
-            playsound_window.resizable(0, 0)
+                                   desired_window_width=self.winfo_width())
+            playsound_window.resizable(False, False)
             playsound_window.grab_set()
 
         @error_handler(self.show_errors)

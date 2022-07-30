@@ -2,6 +2,7 @@ import copy
 import itertools
 import json
 import re
+import tkinter
 import webbrowser
 from collections import namedtuple
 from datetime import datetime
@@ -834,15 +835,23 @@ saving_image_height
         self.text_frames = []
         self.sent_button_list = []
 
-        self.text_widgets_frame = self.Frame(self)
-        self.text_widgets_frame.grid(row=7, column=0, columnspan=8, sticky="news",
-                                     padx=self.text_padx, pady=self.text_pady)
+        self.text_and_audio_window = PanedWindow(self,
+                                                 orient="vertical",
+                                                 **self.theme.frame_cfg)
+        self.text_and_audio_window.grid(row=7, column=0, columnspan=8, sticky="news",
+                                        padx=self.text_padx, pady=self.text_pady)
+
+        self.text_widgets_frame = self.Frame(self.text_and_audio_window,
+                                             # bg="red"
+                                             )
+        self.text_and_audio_window.add(self.text_widgets_frame, stretch="always")
         self.text_widgets_frame.grid_columnconfigure(0, weight=1)
 
         def text_frame_resize(event):
             OPTIMAL_TEXT_HEIGHT = 80
+            self.text_widgets_frame.update()
             while True:
-                current_frame_height = event.height - (len(self.text_frames) + 1) // 2 * self.text_pady * 2
+                current_frame_height = self.text_widgets_frame.winfo_height() - (len(self.text_frames) + 1) // 2 * self.text_pady * 2
                 if current_frame_height < len(self.text_frames) * OPTIMAL_TEXT_HEIGHT:
                     self.text_frames[-1].destroy()
                     self.text_frames.pop()
@@ -851,7 +860,7 @@ saving_image_height
 
             while True:
                 next_index = len(self.text_frames) + 1
-                current_frame_height = event.height - next_index // 2 * self.text_pady * 2
+                current_frame_height = self.text_widgets_frame.winfo_height() - next_index // 2 * self.text_pady * 2
                 if current_frame_height < next_index * OPTIMAL_TEXT_HEIGHT:
                     return
 
@@ -879,6 +888,13 @@ saving_image_height
                 self.sent_button_list.append(choose_frame.choose_button)
 
         self.text_widgets_frame.bind("<Configure>", text_frame_resize)
+
+        self.sound_sf = ScrolledFrame(self.text_and_audio_window, scrollbars="vertical", height=150)
+
+        sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
+        # sound_inner_frame.
+
+        self.text_and_audio_window.add(self.sound_sf, stretch="never")
 
         self.sound_button = self.Button(self,
                                         text=self.lang_pack.sound_button_text,
@@ -1436,11 +1452,13 @@ saving_image_height
                 rotate_window = self.Toplevel(self)
                 rotate_window.title(f"{found_item_number}/{len(move_list) + 1}")
 
-                left = self.Button(rotate_window, text="<", command=lambda: rotate(-1))
+                left = self.Button(rotate_window, text="🡰", command=lambda: rotate(-1),
+                                   font=Font(weight="bold"))
                 left["state"] = "disabled"
                 left.grid(row=0, column=0, sticky="we")
 
-                right = self.Button(rotate_window, text=">", command=lambda: rotate(1))
+                right = self.Button(rotate_window, text="🡲", command=lambda: rotate(1),
+                                    font=Font(weight="bold"))
                 right.grid(row=0, column=2, sticky="we")
 
                 end_rotation_button = self.Button(rotate_window,
@@ -1558,7 +1576,7 @@ saving_image_height
         conf_sf.bind_scroll_wheel(conf_text)
         
         docs_pane_win = PanedWindow(text_pane_win, orient="vertical",
-                                     showhandle=True, **self.theme.frame_cfg)
+                                    showhandle=True, **self.theme.frame_cfg)
         
         docs_sf = ScrolledFrame(text_pane_win, scrollbars="both")
         docs_pane_win.add(docs_sf, stretch="always", sticky="news")

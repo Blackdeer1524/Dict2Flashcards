@@ -871,11 +871,12 @@ saving_image_height
                                           sticky="news",
                                           padx=(self.text_padx, 0), pady=(self.text_pady, 0))
 
+        typed_audio_getter = "default" if self.audio_getter is None \
+                                       else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                                             self.audio_getter.name)
         self.audio_getter_option_menu = self.get_option_menu(
             self,
-            init_text="default" if self.audio_getter is None
-            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                  self.audio_getter.name),
+            init_text=typed_audio_getter,
             values=["default"] +
                    [f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
                    [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
@@ -884,13 +885,17 @@ saving_image_height
         self.audio_getter_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
                                            pady=(self.text_pady, 0))
 
-        self.configure_audio_getter_button = self.Button(self,
-                                                         text="</>",
-                                                         command=lambda: self.call_configuration_window(
-                                                             plugin_name=self.sentence_parser.name,
-                                                             plugin_config=self.sentence_parser.config,
-                                                             plugin_load_function=lambda conf: conf.load(),
-                                                             saving_action=lambda conf: conf.save()))
+        self.configure_audio_getter_button = self.Button(self, text="</>")
+
+        if self.audio_getter is not None:
+            cmd = lambda: self.call_configuration_window(plugin_name=typed_audio_getter,
+                                                         plugin_config=self.audio_getter.config,
+                                                         plugin_load_function=lambda conf: conf.load(),
+                                                         saving_action=lambda conf: conf.save())
+            self.configure_audio_getter_button["command"] = cmd
+        else:
+            self.configure_audio_getter_button["state"] = "disabled"
+
         self.configure_audio_getter_button.grid(row=5, column=7, sticky="news",
                                                 padx=(0, self.text_padx), pady=(self.text_pady, 0))
 

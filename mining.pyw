@@ -1029,12 +1029,6 @@ saving_image_height
         self.text_widgets_frame.bind("<Configure>", lambda event: resize_text_widgets_frame())
 
         # ======
-
-        self.sound_button = self.Button(self,
-                                        text=self.lang_pack.sound_button_text,
-                                        command=self.play_sound)
-        # self.sound_button.grid(row=8, column=7, padx=self.text_padx, pady=0, sticky="ns")
-
         self.anki_button = self.Button(self,
                                        text=self.lang_pack.anki_button_text,
                                        command=self.open_anki_browser)
@@ -1251,12 +1245,7 @@ saving_image_height
         audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
 
         if self.audio_getter is not None:
-            if audio_getter_type == parser_types.WEB:
-                source_name = "[{}] {}".format(audio_getter_type,
-                                               self.configurations["scrappers"]["audio"]["name"])
-                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word,
-                                                                                                 self.dict_card_data)
-            elif audio_getter_type == parser_types.LOCAL:
+            if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
                 source_name = "[{}] {}".format(audio_getter_type,
                                                self.configurations["scrappers"]["audio"]["name"])
                 ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word,
@@ -1937,11 +1926,9 @@ saving_image_height
             self.audio_getter = None
             self.configurations["scrappers"]["audio"]["type"] = "default"
             self.configurations["scrappers"]["audio"]["name"] = ""
-            self.sound_button["state"] = "normal" if self.dict_card_data.get(FIELDS.audio_links, []) else "disabled"
             self.configure_audio_getter_button["state"] = "disabled"
             return
 
-        self.sound_button["state"] = "normal"
         if typed_getter.startswith(parser_types.WEB_PREF):
             raw_name = typed_getter[len(parser_types.WEB_PREF) + 1:]
             self.audio_getter = loaded_plugins.get_web_audio_getter(raw_name)
@@ -2078,101 +2065,6 @@ saving_image_height
         self.refresh()
     
     @error_handler(show_errors)
-    def play_sound(self):
-        @error_handler(self.show_errors)
-        def sound_dialog(audio_src: list[str], info: list[str], play_command: Callable[[str, str], None]):
-            assert len(audio_src) == len(info)
-
-            playsound_window = self.Toplevel(self)
-            playsound_window.withdraw()
-            playsound_window.title(self.lang_pack.play_sound_playsound_window_title)
-            playsound_window.columnconfigure(0, weight=1)
-
-            for i in range(len(audio_src)):
-                playsound_window.rowconfigure(i, weight=1)
-                label = self.Text(playsound_window, relief="ridge", height=3)
-                label.insert(1.0, info[i])
-                label["state"] = "disabled"
-                label.grid(row=i, column=0)
-                b = self.Button(playsound_window,
-                                text=self.lang_pack.sound_button_text,
-                                command=lambda x=i: play_command(audio_src[x], str(x)))
-                b.grid(row=i, column=1, sticky="news")
-
-            playsound_window.bind("<Escape>", lambda _: playsound_window.destroy())
-            playsound_window.deiconify()
-            spawn_window_in_center(self, playsound_window,
-                                   desired_window_width=self.winfo_width())
-            playsound_window.resizable(False, False)
-            playsound_window.grab_set()
-
-        @error_handler(self.show_errors)
-        def show_download_error(exc):
-            messagebox.showerror(message=f"{self.lang_pack.error_title}\n{exc}")
-
-        @error_handler(self.show_errors)
-        def web_playsound(src: str, postfix: str = ""):
-            audio_name = self.card_processor.get_save_audio_name(word,
-                                                                 self.typed_word_parser_name,
-                                                                 postfix,
-                                                                 self.dict_card_data)
-
-            temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name)
-            success = AudioDownloader.fetch_audio(url=src,
-                                                  save_path=temp_audio_path,
-                                                  timeout=5,
-                                                  headers=self.headers,
-                                                  exception_action=lambda exc: show_download_error(exc))
-            if success:
-                playsound(temp_audio_path)
-
-        @error_handler(self.show_errors)
-        def local_playsound(src: str, postfix: str = ""):
-            playsound(src)
-
-        word = self.word
-        if self.audio_getter is not None:
-            type2playsound_corr = {parser_types.WEB   : web_playsound,
-                                   parser_types.LOCAL : local_playsound}
-
-            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-            if audio_getter_type == parser_types.WEB:
-                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word, self.dict_card_data)
-            elif audio_getter_type == parser_types.LOCAL:
-                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word, self.dict_card_data)
-            elif audio_getter_type == parser_types.CHAIN:
-                (audio_getter_type, source_name), audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
-                (audio_sources, additional_info), error_message = audio_data
-            else:
-                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
-
-            playsound_function = type2playsound_corr[audio_getter_type]
-
-            if error_message:
-                messagebox.showerror(title=self.lang_pack.error_title, message=error_message)
-                return
-
-            if audio_sources:
-                if len(audio_sources) == 1:
-                    local_playsound(audio_sources[0])
-                    return
-                sound_dialog(audio_sources, additional_info, playsound_function)
-                return
-            messagebox.showerror(title=self.lang_pack.error_title,
-                                 message=self.lang_pack.play_sound_local_audio_not_found_message)
-            return
-
-        if (audio_file_urls := self.dict_card_data.get(FIELDS.audio_links)) is None or not audio_file_urls:
-            messagebox.showerror(title=self.lang_pack.error_title,
-                                 message=self.lang_pack.play_sound_no_audio_source_found_message)
-            return
-
-        elif len(audio_file_urls) == 1:
-            web_playsound(audio_file_urls[0], "")
-            return
-        sound_dialog(audio_file_urls, audio_file_urls, web_playsound)
-    
-    @error_handler(show_errors)
     def open_anki_browser(self):
         @error_handler(self.show_errors)
         def invoke(action, **params):
@@ -2273,8 +2165,6 @@ saving_image_height
         if not self.dict_card_data:
             # normal
             self.find_image_button["text"] = self.lang_pack.find_image_button_normal_text
-            if not self.configurations["scrappers"]["audio"]["name"]:
-                self.sound_button["state"] = "disabled"
             return False
 
         if self.dict_card_data.get(FIELDS.img_links, []):
@@ -2282,12 +2172,6 @@ saving_image_height
                                              self.lang_pack.find_image_button_image_link_encountered_postfix
         else:
             self.find_image_button["text"] = self.lang_pack.find_image_button_normal_text
-
-        if self.configurations["scrappers"]["audio"]["name"] or self.dict_card_data.get(FIELDS.audio_links, []):
-            self.sound_button["state"] = "normal"
-        else:
-            self.sound_button["state"] = "disabled"
-
         return True
     
     @error_handler(show_errors)

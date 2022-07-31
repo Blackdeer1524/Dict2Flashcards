@@ -966,10 +966,10 @@ saving_image_height
         self.play_sound_frame.rowconfigure(1, weight=1)
         self.play_sound_frame.columnconfigure(0, weight=1)
 
-        sound_sf = ScrolledFrame(self.play_sound_frame, scrollbars="vertical")
-        sound_sf.grid(row=1, column=0, sticky="news")
+        self.sound_sf = ScrolledFrame(self.play_sound_frame, scrollbars="vertical")
+        self.sound_sf.grid(row=1, column=0, sticky="news")
 
-        self.sound_inner_frame = sound_sf.display_widget(self.Frame, fit_width=True)
+        self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
         
         # ======
         def display_audio_on_frame():
@@ -1011,7 +1011,7 @@ saving_image_height
             from tkinter import Checkbutton
 
             audio_getter_frame = LabelFrame(self.sound_inner_frame, text=source_name, **self.theme.frame_cfg)
-            sound_sf.bind_scroll_wheel(audio_getter_frame)
+            self.sound_sf.bind_scroll_wheel(audio_getter_frame)
             audio_getter_frame.grid_propagate(False)
             audio_getter_frame.pack(side="top", fill="x", expand=True)
 
@@ -1027,16 +1027,16 @@ saving_image_height
                                           **self.theme.checkbutton_cfg
                                           )
                 pick_button.grid(row=0, column=0, sticky="news")
-                sound_sf.bind_scroll_wheel(pick_button)
+                self.sound_sf.bind_scroll_wheel(pick_button)
 
                 play_sound_button = self.Button(audio_info_frame,
                                                 text="▶")
                 play_sound_button.grid(row=0, column=1, sticky="news")
-                sound_sf.bind_scroll_wheel(play_sound_button)
+                self.sound_sf.bind_scroll_wheel(play_sound_button)
 
                 info_label = self.Label(audio_info_frame, text=info, relief="ridge")
                 info_label.grid(row=0, column=2, sticky="news")
-                sound_sf.bind_scroll_wheel(info_label)
+                self.sound_sf.bind_scroll_wheel(info_label)
 
 
         self.fetch_audio_data_button = self.Button(self,
@@ -2278,8 +2278,8 @@ saving_image_height
         self.dict_card_data = self.deck.get_card().to_dict()
         self.card_processor.process_card(self.dict_card_data)
 
-        for child in self.sound_inner_frame.winfo_children():
-            child.destroy()
+        self.sound_sf.scroll_to_top()
+        self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
 
         self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() + 1 \
                                              else "disabled"

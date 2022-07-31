@@ -9,12 +9,15 @@ from datetime import datetime
 from functools import partial
 from tkinter import BooleanVar
 from tkinter import Button, Menu
+from tkinter import Checkbutton
 from tkinter import Frame
 from tkinter import Label
+from tkinter import LabelFrame
 from tkinter import PanedWindow
 from tkinter import Toplevel
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename, askdirectory
+from tkinter.font import Font
 from tkinter.ttk import Treeview
 from typing import Callable
 
@@ -43,7 +46,7 @@ from consts.paths import *
 from plugins_loading.containers import LanguagePackageContainer
 from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig, Config
-from tkinter.font import Font
+from plugins_management.parsers_return_types import AudioData
 
 
 class App(Tk):
@@ -1246,43 +1249,6 @@ saving_image_height
         return chaining_data
 
     def display_audio_on_frame(self):
-        word = self.word
-        audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-
-        if self.audio_getter is not None:
-            if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
-                source_name = "[{}] {}".format(audio_getter_type,
-                                               self.configurations["scrappers"]["audio"]["name"])
-                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word,
-                                                                                                 self.dict_card_data)
-            elif audio_getter_type == parser_types.CHAIN:
-                (audio_getter_type, source_name), audio_data = self.audio_getter.get_audios(word,
-                                                                                            self.dict_card_data)
-                (audio_sources, additional_info), error_message = audio_data
-            else:
-                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
-
-            if error_message:
-                messagebox.showerror(title=self.lang_pack.error_title, message=error_message)
-        else:
-            if (audio_sources := self.dict_card_data.get(FIELDS.audio_links)) is None or not audio_sources:
-                messagebox.showerror(title=self.lang_pack.error_title,
-                                     message="Аудио не найдено!")
-                return
-            source_name = "default"
-            additional_info = ("" for _ in range(len(audio_sources)))
-
-        from tkinter import LabelFrame
-        from tkinter import Checkbutton
-
-        audio_getter_frame = LabelFrame(self.sound_inner_frame,
-                                        text=source_name,
-                                        fg=self.theme.button_cfg.get("foreground"),
-                                        **self.theme.frame_cfg)
-        self.sound_sf.bind_scroll_wheel(audio_getter_frame)
-        audio_getter_frame.grid_propagate(False)
-        audio_getter_frame.pack(side="top", fill="x", expand=True)
-
         def web_playsound(src: str):
             audio_name = self.card_processor.get_save_audio_name(word,
                                                                  self.typed_word_parser_name,
@@ -1302,34 +1268,75 @@ saving_image_height
             if success:
                 playsound(temp_audio_path)
 
-        if audio_getter_type in (parser_types.WEB, "default"):
-            play_sound_button_cmd = web_playsound
+        word = self.word
+        audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
+
+        parser_results: dict[str, tuple[str, AudioData]] = {}
+
+        if self.audio_getter is not None:
+            if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
+                typed_audio_getter_name = "[{}] {}".format(audio_getter_type, self.configurations["scrappers"]["audio"]["name"])
+                audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
+                parser_results[typed_audio_getter_name] = (audio_getter_type, audio_data)
+
+            elif audio_getter_type == parser_types.CHAIN:
+                parser_results = self.audio_getter.get_audios(word, self.dict_card_data)
+            else:
+                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
         else:
-            play_sound_button_cmd = playsound
+            if (audio_sources := self.dict_card_data.get(FIELDS.audio_links)) is None or not audio_sources:
+                messagebox.showerror(title=self.lang_pack.error_title,
+                                     message="Аудио не найдено!")
+                return
+            typed_audio_getter_name = "default"
+            additional_info = ("" for _ in range(len(audio_sources)))
+            parser_results[typed_audio_getter_name] = (audio_getter_type, ((audio_sources, additional_info), ""))  # type: ignore
 
-        for audio, info in zip(audio_sources, additional_info):
-            audio_info_frame = self.Frame(audio_getter_frame)
-            audio_info_frame.pack(side="top", fill="x", expand=True)
-            audio_info_frame.columnconfigure(2, weight=1)
+        error_messages: list[tuple[str, str]] = []
 
-            var = BooleanVar()
-            var.set(False)
-            pick_button = Checkbutton(audio_info_frame,
-                                      variable=var,
-                                      **self.theme.checkbutton_cfg
-                                      )
-            pick_button.grid(row=0, column=0, sticky="news")
-            self.sound_sf.bind_scroll_wheel(pick_button)
+        for typed_audio_getter_name, (audio_getter_type, ((audio_sources, additional_info), error_message)) in parser_results.items():
+            if error_message:
+                error_messages.append((typed_audio_getter_name, error_message))
 
-            play_sound_button = self.Button(audio_info_frame,
-                                            text="▶",
-                                            command=lambda src=audio: play_sound_button_cmd(src))
-            play_sound_button.grid(row=0, column=1, sticky="news")
-            self.sound_sf.bind_scroll_wheel(play_sound_button)
+            if not audio_sources:
+                continue
 
-            info_label = self.Label(audio_info_frame, text=info, relief="ridge")
-            info_label.grid(row=0, column=2, sticky="news")
-            self.sound_sf.bind_scroll_wheel(info_label)
+            audio_getter_frame = LabelFrame(self.sound_inner_frame,
+                                            text=typed_audio_getter_name,
+                                            fg=self.theme.button_cfg.get("foreground"),
+                                            **self.theme.frame_cfg)
+            self.sound_sf.bind_scroll_wheel(audio_getter_frame)
+            audio_getter_frame.grid_propagate(False)
+            audio_getter_frame.pack(side="top", fill="x", expand=True)
+
+            if audio_getter_type in (parser_types.WEB, "default"):
+                play_sound_button_cmd = web_playsound
+            else:
+                play_sound_button_cmd = playsound
+
+            for audio, info in zip(audio_sources, additional_info):
+                audio_info_frame = self.Frame(audio_getter_frame)
+                audio_info_frame.pack(side="top", fill="x", expand=True)
+                audio_info_frame.columnconfigure(2, weight=1)
+
+                var = BooleanVar()
+                var.set(False)
+                pick_button = Checkbutton(audio_info_frame,
+                                          variable=var,
+                                          **self.theme.checkbutton_cfg
+                                          )
+                pick_button.grid(row=0, column=0, sticky="news")
+                self.sound_sf.bind_scroll_wheel(pick_button)
+
+                play_sound_button = self.Button(audio_info_frame,
+                                                text="▶",
+                                                command=lambda src=audio, a=play_sound_button_cmd: a(src))
+                play_sound_button.grid(row=0, column=1, sticky="news")
+                self.sound_sf.bind_scroll_wheel(play_sound_button)
+
+                info_label = self.Label(audio_info_frame, text=info, relief="ridge")
+                info_label.grid(row=0, column=2, sticky="news")
+                self.sound_sf.bind_scroll_wheel(info_label)
 
     @property
     @error_handler(show_errors)
@@ -2007,32 +2014,41 @@ saving_image_height
         if user_tags:
             additional[SavedDataDeck.USER_TAGS] = user_tags
 
-        audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-        if self.audio_getter is not None and audio_getter_type in (parser_types.WEB, parser_types.LOCAL, parser_types.CHAIN):
-            if audio_getter_type == parser_types.WEB:
-                audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
-            elif audio_getter_type == parser_types.LOCAL:
-                audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
-            else:
-                (audio_getter_type, source_name), audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
-
+        # TODO
+        def add_audio_data_to_card(getter_name: str, getter_type: str, audio_data: AudioData):
             (audio_links, additional_data), error_message = audio_data
-            if audio_links:
-                additional[SavedDataDeck.AUDIO_DATA] = {}
-                additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS] = audio_links
-                additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE] = \
-                    audio_getter_type
-                additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SAVING_PATHS] = [
-                    os.path.join(self.configurations["directories"]["media_dir"],
-                                 self.card_processor
-                                 .get_save_audio_name(word,
-                                                      "[{}] {}".format(
-                                                          audio_getter_type,
-                                                          self.audio_getter.name),
-                                                      str(i),
-                                                      self.dict_card_data))
-                    for i in range(len(audio_links))
-                ]
+            if not audio_links:
+                return
+
+            additional[SavedDataDeck.AUDIO_DATA] = {}
+            additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS] = audio_links
+            additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE] = getter_type
+            additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SAVING_PATHS] = [
+                os.path.join(self.configurations["directories"]["media_dir"],
+                             self.card_processor
+                             .get_save_audio_name(word,
+                                                  "[{}] {}".format(getter_type, getter_name),
+                                                  str(i),
+                                                  self.dict_card_data))
+                for i in range(len(audio_links))
+            ]
+
+        audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
+        if self.audio_getter is not None:
+            if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
+                add_audio_data_to_card(getter_name=self.audio_getter.name,
+                                       getter_type=audio_getter_type,
+                                       audio_data=self.audio_getter.get_audios(word, self.dict_card_data))
+            elif audio_getter_type == parser_types.CHAIN:
+                audio_data_dict = self.audio_getter.get_audios(word, self.dict_card_data)
+                for getter_name, (getter_type, audio_data) in audio_data_dict.items():
+                    add_audio_data_to_card(getter_name=getter_name,
+                                           getter_type=getter_type,
+                                           audio_data=audio_data)
+            else:
+                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
+
+
         elif (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
             additional[SavedDataDeck.AUDIO_DATA] = {}
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS] = web_audios

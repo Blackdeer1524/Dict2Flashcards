@@ -1,3 +1,4 @@
+import copy
 import re
 from collections import Counter
 from typing import Iterable
@@ -29,15 +30,24 @@ class ChainConfig(LoadableConfig):
     def __init__(self,
                  config_dir: str,
                  config_name: str,
-                 name_config_pairs: list[tuple[str, LoadableConfig]]):
+                 name_config_pairs: list[tuple[str, LoadableConfig]],
+                 additional_val_scheme: Optional[dict] = None,
+                 additional_docs: str = ""
+                 ):
+        if additional_val_scheme is None:
+            validation_scheme = {}
+            docs_list = []
+        else:
+            validation_scheme = copy.deepcopy(additional_val_scheme)
+            docs_list = [additional_docs]
+
+        validation_scheme["parsers"] = {}
         seen_config_ids = set()
-        docs_list = []
-        validation_scheme = {}
         self.enum_name2config = {}
         for enum_name, (name, config) in zip(get_enumerated_names([item[0] for item in name_config_pairs]),
                                              name_config_pairs):
             self.enum_name2config[enum_name] = config
-            validation_scheme[enum_name] = config.validation_scheme
+            validation_scheme["parsers"][enum_name] = config.validation_scheme
             if id(config) not in seen_config_ids:
                 docs_list.append("{}:\n{}".format(name, config.docs.replace("\n", "\n" + " " * 4)))
                 seen_config_ids.add(id(config))
@@ -52,10 +62,10 @@ class ChainConfig(LoadableConfig):
 
     def update_children_configs(self):
         for enum_name, config in self.enum_name2config.items():
-            config.data = self[enum_name]
+            config.data = self["parsers"][enum_name]
 
     def update_config(self, enum_name: str):
-        self.enum_name2config[enum_name].data = self[enum_name]
+        self.enum_name2config[enum_name].data = self["parsers"][enum_name]
 
     def load(self) -> Optional[LoadableConfig.SchemeCheckResults]:
         errors = super(ChainConfig, self).load()
@@ -209,26 +219,34 @@ class AudioGettersChain:
             self.enum_name2parsers_data[enum_name] = (parser_type, getter.get_audios)
             parser_configs.append(getter.config)
 
+        get_all_configuration = {"get_all": (False, [bool], [True, False])}
+        get_all_docs = """
+get_all:
+    Get audios from all sources
+    type: bool
+    default: False
+"""
+
         self.config = ChainConfig(config_dir=CHAIN_AUDIO_GETTERS_DATA_DIR,
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(parser_name, config) for parser_name, config
-                                                     in zip(names, parser_configs)])
-
-    def get_audios(self, word: str, card_data: dict) -> tuple[tuple[str, str], AudioData]:
-        source = []
-        source_name = ""
-        additional_info = []
-        error_message = ""
-        parser_type = parser_types.WEB  # arbitrary type
+                                                     in zip(names, parser_configs)],
+                                  additional_val_scheme=get_all_configuration,
+                                  additional_docs=get_all_docs)
+                
+    def get_audios(self, word: str, card_data: dict) -> dict[str, tuple[str, AudioData]]:
+        result = {}
         for enum_name, (parser_type, audio_getting_function) in self.enum_name2parsers_data.items():
             if audio_getting_function is None:
-                source = card_data.get(FIELDS.audio_links, [])
-                additional_info = ("" for _ in range(len(source)))
+                audios = card_data.get(FIELDS.audio_links, [])
+                additional_info = ("" for _ in range(len(audios)))
                 error_message = ""
             else:
                 self.config.update_config(enum_name)
-                (source, additional_info), error_message = audio_getting_function(word, card_data)
-            if source:
-                source_name = enum_name
-                break
-        return (parser_type, source_name), ((source, additional_info), error_message)
+                (audios, additional_info), error_message = audio_getting_function(word, card_data)
+
+            if audios:
+                result[enum_name] = (parser_type, ((audios, additional_info), error_message))
+                if not self.config["get_all"]:
+                    break
+        return result

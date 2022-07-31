@@ -96,9 +96,10 @@ class AudioDownloader(Toplevel):
         return True
 
     def download_audio(self, audio_links_list: list[FrozenDict]):
-        item_gen = [(item[SavedDataDeck.AUDIO_SRCS_TYPE], src, dst)
-                     for item in audio_links_list
-                     for src, dst in zip(item[SavedDataDeck.AUDIO_SRCS], item[SavedDataDeck.AUDIO_SAVING_PATHS])]
+        item_gen = [(getter_type, src, dst) for item in audio_links_list
+                    for getter_type, src, dst in zip(item[SavedDataDeck.AUDIO_SRCS_TYPE],
+                                                     item[SavedDataDeck.AUDIO_SRCS],
+                                                     item[SavedDataDeck.AUDIO_SAVING_PATHS])]
         length = len(item_gen)
 
         def iterate(src_type: str, src: str, dst: str, index: int = 1):

@@ -764,7 +764,7 @@ saving_image_height
 
         for i in range(6):
             self.grid_columnconfigure(i, weight=1)
-        self.grid_rowconfigure(7, weight=1)
+        self.grid_rowconfigure(9, weight=1)
 
         self.browse_button = self.Button(self,
                                          text=self.lang_pack.browse_button_text,
@@ -832,6 +832,48 @@ saving_image_height
         self.definition_text = self.Text(self, placeholder=self.lang_pack.definition_text_placeholder, height=4)
         self.definition_text.grid(row=4, column=0, columnspan=8, sticky="news", padx=self.text_padx)
 
+        # ======
+
+        self.fetch_audio_data_button = self.Button(self,
+                                                   text="Подгрузить аудио",
+                                                   command=self.display_audio_on_frame)
+        self.fetch_audio_data_button.grid(row=5, column=0, columnspan=3,
+                                          sticky="news",
+                                          padx=(self.text_padx, 0), pady=(self.text_pady, 0))
+
+        self.audio_getter_option_menu = self.get_option_menu(
+            self,
+            init_text="default" if self.audio_getter is None
+            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                  self.audio_getter.name),
+            values=["default"] +
+                   [f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
+                   [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                   [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
+            command=lambda parser_name: self.change_audio_getter(parser_name))
+        self.audio_getter_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
+                                           pady=(self.text_pady, 0))
+
+        self.configure_audio_getter_button = self.Button(self,
+                                                         text="</>",
+                                                         command=lambda: self.call_configuration_window(
+                                                             plugin_name=self.sentence_parser.name,
+                                                             plugin_config=self.sentence_parser.config,
+                                                             plugin_load_function=lambda conf: conf.load(),
+                                                             saving_action=lambda conf: conf.save()))
+        self.configure_audio_getter_button.grid(row=5, column=7, sticky="news",
+                                                padx=(0, self.text_padx), pady=(self.text_pady, 0))
+
+        self.sound_sf = ScrolledFrame(self, scrollbars="vertical",
+                                      canvas_bg=self.theme.frame_cfg.get("bg"),
+                                      height=120)
+
+        self.sound_sf.grid(row=6, column=0, columnspan=8, sticky="news",
+                                   padx=self.text_padx, pady=(0, self.text_pady))
+
+        self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
+        self.sound_inner_frame.grid_propagate(False)
+
         self.sentence_button_text = self.lang_pack.sentence_button_text
         if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
             typed_sentence_parser_name = self.sentence_parser.name
@@ -840,7 +882,7 @@ saving_image_height
 
         # ======
         a = self.Frame(self)
-        a.grid(row=5, column=0, columnspan=8, padx=self.text_padx, pady=0, sticky="news")
+        a.grid(row=7, column=0, columnspan=8, padx=self.text_padx, pady=0, sticky="news")
 
         for i in range(3):
             a.columnconfigure(i, weight=1)
@@ -866,7 +908,7 @@ saving_image_height
         self.add_sentences_button = self.Button(self,
                                                 text=self.sentence_button_text,
                                                 command=self.replace_sentences)
-        self.add_sentences_button.grid(row=6, column=0, columnspan=3, sticky="news", padx=(self.text_padx, 0))
+        self.add_sentences_button.grid(row=8, column=0, columnspan=3, sticky="news", padx=(self.text_padx, 0))
 
         self.sentence_parser_option_menu = self.get_option_menu(self,
                                                                 init_text=typed_sentence_parser_name,
@@ -875,7 +917,7 @@ saving_image_height
                                                                     [f"[{parser_types.CHAIN}] {name}" for name in self.chaining_data["sentence_parsers"]]),
                                                                 command=lambda parser_name:
                                                                 self.change_sentence_parser(parser_name))
-        self.sentence_parser_option_menu.grid(row=6, column=3, columnspan=4, sticky="news")
+        self.sentence_parser_option_menu.grid(row=8, column=3, columnspan=4, sticky="news")
 
         self.configure_sentence_parser_button = self.Button(self,
                                                             text="</>",
@@ -885,23 +927,18 @@ saving_image_height
                                                                 plugin_load_function=lambda conf: conf.load(),
                                                                 saving_action=lambda conf: conf.save()),
                                                             width=6)
-        self.configure_sentence_parser_button.grid(row=6, column=7, sticky="news", padx=(0, self.text_padx))
+        self.configure_sentence_parser_button.grid(row=8, column=7, sticky="news", padx=(0, self.text_padx))
         # ======
 
         self.text_frames = []
         self.sent_button_list = []
 
-        self.text_and_audio_window = PanedWindow(self,
-                                                 orient="vertical",
-                                                 showhandle=True,
-                                                 **self.theme.frame_cfg)
-        self.text_and_audio_window.grid(row=7, column=0, columnspan=8, sticky="news",
-                                        padx=self.text_padx, pady=self.text_pady)
-
-        self.text_widgets_frame = self.Frame(self.text_and_audio_window,
+        self.text_widgets_frame = self.Frame(self,
                                              # bg="red"
                                              )
-        self.text_and_audio_window.add(self.text_widgets_frame, stretch="always")
+        self.text_widgets_frame.grid(row=9, column=0, columnspan=8, sticky="news",
+                                        padx=self.text_padx, pady=self.text_pady)
+
         self.text_widgets_frame.grid_columnconfigure(0, weight=1)
 
         DELAY = 0.1  # in seconds
@@ -961,143 +998,6 @@ saving_image_height
 
         self.text_widgets_frame.bind("<Configure>", lambda event: resize_text_widgets_frame())
 
-        self.play_sound_frame = self.Frame(self, height=150)
-        self.play_sound_frame.grid_propagate(False)
-        self.text_and_audio_window.add(self.play_sound_frame, stretch="never")
-
-        self.play_sound_frame.rowconfigure(1, weight=1)
-        self.play_sound_frame.columnconfigure(0, weight=1)
-
-        self.sound_sf = ScrolledFrame(self.play_sound_frame, scrollbars="vertical",
-                                      canvas_bg=self.theme.frame_cfg.get("bg"))
-        self.sound_sf.grid(row=1, column=0, sticky="news")
-
-        self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
-        
-        # ======
-        def display_audio_on_frame():
-            word = self.word
-            audio_sources = []
-            additional_info = []
-            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-
-            if self.audio_getter is not None:
-                if audio_getter_type == parser_types.WEB:
-                    source_name = "[{}] {}".format(audio_getter_type,
-                                                   self.configurations["scrappers"]["audio"]["name"])
-                    ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word,
-                                                                                                     self.dict_card_data)
-                elif audio_getter_type == parser_types.LOCAL:
-                    source_name = "[{}] {}".format(audio_getter_type,
-                                                   self.configurations["scrappers"]["audio"]["name"])
-                    ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word,
-                                                                                                     self.dict_card_data)
-                elif audio_getter_type == parser_types.CHAIN:
-                    (audio_getter_type, source_name), audio_data = self.audio_getter.get_audios(word,
-                                                                                                self.dict_card_data)
-                    (audio_sources, additional_info), error_message = audio_data
-                else:
-                    raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
-
-                if error_message:
-                    messagebox.showerror(title=self.lang_pack.error_title, message=error_message)
-
-            if not audio_sources:
-                source_name = "default"
-                if (audio_sources := self.dict_card_data.get(FIELDS.audio_links)) is None or not audio_sources:
-                    messagebox.showerror(title=self.lang_pack.error_title,
-                                         message="Аудио не найдено!")
-                    return
-                additional_info = ("" for _ in range(len(audio_sources)))
-
-            from tkinter import LabelFrame
-            from tkinter import Checkbutton
-
-            audio_getter_frame = LabelFrame(self.sound_inner_frame,
-                                            text=source_name,
-                                            fg=self.theme.button_cfg.get("foreground"),
-                                            **self.theme.frame_cfg)
-            self.sound_sf.bind_scroll_wheel(audio_getter_frame)
-            audio_getter_frame.grid_propagate(False)
-            audio_getter_frame.pack(side="top", fill="x", expand=True)
-
-            def web_playsound(src: str):
-                audio_name = self.card_processor.get_save_audio_name(word,
-                                                                     self.typed_word_parser_name,
-                                                                     "-1",
-                                                                     self.dict_card_data)
-
-                temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name)
-
-                def show_download_error(exc):
-                    messagebox.showerror(message=f"{self.lang_pack.error_title}\n{exc}")
-
-                success = AudioDownloader.fetch_audio(url=src,
-                                                      save_path=temp_audio_path,
-                                                      timeout=5,
-                                                      headers=self.headers,
-                                                      exception_action=lambda exc: show_download_error(exc))
-                if success:
-                    playsound(temp_audio_path)
-
-            if audio_getter_type in (parser_types.WEB, "default"):
-                play_sound_button_cmd = web_playsound
-            else:
-                play_sound_button_cmd = playsound
-
-            for audio, info in zip(audio_sources, additional_info):
-                audio_info_frame = self.Frame(audio_getter_frame)
-                audio_info_frame.pack(side="top", fill="x", expand=True)
-                audio_info_frame.columnconfigure(2, weight=1)
-
-                var = BooleanVar()
-                var.set(False)
-                pick_button = Checkbutton(audio_info_frame,
-                                          variable=var,
-                                          **self.theme.checkbutton_cfg
-                                          )
-                pick_button.grid(row=0, column=0, sticky="news")
-                self.sound_sf.bind_scroll_wheel(pick_button)
-
-                play_sound_button = self.Button(audio_info_frame,
-                                                text="▶",
-                                                command=lambda src=audio: play_sound_button_cmd(src))
-                play_sound_button.grid(row=0, column=1, sticky="news")
-                self.sound_sf.bind_scroll_wheel(play_sound_button)
-
-                info_label = self.Label(audio_info_frame, text=info, relief="ridge")
-                info_label.grid(row=0, column=2, sticky="news")
-                self.sound_sf.bind_scroll_wheel(info_label)
-
-        self.fetch_audio_data_button = self.Button(self,
-                                                   text="Подгрузить аудио",
-                                                   command=display_audio_on_frame)
-        self.fetch_audio_data_button.grid(row=8, column=0, columnspan=3,
-                                          sticky="news",
-                                          padx=(self.text_padx, 0), pady=(0, 2 * self.text_pady))
-
-        self.audio_getter_option_menu = self.get_option_menu(
-            self,
-            init_text="default" if self.audio_getter is None
-                                else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                                      self.audio_getter.name),
-            values=["default"] +
-                   [f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
-                   [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
-                   [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
-            command=lambda parser_name: self.change_audio_getter(parser_name))
-        self.audio_getter_option_menu.grid(row=8, column=3, columnspan=4, sticky="news",
-                                           pady=(0, 2 * self.text_pady))
-
-        self.configure_audio_getter_button = self.Button(self,
-                                                         text="</>",
-                                                         command=lambda: self.call_configuration_window(
-                                                            plugin_name=self.sentence_parser.name,
-                                                            plugin_config=self.sentence_parser.config,
-                                                            plugin_load_function=lambda conf: conf.load(),
-                                                            saving_action=lambda conf: conf.save()))
-        self.configure_audio_getter_button.grid(row=8, column=7, sticky="news",
-                                                padx=(0, self.text_padx), pady=(0, 2 * self.text_pady))
         # ======
 
         self.sound_button = self.Button(self,
@@ -1112,16 +1012,16 @@ saving_image_height
 
         self.user_tags_field = self.Entry(self, placeholder=self.lang_pack.user_tags_field_placeholder)
         self.user_tags_field.fill_placeholder()
-        self.user_tags_field.grid(row=9, column=0, columnspan=6, sticky="news",
+        self.user_tags_field.grid(row=10, column=0, columnspan=6, sticky="news",
                                   padx=(self.text_padx, 0), pady=self.text_pady)
 
         self.tag_prefix_field = self.Entry(self, justify="center", width=8)
         self.tag_prefix_field.insert(0, self.configurations["deck"]["tags_hierarchical_pref"])
-        self.tag_prefix_field.grid(row=9, column=7, columnspan=1, sticky="news",
+        self.tag_prefix_field.grid(row=10, column=7, columnspan=1, sticky="news",
                                    padx=(0, self.text_padx), pady=self.text_pady)
 
         self.dict_tags_field = self.Text(self, relief="ridge", state="disabled", height=2)
-        self.dict_tags_field.grid(row=10, column=0, columnspan=8, sticky="news",
+        self.dict_tags_field.grid(row=11, column=0, columnspan=8, sticky="news",
                                   padx=self.text_padx, pady=(0, self.text_padx))
 
         def focus_next_window(event):
@@ -1313,6 +1213,97 @@ saving_image_height
                                        config_location=chaining_data_file_dir,
                                        _config_file_name=chaining_data_file_name)
         return chaining_data
+
+    def display_audio_on_frame(self):
+        word = self.word
+        audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
+
+        if self.audio_getter is not None:
+            if audio_getter_type == parser_types.WEB:
+                source_name = "[{}] {}".format(audio_getter_type,
+                                               self.configurations["scrappers"]["audio"]["name"])
+                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word,
+                                                                                                 self.dict_card_data)
+            elif audio_getter_type == parser_types.LOCAL:
+                source_name = "[{}] {}".format(audio_getter_type,
+                                               self.configurations["scrappers"]["audio"]["name"])
+                ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word,
+                                                                                                 self.dict_card_data)
+            elif audio_getter_type == parser_types.CHAIN:
+                (audio_getter_type, source_name), audio_data = self.audio_getter.get_audios(word,
+                                                                                            self.dict_card_data)
+                (audio_sources, additional_info), error_message = audio_data
+            else:
+                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
+
+            if error_message:
+                messagebox.showerror(title=self.lang_pack.error_title, message=error_message)
+        else:
+            if (audio_sources := self.dict_card_data.get(FIELDS.audio_links)) is None or not audio_sources:
+                messagebox.showerror(title=self.lang_pack.error_title,
+                                     message="Аудио не найдено!")
+                return
+            source_name = "default"
+            additional_info = ("" for _ in range(len(audio_sources)))
+
+        from tkinter import LabelFrame
+        from tkinter import Checkbutton
+
+        audio_getter_frame = LabelFrame(self.sound_inner_frame,
+                                        text=source_name,
+                                        fg=self.theme.button_cfg.get("foreground"),
+                                        **self.theme.frame_cfg)
+        self.sound_sf.bind_scroll_wheel(audio_getter_frame)
+        audio_getter_frame.grid_propagate(False)
+        audio_getter_frame.pack(side="top", fill="x", expand=True)
+
+        def web_playsound(src: str):
+            audio_name = self.card_processor.get_save_audio_name(word,
+                                                                 self.typed_word_parser_name,
+                                                                 "-1",
+                                                                 self.dict_card_data)
+
+            temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name)
+
+            def show_download_error(exc):
+                messagebox.showerror(message=f"{self.lang_pack.error_title}\n{exc}")
+
+            success = AudioDownloader.fetch_audio(url=src,
+                                                  save_path=temp_audio_path,
+                                                  timeout=5,
+                                                  headers=self.headers,
+                                                  exception_action=lambda exc: show_download_error(exc))
+            if success:
+                playsound(temp_audio_path)
+
+        if audio_getter_type in (parser_types.WEB, "default"):
+            play_sound_button_cmd = web_playsound
+        else:
+            play_sound_button_cmd = playsound
+
+        for audio, info in zip(audio_sources, additional_info):
+            audio_info_frame = self.Frame(audio_getter_frame)
+            audio_info_frame.pack(side="top", fill="x", expand=True)
+            audio_info_frame.columnconfigure(2, weight=1)
+
+            var = BooleanVar()
+            var.set(False)
+            pick_button = Checkbutton(audio_info_frame,
+                                      variable=var,
+                                      **self.theme.checkbutton_cfg
+                                      )
+            pick_button.grid(row=0, column=0, sticky="news")
+            self.sound_sf.bind_scroll_wheel(pick_button)
+
+            play_sound_button = self.Button(audio_info_frame,
+                                            text="▶",
+                                            command=lambda src=audio: play_sound_button_cmd(src))
+            play_sound_button.grid(row=0, column=1, sticky="news")
+            self.sound_sf.bind_scroll_wheel(play_sound_button)
+
+            info_label = self.Label(audio_info_frame, text=info, relief="ridge")
+            info_label.grid(row=0, column=2, sticky="news")
+            self.sound_sf.bind_scroll_wheel(info_label)
 
     @property
     @error_handler(show_errors)
@@ -2347,6 +2338,7 @@ saving_image_height
             self.sound_button["state"] = "normal"
         else:
             self.sound_button["state"] = "disabled"
+
         return True
     
     @error_handler(show_errors)

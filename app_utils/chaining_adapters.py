@@ -222,7 +222,8 @@ class AudioGettersChain:
         parser_type = parser_types.WEB  # arbitrary type
         for enum_name, (parser_type, audio_getting_function) in self.enum_name2parsers_data.items():
             if audio_getting_function is None:
-                source = additional_info = card_data.get(FIELDS.audio_links, [])
+                source = card_data.get(FIELDS.audio_links, [])
+                additional_info = ("" for _ in range(len(source)))
                 error_message = ""
             else:
                 self.config.update_config(enum_name)

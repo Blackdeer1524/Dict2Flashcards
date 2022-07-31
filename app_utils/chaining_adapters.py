@@ -110,7 +110,7 @@ class SentenceParsersChain:
                  name: str,
                  chain_data: dict[str, str | list[str]]):
         self.name = name
-        self.enum_name2get_sentence_batch_functions: dict[str, Callable[[str, int], SentenceGenerator]] = {}
+        self.enum_name2get_sentence_batch_functions: dict[str, Callable[[str], SentenceGenerator]] = {}
         parser_configs = []
         for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
             plugin_container = loaded_plugins.get_sentence_parser(parser_name)
@@ -121,17 +121,30 @@ class SentenceParsersChain:
                                   name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
 
-    def get_sentence_batch(self, word: str, size: int) -> SentenceGenerator:
+    def get_sentence_batch(self, word: str) -> SentenceGenerator:
+        batch_size = yield
         yielded_once = False
         for enum_name, get_sentence_batch_f in self.enum_name2get_sentence_batch_functions.items():
             self.config.update_config(enum_name)
-            sent_generator = get_sentence_batch_f(word, size)
-            for sentence_list, error_message in sent_generator:
-                if not sentence_list:
-                    yielded_once = False
+            sent_generator = get_sentence_batch_f(word)
+            try:
+                next(sent_generator)
+            except StopIteration as e:
+                sentence_list, error_message = e.value
+                if sentence_list:
+                    yield sentence_list, error_message
+                    continue
+
+            while True:
+                try:
+                    sentence_list, error_message = sent_generator.send(batch_size)
+                    if not sentence_list:
+                        break
+                    batch_size = yield sentence_list, error_message
+                    yielded_once = True
+                except StopIteration:
                     break
-                yield sentence_list, error_message
-                yielded_once = True
+
         if not yielded_once:
             return [], ""
 

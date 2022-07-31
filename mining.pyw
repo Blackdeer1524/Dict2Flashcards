@@ -902,19 +902,19 @@ saving_image_height
         self.text_and_audio_window.add(self.text_widgets_frame, stretch="always")
         self.text_widgets_frame.grid_columnconfigure(0, weight=1)
 
-        OPTIMAL_TEXT_HEIGHT = 80
         DELAY = 0.1  # in seconds
-        last_call_time = -DELAY
+        text_widgets_last_call_time = 0
 
         self.sentence_buffer = []
 
-        def text_frame_resize():
-            nonlocal DELAY, last_call_time, OPTIMAL_TEXT_HEIGHT
+        def resize_text_widgets_frame():
+            nonlocal DELAY, text_widgets_last_call_time
 
-            if (call_time := time.time()) - last_call_time < DELAY:
+            if (call_time := time.time()) - text_widgets_last_call_time < DELAY:
                 return
 
-            last_call_time = call_time
+            OPTIMAL_TEXT_HEIGHT = 80
+            text_widgets_last_call_time = call_time
             self.text_widgets_frame.update()
             while True:
                 current_frame_height = self.text_widgets_frame.winfo_height() - (len(self.text_frames) + 1) // 2 * self.text_pady * 2
@@ -957,7 +957,7 @@ saving_image_height
                 self.text_frames.append(choose_frame)
                 self.sent_button_list.append(choose_frame.choose_button)
 
-        self.text_widgets_frame.bind("<Configure>", lambda event: text_frame_resize())
+        self.text_widgets_frame.bind("<Configure>", lambda event: resize_text_widgets_frame())
 
         self.play_sound_frame = self.Frame(self, height=150)
         self.play_sound_frame.grid_propagate(False)
@@ -969,11 +969,79 @@ saving_image_height
         sound_sf = ScrolledFrame(self.play_sound_frame, scrollbars="vertical")
         sound_sf.grid(row=1, column=0, sticky="news")
 
-        self.sound_inner_frame = sound_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
-
+        self.sound_inner_frame = sound_sf.display_widget(self.Frame, fit_width=True)
+        
         # ======
+        def display_audio_on_frame():
+            word = self.word
+            audio_sources = []
+            additional_info = []
+            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
+
+            if self.audio_getter is not None:
+                if audio_getter_type == parser_types.WEB:
+                    source_name = "[{}] {}".format(audio_getter_type,
+                                                   self.configurations["scrappers"]["audio"]["name"])
+                    ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word,
+                                                                                                     self.dict_card_data)
+                elif audio_getter_type == parser_types.LOCAL:
+                    source_name = "[{}] {}".format(audio_getter_type,
+                                                   self.configurations["scrappers"]["audio"]["name"])
+                    ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word,
+                                                                                                     self.dict_card_data)
+                elif audio_getter_type == parser_types.CHAIN:
+                    (audio_getter_type, source_name), audio_data = self.audio_getter.get_audios(word,
+                                                                                                self.dict_card_data)
+                    (audio_sources, additional_info), error_message = audio_data
+                else:
+                    raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
+
+                if error_message:
+                    messagebox.showerror(title=self.lang_pack.error_title, message=error_message)
+
+            if not audio_sources:
+                source_name = "default"
+                if (audio_sources := self.dict_card_data.get(FIELDS.audio_links)) is None or not audio_sources:
+                    messagebox.showerror(title=self.lang_pack.error_title,
+                                         message="Аудио не найдено!")
+                    return
+                additional_info = ("" for _ in range(len(audio_sources)))
+
+            from tkinter import LabelFrame
+            from tkinter import Checkbutton
+
+            audio_getter_frame = LabelFrame(self.sound_inner_frame, text=source_name, **self.theme.frame_cfg)
+            sound_sf.bind_scroll_wheel(audio_getter_frame)
+            audio_getter_frame.grid_propagate(False)
+            audio_getter_frame.pack(side="top", fill="x", expand=True)
+
+            for audio, info in zip(audio_sources, additional_info):
+                audio_info_frame = self.Frame(audio_getter_frame)
+                audio_info_frame.pack(side="top", fill="x", expand=True)
+                audio_info_frame.columnconfigure(2, weight=1)
+
+                # var = BooleanVar()
+                # var.set(False)
+                pick_button = Checkbutton(audio_info_frame,
+                                          # variable=var,
+                                          **self.theme.checkbutton_cfg
+                                          )
+                pick_button.grid(row=0, column=0, sticky="news")
+                sound_sf.bind_scroll_wheel(pick_button)
+
+                play_sound_button = self.Button(audio_info_frame,
+                                                text="▶")
+                play_sound_button.grid(row=0, column=1, sticky="news")
+                sound_sf.bind_scroll_wheel(play_sound_button)
+
+                info_label = self.Label(audio_info_frame, text=info, relief="ridge")
+                info_label.grid(row=0, column=2, sticky="news")
+                sound_sf.bind_scroll_wheel(info_label)
+
+
         self.fetch_audio_data_button = self.Button(self,
-                                                   text="Подгрузить аудио")
+                                                   text="Подгрузить аудио",
+                                                   command=display_audio_on_frame)
         self.fetch_audio_data_button.grid(row=8, column=0, columnspan=3,
                                           sticky="news",
                                           padx=(self.text_padx, 0), pady=(0, 2 * self.text_pady))
@@ -1076,7 +1144,7 @@ saving_image_height
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.geometry(self.configurations["app"]["main_window_geometry"])
-        text_frame_resize()
+        resize_text_widgets_frame()
         self.refresh()
 
         AUTOSAVE_INTERVAL = 300_000  # time in milliseconds
@@ -2101,7 +2169,7 @@ saving_image_height
             elif audio_getter_type == parser_types.LOCAL:
                 ((audio_sources, additional_info), error_message) = self.audio_getter.get_audios(word, self.dict_card_data)
             elif audio_getter_type == parser_types.CHAIN:
-                audio_getter_type, audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
+                (audio_getter_type, source_name), audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
                 (audio_sources, additional_info), error_message = audio_data
             else:
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")

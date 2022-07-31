@@ -1021,6 +1021,30 @@ saving_image_height
             audio_getter_frame.grid_propagate(False)
             audio_getter_frame.pack(side="top", fill="x", expand=True)
 
+            def web_playsound(src: str):
+                audio_name = self.card_processor.get_save_audio_name(word,
+                                                                     self.typed_word_parser_name,
+                                                                     "-1",
+                                                                     self.dict_card_data)
+
+                temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name)
+
+                def show_download_error(exc):
+                    messagebox.showerror(message=f"{self.lang_pack.error_title}\n{exc}")
+
+                success = AudioDownloader.fetch_audio(url=src,
+                                                      save_path=temp_audio_path,
+                                                      timeout=5,
+                                                      headers=self.headers,
+                                                      exception_action=lambda exc: show_download_error(exc))
+                if success:
+                    playsound(temp_audio_path)
+
+            if audio_getter_type in (parser_types.WEB, "default"):
+                play_sound_button_cmd = web_playsound
+            else:
+                play_sound_button_cmd = playsound
+
             for audio, info in zip(audio_sources, additional_info):
                 audio_info_frame = self.Frame(audio_getter_frame)
                 audio_info_frame.pack(side="top", fill="x", expand=True)
@@ -1036,14 +1060,14 @@ saving_image_height
                 self.sound_sf.bind_scroll_wheel(pick_button)
 
                 play_sound_button = self.Button(audio_info_frame,
-                                                text="▶")
+                                                text="▶",
+                                                command=lambda src=audio: play_sound_button_cmd(src))
                 play_sound_button.grid(row=0, column=1, sticky="news")
                 self.sound_sf.bind_scroll_wheel(play_sound_button)
 
                 info_label = self.Label(audio_info_frame, text=info, relief="ridge")
                 info_label.grid(row=0, column=2, sticky="news")
                 self.sound_sf.bind_scroll_wheel(info_label)
-
 
         self.fetch_audio_data_button = self.Button(self,
                                                    text="Подгрузить аудио",
@@ -2286,7 +2310,6 @@ saving_image_height
         self.dict_card_data = self.deck.get_card().to_dict()
         self.card_processor.process_card(self.dict_card_data)
 
-        self.sound_sf.scroll_to_top()
         self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
 
         self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() + 1 \

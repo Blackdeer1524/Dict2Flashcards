@@ -608,7 +608,8 @@ saving_image_height
 
                 chain_name_entry.grid(row=0, column=0, columnspan=2, sticky="we", padx=10, pady=10)
                 
-                choosing_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical")
+                choosing_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical",
+                                                    canvas_bg=self.theme.frame_cfg.get("bg"))
                 choosing_main_frame.grid(row=1, column=0, sticky="news", padx=10, pady=(0, 10))
                 choosing_inner_frame = choosing_main_frame.display_widget(self.Frame,
                                                                   fit_width=True,
@@ -647,7 +648,8 @@ saving_image_height
                     choosing_main_frame.bind_scroll_wheel(b)
                     choosing_widgets_data.append(ChoosingData(name=parser_name, label=a, select_button=b))
 
-                built_chain_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical")
+                built_chain_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical",
+                                                       canvas_bg=self.theme.frame_cfg.get("bg"))
                 built_chain_main_frame.grid(row=1, column=1, sticky="news", padx=10, pady=(0, 10))
                 built_chain_inner_frame = built_chain_main_frame.display_widget(self.Frame,
                                                                   fit_width=True,
@@ -966,7 +968,8 @@ saving_image_height
         self.play_sound_frame.rowconfigure(1, weight=1)
         self.play_sound_frame.columnconfigure(0, weight=1)
 
-        self.sound_sf = ScrolledFrame(self.play_sound_frame, scrollbars="vertical")
+        self.sound_sf = ScrolledFrame(self.play_sound_frame, scrollbars="vertical",
+                                      canvas_bg=self.theme.frame_cfg.get("bg"))
         self.sound_sf.grid(row=1, column=0, sticky="news")
 
         self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
@@ -1010,7 +1013,10 @@ saving_image_height
             from tkinter import LabelFrame
             from tkinter import Checkbutton
 
-            audio_getter_frame = LabelFrame(self.sound_inner_frame, text=source_name, **self.theme.frame_cfg)
+            audio_getter_frame = LabelFrame(self.sound_inner_frame,
+                                            text=source_name,
+                                            fg=self.theme.button_cfg.get("foreground"),
+                                            **self.theme.frame_cfg)
             self.sound_sf.bind_scroll_wheel(audio_getter_frame)
             audio_getter_frame.grid_propagate(False)
             audio_getter_frame.pack(side="top", fill="x", expand=True)
@@ -1020,10 +1026,10 @@ saving_image_height
                 audio_info_frame.pack(side="top", fill="x", expand=True)
                 audio_info_frame.columnconfigure(2, weight=1)
 
-                # var = BooleanVar()
-                # var.set(False)
+                var = BooleanVar()
+                var.set(False)
                 pick_button = Checkbutton(audio_info_frame,
-                                          # variable=var,
+                                          variable=var,
                                           **self.theme.checkbutton_cfg
                                           )
                 pick_button.grid(row=0, column=0, sticky="news")
@@ -1740,7 +1746,8 @@ saving_image_height
         text_pane_win = PanedWindow(conf_window, **self.theme.frame_cfg)        
         text_pane_win.pack(side="top", expand=1, fill="both", anchor="n")
         
-        conf_sf = ScrolledFrame(text_pane_win, scrollbars="both")
+        conf_sf = ScrolledFrame(text_pane_win, scrollbars="both",
+                                canvas_bg=self.theme.frame_cfg.get("bg"))
         text_pane_win.add(conf_sf, stretch="always", sticky="news")
         conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
         
@@ -1752,7 +1759,8 @@ saving_image_height
         docs_pane_win = PanedWindow(text_pane_win, orient="vertical",
                                     showhandle=True, **self.theme.frame_cfg)
         
-        docs_sf = ScrolledFrame(text_pane_win, scrollbars="both")
+        docs_sf = ScrolledFrame(text_pane_win, scrollbars="both",
+                                canvas_bg=self.theme.frame_cfg.get("bg"))
         docs_pane_win.add(docs_sf, stretch="always", sticky="news")
         docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
         

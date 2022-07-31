@@ -168,10 +168,13 @@ class ScrolledFrame(Frame):
         self.grid_rowconfigure(0, weight=1)
 
         # Canvas to hold the interior widget
+        canvas_bg = kw.pop("canvas_bg", None)
+
         c = self._canvas = Canvas(self,
-                                     borderwidth=0,
-                                     highlightthickness=0,
-                                     takefocus=0)
+                                  bg=canvas_bg,
+                                  borderwidth=0,
+                                  highlightthickness=0,
+                                  takefocus=0)
 
         # Enable scrolling when the canvas has the focus
         self.bind_arrow_keys(c)

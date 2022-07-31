@@ -23,6 +23,8 @@ settings_language_label_text = "Язык"
 settings_configure_anki_button_text = "Anki"
 settings_menu_label = "Настройки"
 settings_image_search_configuration_label_text = "Поиск изображений"
+settings_card_processor_label_text = "Формат карточки"
+settings_format_processor_label_text = "Формат итогового файла"
 
 chain_management_menu_label = "Цепи"
 chain_management_word_parsers_option = "Парсеры слов"
@@ -360,8 +362,6 @@ on_closing_message = "Вы точно хотите выйти?"
 # configure_dictionary
 configure_dictionary_dict_label_text = "Словарь"
 configure_dictionary_audio_getter_label_text = "Получение аудио"
-configure_dictionary_card_processor_label_text = "Формат карточки"
-configure_dictionary_format_processor_label_text = "Формат итогового файла"
 
 # call_configuration_window
 configuration_window_conf_window_title = "конфигурации"

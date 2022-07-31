@@ -18,11 +18,14 @@ file_master_menu_label = "File"
 add_card_menu_label = "Add"
 search_inside_deck_menu_label = "Find"
 statistics_menu_label = "Statistics"
+
 settings_themes_label_text = "Theme"
 settings_language_label_text = "Language"
 settings_configure_anki_button_text = "Anki"
 settings_menu_label = "Settings"
 settings_image_search_configuration_label_text = "Image search"
+settings_card_processor_label_text = "Card format"
+settings_format_processor_label_text = "Saving format"
 
 chain_management_menu_label = "Chains"
 chain_management_word_parsers_option = "Word parsers"
@@ -360,8 +363,6 @@ on_closing_message = "Are you sure?"
 # configure_dictionary
 configure_dictionary_dict_label_text = "Dictionary"
 configure_dictionary_audio_getter_label_text = "Audio getter"
-configure_dictionary_card_processor_label_text = "Card format"
-configure_dictionary_format_processor_label_text = "Saving format"
 
 # call_configuration_window
 configuration_window_conf_window_title = "configuration"

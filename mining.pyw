@@ -329,10 +329,40 @@ saving_image_height
                                                             )
             image_search_configuration_button.grid(row=2, column=1, sticky="news")
 
+            card_processor_label = self.Label(settings_window,
+                                              text=self.lang_pack.settings_card_processor_label_text)
+            card_processor_label.grid(row=3, column=0, sticky="news")
+
+            @error_handler(self.show_errors)
+            def choose_card_processor(name: str):
+                self.configurations["deck"]["card_processor"] = name
+                self.card_processor = loaded_plugins.get_card_processor(name)
+
+            card_processor_option = self.get_option_menu(settings_window,
+                                                         init_text=self.card_processor.name,
+                                                         values=loaded_plugins.card_processors.loaded,
+                                                         command=lambda processor: choose_card_processor(processor))
+            card_processor_option.grid(row=3, column=1, sticky="news")
+
+            format_processor_label = self.Label(settings_window,
+                                                text=self.lang_pack.settings_format_processor_label_text)
+            format_processor_label.grid(row=4, column=0, sticky="news")
+
+            @error_handler(self.show_errors)
+            def choose_format_processor(name: str):
+                self.configurations["deck"]["saving_format"] = name
+                self.deck_saver = loaded_plugins.get_deck_saving_formats(name)
+
+            format_processor_option = self.get_option_menu(settings_window,
+                                                           init_text=self.deck_saver.name,
+                                                           values=loaded_plugins.deck_saving_formats.loaded,
+                                                           command=lambda format: choose_format_processor(format))
+            format_processor_option.grid(row=4, column=1, sticky="news")
+
             configure_anki_button = self.Button(settings_window,
                                                 text=self.lang_pack.settings_configure_anki_button_text,
                                                 command=anki_dialog)
-            configure_anki_button.grid(row=3, column=0, columnspan=2, sticky="news")
+            configure_anki_button.grid(row=5, column=0, columnspan=2, sticky="news")
 
             spawn_window_in_center(self, settings_window)
             settings_window.resizable(False, False)
@@ -1966,89 +1996,6 @@ saving_image_height
         self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch)
         self.configurations["scrappers"]["sentence"]["name"] = given_sentence_parser_name
 
-    # # TODO
-    # @error_handler(show_errors)
-    # def configure_dictionary(self):
-    #     # dict
-    #     dict_configuration_window = self.Toplevel(self)
-    #     dict_configuration_window.title(self.lang_pack.configure_dictionary_button_text)
-    #     dict_configuration_window.grid_columnconfigure(1, weight=1)
-    #     dict_configuration_window.withdraw()
-    # 
-    #     dict_label = self.Label(dict_configuration_window, text=self.lang_pack.configure_dictionary_dict_label_text)
-    #     dict_label.grid(row=0, column=0, sticky="news")
-    #
-    # 
-    #     # audio_getter
-    #     audio_getter_label = self.Label(dict_configuration_window,
-    #                                     text=self.lang_pack.configure_dictionary_audio_getter_label_text)
-    #     audio_getter_label.grid(row=1, column=0, sticky="news")
-    # 
-    #     choose_audio_option = self.get_option_menu(
-    #         dict_configuration_window,
-    #         init_text=parser_types.DEFAULT_AUDIO_SRC if self.audio_getter is None
-    #                                     else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-    #                                                           self.audio_getter.name),
-    #         values=[parser_types.DEFAULT_AUDIO_SRC] +
-    #                [f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
-    #                [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
-    #                [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
-    #         command=lambda getter: self.change_audio_getter(getter))
-    #     choose_audio_option.grid(row=1, column=1, sticky="news")
-    # 
-    #     configure_audio_getter_button = self.Button(dict_configuration_window,
-    #                                                 text="</>")
-    #     if self.audio_getter is not None:
-    #         configure_audio_getter_button["state"] = "normal"
-    #         configure_audio_getter_button["command"] = \
-    #             lambda: self.call_configuration_window(
-    #                 plugin_name=self.audio_getter.name,
-    #                 plugin_config=self.audio_getter.config,
-    #                 plugin_load_function=lambda conf: conf.load(),
-    #                 saving_action=lambda conf: conf.save())
-    #     else:
-    #         configure_audio_getter_button["state"] = "disabled"
-    # 
-    #     configure_audio_getter_button.grid(row=1, column=2, sticky="news")
-    # 
-    #     # card_processor
-    #     card_processor_label = self.Label(dict_configuration_window,
-    #                                       text=self.lang_pack.configure_dictionary_card_processor_label_text)
-    #     card_processor_label.grid(row=2, column=0, sticky="news")
-    # 
-    #     @error_handler(self.show_errors)
-    #     def choose_card_processor(name: str):
-    #         self.configurations["deck"]["card_processor"] = name
-    #         self.card_processor = loaded_plugins.get_card_processor(name)
-    # 
-    #     card_processor_option = self.get_option_menu(dict_configuration_window,
-    #                                                  init_text=self.card_processor.name,
-    #                                                  values=loaded_plugins.card_processors.loaded,
-    #                                                  command=lambda processor: choose_card_processor(processor))
-    #     card_processor_option.grid(row=2, column=1, sticky="news")
-    # 
-    #     format_processor_label = self.Label(dict_configuration_window,
-    #                                         text=self.lang_pack.configure_dictionary_format_processor_label_text)
-    #     format_processor_label.grid(row=3, column=0, sticky="news")
-    # 
-    #     @error_handler(self.show_errors)
-    #     def choose_format_processor(name: str):
-    #         self.configurations["deck"]["saving_format"] = name
-    #         self.deck_saver = loaded_plugins.get_deck_saving_formats(name)
-    # 
-    #     format_processor_option = self.get_option_menu(dict_configuration_window,
-    #                                                    init_text=self.deck_saver.name,
-    #                                                    values=loaded_plugins.deck_saving_formats.loaded,
-    #                                                    command=lambda format: choose_format_processor(format))
-    #     format_processor_option.grid(row=3, column=1, sticky="news")
-    # 
-    #     dict_configuration_window.bind("<Escape>", lambda event: dict_configuration_window.destroy())
-    #     dict_configuration_window.bind("<Return>", lambda event: dict_configuration_window.destroy())
-    #     dict_configuration_window.deiconify()
-    #     spawn_window_in_center(self, dict_configuration_window)
-    #     dict_configuration_window.resizable(False, False)
-    #     dict_configuration_window.grab_set()
-    
     @error_handler(show_errors)
     def choose_sentence(self, sentence_number: int):
         if sentence_number >= len(self.text_frames):

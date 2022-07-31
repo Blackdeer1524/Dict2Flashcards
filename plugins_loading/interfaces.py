@@ -30,8 +30,10 @@ class LanguagePackageInterface(Protocol):
     settings_menu_label: str
     settings_themes_label_text: str
     settings_language_label_text: str
-    settings_configure_anki_button_text: str
     settings_image_search_configuration_label_text: str
+    settings_card_processor_label_text: str
+    settings_format_processor_label_text: str
+    settings_configure_anki_button_text: str
 
     chain_management_menu_label: str
     chain_management_word_parsers_option: str
@@ -150,8 +152,6 @@ class LanguagePackageInterface(Protocol):
     # configure_dictionary
     configure_dictionary_dict_label_text: str
     configure_dictionary_audio_getter_label_text: str
-    configure_dictionary_card_processor_label_text: str
-    configure_dictionary_format_processor_label_text: str
 
     # call_configuration_window
     configuration_window_conf_window_title: str

@@ -54,7 +54,11 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
         object.__setattr__(self, "settings_configure_anki_button_text", source_module.settings_configure_anki_button_text)
         object.__setattr__(self, "settings_menu_label", source_module.settings_menu_label)
         object.__setattr__(self, "settings_image_search_configuration_label_text", source_module.settings_image_search_configuration_label_text)
-        
+        object.__setattr__(self, "settings_card_processor_label_text",
+                           source_module.settings_card_processor_label_text)
+        object.__setattr__(self, "settings_format_processor_label_text",
+                           source_module.settings_format_processor_label_text)
+
         object.__setattr__(self, "chain_management_menu_label", source_module.chain_management_menu_label)
         object.__setattr__(self, "chain_management_word_parsers_option",
                            source_module.chain_management_word_parsers_option)
@@ -206,10 +210,6 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
                            source_module.configure_dictionary_dict_label_text)
         object.__setattr__(self, "configure_dictionary_audio_getter_label_text",
                            source_module.configure_dictionary_audio_getter_label_text)
-        object.__setattr__(self, "configure_dictionary_card_processor_label_text",
-                           source_module.configure_dictionary_card_processor_label_text)
-        object.__setattr__(self, "configure_dictionary_format_processor_label_text",
-                           source_module.configure_dictionary_format_processor_label_text)
 
         object.__setattr__(self, "configuration_window_conf_window_title",
                            source_module.configuration_window_conf_window_title)

@@ -1074,16 +1074,18 @@ saving_image_height
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.geometry(self.configurations["app"]["main_window_geometry"])
-        resize_text_widgets_frame()
-        self.refresh()
 
         AUTOSAVE_INTERVAL = 300_000  # time in milliseconds
-        
+
         def autosave():
             self.save_files()
             self.after(AUTOSAVE_INTERVAL, autosave)
 
         self.after(AUTOSAVE_INTERVAL, autosave)
+
+        self.update()
+        resize_text_widgets_frame()
+        self.refresh()
 
     def show_window(self, title: str, text: str) -> Toplevel:
         text_window = self.Toplevel(self)

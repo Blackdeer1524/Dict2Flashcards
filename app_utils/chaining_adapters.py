@@ -100,7 +100,7 @@ class CardGeneratorsChain:
         current_result = []
         for enum_name, generator in self.enum_name2generator.items():
             self.config.update_config(enum_name)
-            if (current_result := generator.get(query, word_filter, additional_filter)):
+            if current_result := generator.get(query, word_filter, additional_filter):
                 break
         return current_result
 
@@ -201,8 +201,9 @@ class AudioGettersChain:
                                   name_config_pairs=[(parser_name, config) for parser_name, config
                                                      in zip(names, parser_configs)])
 
-    def get_audios(self, word: str, card_data: dict) -> tuple[str, AudioData]:
+    def get_audios(self, word: str, card_data: dict) -> tuple[tuple[str, str], AudioData]:
         source = []
+        source_name = ""
         additional_info = []
         error_message = ""
         parser_type = parser_types.WEB  # arbitrary type
@@ -214,5 +215,6 @@ class AudioGettersChain:
                 self.config.update_config(enum_name)
                 (source, additional_info), error_message = audio_getting_function(word, card_data)
             if source:
+                source_name = enum_name
                 break
-        return parser_type, ((source, additional_info), error_message)
+        return (parser_type, source_name), ((source, additional_info), error_message)

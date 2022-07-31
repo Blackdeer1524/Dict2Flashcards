@@ -391,7 +391,20 @@ saving_image_height
 
             def remove_option(option: str):
                 self.chaining_data[chaining_options[chain_type_option_menu["text"]]].pop(option)
-                if chaining_options[chain_type_option_menu["text"]] == "sentence_parsers":
+                if chaining_options[chain_type_option_menu["text"]] == "word_parsers":
+                    self.word_parser_option_menu.destroy()
+                    self.word_parser_option_menu = self.get_option_menu(
+                        self,
+                        init_text=self.typed_word_parser_name,
+                        values=[f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_word_parsers.loaded] +
+                               [f"{parser_types.LOCAL_PREF} {item}" for item in
+                                loaded_plugins.local_word_parsers.loaded] +
+                               [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["word_parsers"]],
+                        command=lambda typed_parser: self.change_word_parser(typed_parser))
+                    self.word_parser_option_menu.grid(row=0, column=3, columnspan=4, sticky="news",
+                                                      pady=(self.text_pady, 0))
+
+                elif chaining_options[chain_type_option_menu["text"]] == "sentence_parsers":
                     self.sentence_parser_option_menu.destroy()
                     if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
                         typed_sentence_parser_name = self.sentence_parser.name
@@ -431,10 +444,24 @@ saving_image_height
                     self.image_parser_option_menu.grid(row=3, column=3, columnspan=4, sticky="news",
                                                        padx=0, pady=self.text_pady)
 
+                elif chaining_options[chain_type_option_menu["text"]] == "audio_getters":
+                    self.audio_getter_option_menu.destroy()
+                    self.audio_getter_option_menu = self.get_option_menu(
+                        self,
+                        init_text="default" if self.audio_getter is None
+                                            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                                                  self.audio_getter.name),
+                        values=["default"] +
+                               [f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
+                               [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                               [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
+                        command=lambda parser_name: self.change_audio_getter(parser_name))
+                    self.audio_getter_option_menu.grid(row=8, column=3, columnspan=4, sticky="news",
+                                                       pady=(0, 2 * self.text_pady))
+
             def do_popup(event):
                 if not existing_chains_treeview.focus():
                     return
-
 
                 def edit_selected_chain():
                     selected_item_index = existing_chains_treeview.focus()
@@ -655,7 +682,15 @@ saving_image_height
                         command()
 
                     chain_label = f"[{parser_types.CHAIN}] {new_chain_name}"
-                    if chain_type == "sentence_parsers":
+                    if chain_type == "word_parsers":
+                        self.word_parser_option_menu["menu"]\
+                            .add_command(label=chain_label,
+                                         command=partial(set_text,
+                                                         opt_menu=self.word_parser_option_menu,
+                                                         text=chain_label,
+                                                         command=lambda parser_name=chain_label:
+                                                         self.change_word_parser(parser_name)))
+                    elif chain_type == "sentence_parsers":
                         self.sentence_parser_option_menu["menu"]\
                             .add_command(label=chain_label,
                                          command=partial(set_text,
@@ -671,6 +706,14 @@ saving_image_height
                                                          text=chain_label,
                                                          command=lambda parser_name=chain_label:
                                                          self.change_image_parser(parser_name)))
+                    elif chain_type == "audio_getters":
+                        self.audio_getter_option_menu["menu"]\
+                            .add_command(label=chain_label,
+                                         command=partial(set_text,
+                                                         opt_menu=self.audio_getter_option_menu,
+                                                         text=chain_label,
+                                                         command=lambda parser_name=chain_label:
+                                                         self.change_audio_getter(parser_name)))
 
                     if edit_mode:
                         if chain_name != new_chain_name:
@@ -727,24 +770,24 @@ saving_image_height
         self.browse_button.grid(row=0, column=0, sticky="news", columnspan=3,
                                 padx=(self.text_padx, 0), pady=(self.text_pady, 0))
 
-        choose_wp_option = self.get_option_menu(
+        self.word_parser_option_menu = self.get_option_menu(
             self,
             init_text=self.typed_word_parser_name,
             values=[f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_word_parsers.loaded] +
                    [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_word_parsers.loaded] +
                    [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["word_parsers"]],
             command=lambda typed_parser: self.change_word_parser(typed_parser))
-        choose_wp_option.grid(row=0, column=3, columnspan=4, sticky="news", pady=(self.text_pady, 0))
+        self.word_parser_option_menu.grid(row=0, column=3, columnspan=4, sticky="news", pady=(self.text_pady, 0))
 
-        configure_word_parser_button = self.Button(self,
-                                                   text="</>",
-                                                   command=lambda: self.call_configuration_window(
-                                                       plugin_name=self.card_generator.name,
-                                                       plugin_config=self.card_generator.config,
-                                                       plugin_load_function=lambda conf: conf.load(),
-                                                       saving_action=lambda conf: conf.save()))
-        configure_word_parser_button.grid(row=0, column=7, sticky="news",
-                                          padx=(0, self.text_padx), pady=(self.text_pady, 0))
+        self.configure_word_parser_button = self.Button(self,
+                                                        text="</>",
+                                                        command=lambda: self.call_configuration_window(
+                                                            plugin_name=self.card_generator.name,
+                                                            plugin_config=self.card_generator.config,
+                                                            plugin_load_function=lambda conf: conf.load(),
+                                                            saving_action=lambda conf: conf.save()))
+        self.configure_word_parser_button.grid(row=0, column=7, sticky="news",
+                                               padx=(0, self.text_padx), pady=(self.text_pady, 0))
 
         self.word_text = self.Text(self, placeholder=self.lang_pack.word_text_placeholder, height=2)
         self.word_text.grid(row=1, column=0, columnspan=8, sticky="news",
@@ -1757,7 +1800,7 @@ saving_image_height
         self.configurations["scrappers"]["word"]["name"] = raw_name
         self.typed_word_parser_name = typed_parser
         self.deck.update_card_generator(self.card_generator)
-        # self.configure_word_parser_button["command"] = \
+        # self.self.configure_word_parser_button["command"] = \
         #     lambda: self.call_configuration_window(
         #         plugin_name=typed_parser,
         #         plugin_config=self.card_generator.config,
@@ -1915,6 +1958,9 @@ saving_image_height
     
     @error_handler(show_errors)
     def choose_sentence(self, sentence_number: int):
+        if sentence_number >= len(self.text_frames):
+            return
+
         word = self.word
         self.dict_card_data[FIELDS.word] = word
         self.dict_card_data[FIELDS.definition] = self.definition
@@ -1935,10 +1981,8 @@ saving_image_height
                 audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
             elif audio_getter_type == parser_types.LOCAL:
                 audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
-            elif audio_getter_type == parser_types.CHAIN:
-                audio_getter_type, audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
             else:
-                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
+                (audio_getter_type, source_name), audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
 
             (audio_links, additional_data), error_message = audio_data
             if audio_links:

@@ -30,8 +30,15 @@ config = LoadableConfig(config_location=_PLUGIN_LOCATION,
                 validation_scheme=_VALIDATION_SCHEME,
                 docs=_CONFIG_DOCS)
 
+CACHED_RESULT = {}
+
 
 def get_audios(word: str, card_data: dict) -> AudioData:
+    global CACHED_RESULT
+
+    if (audio_data := CACHED_RESULT.get(word)) is not None:
+        return audio_data
+
     audio_links = []
     additional_info = []
     wordEncoded = requests.utils.requote_uri(word)
@@ -53,4 +60,6 @@ def get_audios(word: str, card_data: dict) -> AudioData:
         if (r := li.find("div")) is not None and (onclick := r.get("onclick")) is not None:
             audio_links.append(get_audio_link(onclick))
             additional_info.append(li.get("class", ""))
-    return (audio_links, additional_info), ""
+
+    CACHED_RESULT= {word: ((audio_links, additional_info), "")}
+    return CACHED_RESULT[word]

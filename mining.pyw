@@ -1334,8 +1334,11 @@ saving_image_height
             if not audio_sources:
                 continue
 
+            audio_source_name = typed_audio_getter_name if typed_audio_getter_name != "default" \
+                                                        else self.typed_word_parser_name
+
             audio_getter_frame = LabelFrame(self.sound_inner_frame,
-                                            text=typed_audio_getter_name,
+                                            text=audio_source_name,
                                             fg=self.theme.button_cfg.get("foreground"),
                                             **self.theme.frame_cfg)
             self.sound_sf.bind_scroll_wheel(audio_getter_frame)
@@ -1361,7 +1364,7 @@ saving_image_height
                                           **self.theme.checkbutton_cfg)
                 pick_button.grid(row=0, column=0, sticky="news")
                 audio_info_frame.boolvar = var
-                audio_info_frame.audio_data = (typed_audio_getter_name, audio_getter_type, audio)
+                audio_info_frame.audio_data = (audio_source_name, audio_getter_type, audio)
 
                 self.sound_sf.bind_scroll_wheel(pick_button)
 

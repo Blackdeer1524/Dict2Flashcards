@@ -334,7 +334,8 @@ class SentenceFetcher:
             try:
                 next(sentence_generator)
             except StopIteration as e:
-                return e.value
+                yield e.value
+                continue
 
             while True:
                 try:

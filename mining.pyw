@@ -859,7 +859,7 @@ saving_image_height
         self.configure_word_parser_button.grid(row=0, column=7, sticky="news",
                                                padx=(0, self.text_padx), pady=(self.text_pady, 0))
 
-        self.word_text = self.Text(self, placeholder=self.lang_pack.word_text_placeholder, height=2)
+        self.word_text = self.Text(self, placeholder=self.lang_pack.word_text_placeholder, height=1)
         self.word_text.grid(row=1, column=0, columnspan=8, sticky="news",
                             padx=self.text_padx, pady=self.text_pady)
 
@@ -939,7 +939,7 @@ saving_image_height
 
         self.sound_sf = ScrolledFrame(self, scrollbars="vertical",
                                       canvas_bg=self.theme.frame_cfg.get("bg"),
-                                      height=90)
+                                      height=110)
 
         self.sound_sf.grid(row=6, column=0, columnspan=8, sticky="news",
                                    padx=self.text_padx, pady=(0, self.text_pady))

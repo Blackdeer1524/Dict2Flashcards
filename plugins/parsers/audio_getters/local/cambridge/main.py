@@ -21,7 +21,6 @@ pos_search:
 _CONF_VALIDATION_SCHEME = \
     {
         "audio_region": ("us", [str], ["us", "uk"]),
-        "pos_search": (False, [bool], [])
     }
 
 config = LoadableConfig(config_location=os.path.dirname(__file__),
@@ -43,23 +42,21 @@ def get_audios(word, card_data: dict) -> AudioData:
     name = f"{remove_special_chars(word, '-', _AUDIO_NAME_SPEC_CHARS)}.mp3"
     search_root = os.path.join(LOCAL_MEDIA_DIR, audio_folder, letter_group)
 
-    if config["pos_search"]:
-        pos = card_data.get(FIELDS.dict_tags, {}).get("pos", "")
-        clear_pos = remove_special_chars(pos.lower(), '-', _AUDIO_NAME_SPEC_CHARS)
-        res = os.path.join(search_root, clear_pos, name)
-        if not os.path.exists(res):
-            return ([], []), ""
-        if os.path.isfile(res):
-            return ([res], [f"[{pos}] {os.path.splitext(name)[0]}"]), ""
-        if os.path.isdir(res):
-            file_paths = []
-            additional_info = []
-            for item in os.listdir(res):
-                if os.path.isfile((file_path := os.path.join(res, item))):
-                    file_paths.append(file_path)
-                    additional_info.append(f"[{pos}] {os.path.splitext(item)[0]}")
-            return (file_paths, additional_info), ""
+    pos = card_data.get(FIELDS.dict_tags, {}).get("pos", "")
+    clear_pos = remove_special_chars(pos.lower(), '-', _AUDIO_NAME_SPEC_CHARS)
+    res = os.path.join(search_root, clear_pos, name)
+    if not os.path.exists(res):
         return ([], []), ""
+    if os.path.isfile(res):
+        return ([res], [f"[{pos}] {os.path.splitext(name)[0]}"]), ""
+    if os.path.isdir(res):
+        file_paths = []
+        additional_info = []
+        for item in os.listdir(res):
+            if os.path.isfile((file_path := os.path.join(res, item))):
+                file_paths.append(file_path)
+                additional_info.append(f"[{pos}] {os.path.splitext(item)[0]}")
+        return (file_paths, additional_info), ""
 
     no_pos_location = os.path.join(search_root, name)
     if os.path.exists(no_pos_location):

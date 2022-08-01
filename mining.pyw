@@ -1324,9 +1324,8 @@ saving_image_height
                 messagebox.showerror(title=self.lang_pack.error_title,
                                      message=self.lang_pack.display_audio_on_frame_audio_not_found_message)
                 return
-            typed_audio_getter_name = "default"
             additional_info = ("" for _ in range(len(audio_sources)))
-            parser_results[typed_audio_getter_name] = (audio_getter_type, ((audio_sources, additional_info), ""))  # type: ignore
+            parser_results[self.typed_word_parser_name] = (parser_types.WEB, ((audio_sources, additional_info), ""))  # type: ignore
 
         error_messages: list[tuple[str, str]] = []
 
@@ -1345,10 +1344,12 @@ saving_image_height
             audio_getter_frame.grid_propagate(False)
             audio_getter_frame.pack(side="top", fill="x", expand=True)
 
-            if audio_getter_type in (parser_types.WEB, "default"):
+            if audio_getter_type == parser_types.WEB:
                 play_sound_button_cmd = web_playsound
-            else:
+            elif audio_getter_type == parser_types.LOCAL:
                 play_sound_button_cmd = playsound
+            else:
+                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 
             for audio, info in zip(audio_sources, additional_info):
                 audio_info_frame = self.Frame(audio_getter_frame)
@@ -2058,7 +2059,7 @@ saving_image_height
             additional[SavedDataDeck.USER_TAGS] = user_tags
 
         # TODO
-        def add_audio_data_to_card(getter_name: str, getter_type: str, audio_links: list[str]):
+        def add_audio_data_to_card(getter_name: str, getter_type: str, audio_links: list[str], add_type_prefix: bool):
             if not audio_links:
                 return
             
@@ -2067,10 +2068,11 @@ saving_image_height
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SAVING_PATHS].extend((
                 os.path.join(self.configurations["directories"]["media_dir"],
                              self.card_processor
-                             .get_save_audio_name(word,
-                                                  "[{}] {}".format(getter_type, getter_name),
-                                                  str(i),
-                                                  self.dict_card_data))
+                             .get_save_audio_name(
+                                 word,
+                                 "[{}] {}".format(getter_type, getter_name) if add_type_prefix else getter_name,
+                                 str(i),
+                                 self.dict_card_data))
                 for i in range(len(audio_links))
             ))
         
@@ -2080,7 +2082,10 @@ saving_image_height
                 if audio_frame.boolvar.get():
                     typed_audio_getter_name, audio_getter_type, audio = audio_frame.audio_data
                     chosen_smth = True
-                    add_audio_data_to_card(typed_audio_getter_name, audio_getter_type, [audio])
+                    add_audio_data_to_card(getter_name=typed_audio_getter_name,
+                                           getter_type=audio_getter_type,
+                                           audio_links=[audio],
+                                           add_type_prefix=False)
 
         if not chosen_smth and (audio_autochoose_mode := self.configurations["app"]["audio_autochoose_mode"]) != "off":
             if audio_autochoose_mode == "first_only":
@@ -2096,35 +2101,35 @@ saving_image_height
                     ((audio_links, additional_info), error_message) = self.audio_getter.get_audios(word, self.dict_card_data)
                     add_audio_data_to_card(getter_name=self.audio_getter.name,
                                            getter_type=audio_getter_type,
-                                           audio_links=audio_links[choosing_slice])
+                                           audio_links=audio_links[choosing_slice],
+                                           add_type_prefix=True)
                 elif audio_getter_type == parser_types.CHAIN:
                     audio_data_dict = self.audio_getter.get_audios(word, self.dict_card_data)
                     audio_gen = (i for i in audio_data_dict.items())
                     if audio_autochoose_mode == "first_only":
                         getter_name, (getter_type, ((audio_links, additional_info), error_message)) = next(audio_gen)
                         add_audio_data_to_card(
-                            getter_name=getter_name if getter_name != "default"
-                                                        else "[{}] {}".format(
-                                    self.configurations["scrappers"]["word"]["type"],
-                                    self.card_generator.name),
-                            getter_type="",
-                            audio_links=[audio_links[0]])
+                            getter_name=getter_name if getter_name != "default" else self.typed_word_parser_name,
+                            getter_type=getter_type,
+                            audio_links=[audio_links[0]],
+                            add_type_prefix=False
+                        )
                     else:
                         for getter_name, (getter_type, ((audio_links, additional_info), error_message)) in audio_gen:
                             add_audio_data_to_card(
-                                getter_name=getter_name if getter_name != "default"
-                                                        else "[{}] {}".format(
-                                    self.configurations["scrappers"]["word"]["type"],
-                                    self.card_generator.name),
-                                getter_type="",
-                                audio_links=audio_links)
+                                getter_name=getter_name if getter_name != "default" else self.typed_word_parser_name,
+                                getter_type=getter_type,
+                                audio_links=audio_links,
+                                add_type_prefix=False
+                            )
                 else:
                     raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 
             elif (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
-                add_audio_data_to_card(getter_name=self.audio_getter.name,
+                add_audio_data_to_card(getter_name=self.card_generator.name,
                                        getter_type=parser_types.WEB,
-                                       audio_links=web_audios[choosing_slice])
+                                       audio_links=web_audios[choosing_slice],
+                                       add_type_prefix=True)
 
         if (hierarchical_prefix := self.tag_prefix_field.get().strip()):
             additional[SavedDataDeck.HIERARCHICAL_PREFIX] = hierarchical_prefix

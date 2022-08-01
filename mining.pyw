@@ -457,9 +457,8 @@ saving_image_height
             existing_chains_treeview.column("#1", anchor="center", stretch=True)
             existing_chains_treeview.column("#2", anchor="center", stretch=True)
 
-            def remove_option(option: str):
-                self.chaining_data[chaining_options[chain_type_option_menu["text"]]].pop(option)
-                if chaining_options[chain_type_option_menu["text"]] == "word_parsers":
+            def recreate_option_menus(chosen_parser_type: str):
+                if chosen_parser_type == "word_parsers":
                     self.word_parser_option_menu.destroy()
                     self.word_parser_option_menu = self.get_option_menu(
                         self,
@@ -472,7 +471,7 @@ saving_image_height
                     self.word_parser_option_menu.grid(row=0, column=3, columnspan=4, sticky="news",
                                                       pady=(self.text_pady, 0))
 
-                elif chaining_options[chain_type_option_menu["text"]] == "sentence_parsers":
+                elif chosen_parser_type == "sentence_parsers":
                     self.sentence_parser_option_menu.destroy()
                     if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
                         typed_sentence_parser_name = self.sentence_parser.name
@@ -490,10 +489,10 @@ saving_image_height
                                                                             command=lambda parser_name:
                                                                             self.change_sentence_parser(
                                                                                 parser_name))
-                    self.sentence_parser_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
+                    self.sentence_parser_option_menu.grid(row=8, column=3, columnspan=4, sticky="news",
                                                           padx=0, pady=self.text_pady)
 
-                elif chaining_options[chain_type_option_menu["text"]] == "image_parsers":
+                elif chosen_parser_type == "image_parsers":
                     self.image_parser_option_menu.destroy()
                     if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
                         typed_image_parser_name = self.image_parser.name
@@ -512,7 +511,7 @@ saving_image_height
                     self.image_parser_option_menu.grid(row=3, column=3, columnspan=4, sticky="news",
                                                        padx=0, pady=self.text_pady)
 
-                elif chaining_options[chain_type_option_menu["text"]] == "audio_getters":
+                elif chosen_parser_type == "audio_getters":
                     self.audio_getter_option_menu.destroy()
                     self.audio_getter_option_menu = self.get_option_menu(
                         self,
@@ -524,8 +523,15 @@ saving_image_height
                                [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
                                [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
                         command=lambda parser_name: self.change_audio_getter(parser_name))
-                    self.audio_getter_option_menu.grid(row=8, column=3, columnspan=4, sticky="news",
+                    self.audio_getter_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
                                                        pady=(0, 2 * self.text_pady))
+                else:
+                    raise NotImplementedError(f"Unknown chosen parser type: {chosen_parser_type}")
+
+            def remove_option(option: str):
+                chosen_parser_type = chaining_options[chain_type_option_menu["text"]]
+                self.chaining_data[chosen_parser_type].pop(option)
+                recreate_option_menus(chosen_parser_type)
 
             def do_popup(event):
                 if not existing_chains_treeview.focus():
@@ -747,51 +753,41 @@ saving_image_height
                     self.chaining_data[chain_type][new_chain_name]["config_name"] = f"{remove_special_chars(new_chain_name)}.json"
                     self.chaining_data[chain_type][new_chain_name]["chain"] = chain
 
-                    def set_text(opt_menu, text: str, command: Callable[[], None]):
-                        opt_menu.setvar(opt_menu.cget("textvariable"), value=text)
-                        command()
-
-                    chain_label = f"[{parser_types.CHAIN}] {new_chain_name}"
-                    if chain_type == "word_parsers":
-                        self.word_parser_option_menu["menu"]\
-                            .add_command(label=chain_label,
-                                         command=partial(set_text,
-                                                         opt_menu=self.word_parser_option_menu,
-                                                         text=chain_label,
-                                                         command=lambda parser_name=chain_label:
-                                                         self.change_word_parser(parser_name)))
-                    elif chain_type == "sentence_parsers":
-                        self.sentence_parser_option_menu["menu"]\
-                            .add_command(label=chain_label,
-                                         command=partial(set_text,
-                                                         opt_menu=self.sentence_parser_option_menu,
-                                                         text=chain_label,
-                                                         command=lambda parser_name=chain_label:
-                                                         self.change_sentence_parser(parser_name)))
-                    elif chain_type == "image_parsers":
-                        self.image_parser_option_menu["menu"]\
-                            .add_command(label=chain_label,
-                                         command=partial(set_text,
-                                                         opt_menu=self.image_parser_option_menu,
-                                                         text=chain_label,
-                                                         command=lambda parser_name=chain_label:
-                                                         self.change_image_parser(parser_name)))
-                    elif chain_type == "audio_getters":
-                        self.audio_getter_option_menu["menu"]\
-                            .add_command(label=chain_label,
-                                         command=partial(set_text,
-                                                         opt_menu=self.audio_getter_option_menu,
-                                                         text=chain_label,
-                                                         command=lambda parser_name=chain_label:
-                                                         self.change_audio_getter(parser_name)))
-
                     if edit_mode:
+                        chosen_parser_type = chaining_options[chain_type_option_menu["text"]]
+                        if chosen_parser_type == "word_parsers" and chain_name == self.card_generator.name:
+                            self.card_generator = CardGeneratorsChain(
+                                name=new_chain_name,
+                                chain_data=self.chaining_data[chain_type][new_chain_name])
+                        elif chosen_parser_type == "sentence_parsers" and chain_name == self.sentence_parser.name:
+                            self.sentence_parser = SentenceParsersChain(
+                                name=new_chain_name,
+                                chain_data=self.chaining_data[chain_type][new_chain_name]
+                            )
+                        elif chosen_parser_type == "image_parsers" and chain_name == self.image_parser.name:
+                            self.sentence_parser = ImageParsersChain(
+                                name=new_chain_name,
+                                chain_data=self.chaining_data[chain_type][new_chain_name]
+                            )
+                        elif chosen_parser_type == "audio_getters" and \
+                                self.audio_getter is not None and chain_name == self.audio_getter.name:
+                            self.audio_getter = AudioGettersChain(
+                                name=new_chain_name,
+                                chain_data=self.chaining_data[chain_type][new_chain_name]
+                            )
+                        else:
+                            raise NotImplementedError(f"Unknown chosen parser type: {chosen_parser_type}")
+
                         if chain_name != new_chain_name:
                             remove_option(str(chain_name))
+                        else:
+                            recreate_option_menus(chosen_parser_type)
+
                         selected_item_index = existing_chains_treeview.focus()
                         existing_chains_treeview.set(selected_item_index, "#1", value=new_chain_name)
                         existing_chains_treeview.set(selected_item_index, "#2", value="->".join(chain))
                     else:
+                        recreate_option_menus(chaining_options[chain_type_option_menu["text"]])
                         existing_chains_treeview.insert("", "end", values=(new_chain_name, "->".join(chain)))
 
                     chaining_window.destroy()

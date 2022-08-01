@@ -489,8 +489,7 @@ saving_image_height
                                                                             command=lambda parser_name:
                                                                             self.change_sentence_parser(
                                                                                 parser_name))
-                    self.sentence_parser_option_menu.grid(row=8, column=3, columnspan=4, sticky="news",
-                                                          padx=0, pady=self.text_pady)
+                    self.sentence_parser_option_menu.grid(row=8, column=3, columnspan=4, sticky="news")
 
                 elif chosen_parser_type == "image_parsers":
                     self.image_parser_option_menu.destroy()
@@ -524,7 +523,7 @@ saving_image_height
                                [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
                         command=lambda parser_name: self.change_audio_getter(parser_name))
                     self.audio_getter_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
-                                                       pady=(0, 2 * self.text_pady))
+                                                       pady=(self.text_pady, 0))
                 else:
                     raise NotImplementedError(f"Unknown chosen parser type: {chosen_parser_type}")
 
@@ -755,26 +754,30 @@ saving_image_height
 
                     if edit_mode:
                         chosen_parser_type = chaining_options[chain_type_option_menu["text"]]
-                        if chosen_parser_type == "word_parsers" and chain_name == self.card_generator.name:
-                            self.card_generator = CardGeneratorsChain(
-                                name=new_chain_name,
-                                chain_data=self.chaining_data[chain_type][new_chain_name])
-                        elif chosen_parser_type == "sentence_parsers" and chain_name == self.sentence_parser.name:
-                            self.sentence_parser = SentenceParsersChain(
-                                name=new_chain_name,
-                                chain_data=self.chaining_data[chain_type][new_chain_name]
-                            )
-                        elif chosen_parser_type == "image_parsers" and chain_name == self.image_parser.name:
-                            self.sentence_parser = ImageParsersChain(
-                                name=new_chain_name,
-                                chain_data=self.chaining_data[chain_type][new_chain_name]
-                            )
-                        elif chosen_parser_type == "audio_getters" and \
-                                self.audio_getter is not None and chain_name == self.audio_getter.name:
-                            self.audio_getter = AudioGettersChain(
-                                name=new_chain_name,
-                                chain_data=self.chaining_data[chain_type][new_chain_name]
-                            )
+                        if chosen_parser_type == "word_parsers":
+                            if chain_name == self.card_generator.name:
+                                self.card_generator = CardGeneratorsChain(
+                                    name=new_chain_name,
+                                    chain_data=self.chaining_data[chain_type][new_chain_name])
+                                self.configurations["scrappers"]["word"]["name"] = new_chain_name
+                        elif chosen_parser_type == "sentence_parsers":
+                            if chain_name == self.sentence_parser.name:
+                                self.sentence_parser = SentenceParsersChain(
+                                    name=new_chain_name,
+                                    chain_data=self.chaining_data[chain_type][new_chain_name])
+                                self.configurations["scrappers"]["sentence"]["name"] = new_chain_name
+                        elif chosen_parser_type == "image_parsers":
+                            if chain_name == self.image_parser.name:
+                                self.sentence_parser = ImageParsersChain(
+                                    name=new_chain_name,
+                                    chain_data=self.chaining_data[chain_type][new_chain_name])
+                                self.configurations["scrappers"]["image"]["name"] = new_chain_name
+                        elif chosen_parser_type == "audio_getters":
+                            if self.audio_getter is not None and chain_name == self.audio_getter.name:
+                                self.audio_getter = AudioGettersChain(
+                                    name=new_chain_name,
+                                    chain_data=self.chaining_data[chain_type][new_chain_name])
+                                self.configurations["scrappers"]["audio"]["name"] = new_chain_name
                         else:
                             raise NotImplementedError(f"Unknown chosen parser type: {chosen_parser_type}")
 
@@ -843,7 +846,8 @@ saving_image_height
                    [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_word_parsers.loaded] +
                    [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["word_parsers"]],
             command=lambda typed_parser: self.change_word_parser(typed_parser))
-        self.word_parser_option_menu.grid(row=0, column=3, columnspan=4, sticky="news", pady=(self.text_pady, 0))
+        self.word_parser_option_menu.grid(row=0, column=3, columnspan=4, sticky="news",
+                                          pady=(self.text_pady, 0))
 
         self.configure_word_parser_button = self.Button(self,
                                                         text="</>",

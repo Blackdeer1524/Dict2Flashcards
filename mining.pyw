@@ -939,7 +939,7 @@ saving_image_height
 
         self.sound_sf = ScrolledFrame(self, scrollbars="vertical",
                                       canvas_bg=self.theme.frame_cfg.get("bg"),
-                                      height=120)
+                                      height=90)
 
         self.sound_sf.grid(row=6, column=0, columnspan=8, sticky="news",
                                    padx=self.text_padx, pady=(0, self.text_pady))
@@ -1025,7 +1025,7 @@ saving_image_height
             if (call_time := time.time()) - text_widgets_last_call_time < DELAY:
                 return
 
-            OPTIMAL_TEXT_HEIGHT = 80
+            OPTIMAL_TEXT_HEIGHT = 70
             text_widgets_last_call_time = call_time
             self.text_widgets_frame.update()
             while True:

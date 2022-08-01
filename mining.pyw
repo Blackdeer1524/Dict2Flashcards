@@ -363,16 +363,36 @@ saving_image_height
             format_processor_option.grid(row=4, column=1, sticky="news")
 
             audio_autopick_label = self.Label(settings_window,
-                                              text="Автовыбор аудио")
+                                              text=self.lang_pack.settings_audio_autopick_label_text)
             audio_autopick_label.grid(row=5, column=0, sticky="news")
 
             def save_audio_autochoose_option(option: str):
-                self.configurations["app"]["audio_autochoose_mode"] = option
+                if option == self.lang_pack.settings_audio_autopick_off:
+                    raw_option = "off"
+                elif option == self.lang_pack.settings_audio_autopick_first_only:
+                    raw_option = "first_only"
+                elif option == self.lang_pack.settings_audio_autopick_all:
+                    raw_option = "all"
+                else:
+                    raise NotImplementedError(f"Unknown audio autochoose option: {option}")
+                self.configurations["app"]["audio_autochoose_mode"] = raw_option
+
+            cur_mode = self.configurations["app"]["audio_autochoose_mode"]
+            if cur_mode == "off":
+                audio_autochoose_option_init_text = self.lang_pack.settings_audio_autopick_off
+            elif cur_mode == "first_only":
+                audio_autochoose_option_init_text = self.lang_pack.settings_audio_autopick_first_only
+            elif cur_mode == "all":
+                audio_autochoose_option_init_text = self.lang_pack.settings_audio_autopick_all
+            else:
+                raise NotImplementedError(f"Unknown audio autochoose CONF option: {cur_mode}")
 
             audio_autochoose_option_menu = self.get_option_menu(
                 settings_window,
-                init_text=self.configurations["app"]["audio_autochoose_mode"],
-                values=self.configurations.validation_scheme["app"]["audio_autochoose_mode"][2],
+                init_text=audio_autochoose_option_init_text,
+                values=[self.lang_pack.settings_audio_autopick_off,
+                        self.lang_pack.settings_audio_autopick_first_only,
+                        self.lang_pack.settings_audio_autopick_all],
                 command=save_audio_autochoose_option
             )
             audio_autochoose_option_menu.grid(row=5, column=1, sticky="news")
@@ -883,7 +903,7 @@ saving_image_height
         # ======
 
         self.fetch_audio_data_button = self.Button(self,
-                                                   text="Подгрузить аудио",
+                                                   text=self.lang_pack.fetch_audio_data_button_text,
                                                    command=self.display_audio_on_frame)
         self.fetch_audio_data_button.grid(row=5, column=0, columnspan=3,
                                           sticky="news",
@@ -941,7 +961,7 @@ saving_image_height
             a.columnconfigure(i, weight=1)
 
         self.prev_button = self.Button(a,
-                                       text="🡰",  # self.lang_pack.prev_button_text,
+                                       text="🡰",
                                        command=lambda x=-1: self.replace_decks_pointers(x),
                                        font=Font(weight="bold"),
                                        state="disabled")
@@ -953,7 +973,7 @@ saving_image_height
         self.bury_button.grid(row=0, column=1, sticky="news")
 
         self.skip_button = self.Button(a,
-                                       text="🡲",  # self.lang_pack.skip_button_text,
+                                       text="🡲",
                                        command=self.skip_command,
                                        font=Font(weight="bold"))
         self.skip_button.grid(row=0, column=2, sticky="news")
@@ -1188,7 +1208,7 @@ saving_image_height
                 "theme":                ("dark", [str], []),
                 "main_window_geometry": ("500x800+0+0", [str], []),
                 "language_package":     ("eng", [str], []),
-                "audio_autochoose_mode":  ("off", [str], ["off", "first", "all"])
+                "audio_autochoose_mode":  ("off", [str], ["off", "first_only", "all"])
             },
             "image_search": {
                 "starting_position":   ("+0+0", [str], []),
@@ -1302,7 +1322,7 @@ saving_image_height
         else:
             if (audio_sources := self.dict_card_data.get(FIELDS.audio_links)) is None or not audio_sources:
                 messagebox.showerror(title=self.lang_pack.error_title,
-                                     message="Аудио не найдено!")
+                                     message=self.lang_pack.display_audio_on_frame_audio_not_found_message)
                 return
             typed_audio_getter_name = "default"
             additional_info = ("" for _ in range(len(audio_sources)))
@@ -2056,13 +2076,14 @@ saving_image_height
         
         chosen_smth = False
         for labeled_frame in self.sound_inner_frame.winfo_children():
-            if labeled_frame.boolvar.get():
-                typed_audio_getter_name, audio_getter_type, audio = labeled_frame.audio_data
-                chosen_smth = True
-                add_audio_data_to_card(typed_audio_getter_name, audio_getter_type, audio)
+            for audio_frame in labeled_frame.winfo_children():
+                if audio_frame.boolvar.get():
+                    typed_audio_getter_name, audio_getter_type, audio = audio_frame.audio_data
+                    chosen_smth = True
+                    add_audio_data_to_card(typed_audio_getter_name, audio_getter_type, [audio])
 
         if not chosen_smth and (audio_autochoose_mode := self.configurations["app"]["audio_autochoose_mode"]) != "off":
-            if audio_autochoose_mode == "first":
+            if audio_autochoose_mode == "first_only":
                 choosing_slice = slice(0, 1)
             elif audio_autochoose_mode == "all":
                 choosing_slice = slice(None, None, 1)
@@ -2078,13 +2099,25 @@ saving_image_height
                                            audio_links=audio_links[choosing_slice])
                 elif audio_getter_type == parser_types.CHAIN:
                     audio_data_dict = self.audio_getter.get_audios(word, self.dict_card_data)
-                    for getter_name, (getter_type, ((audio_links, additional_info), error_message)) in audio_data_dict.items():
-                        if getter_name == "default":
-                            getter_name = self.card_generator.name
-
-                        add_audio_data_to_card(getter_name=getter_name,
-                                               getter_type=getter_type,
-                                               audio_links=audio_links[choosing_slice])
+                    audio_gen = (i for i in audio_data_dict.items())
+                    if audio_autochoose_mode == "first_only":
+                        getter_name, (getter_type, ((audio_links, additional_info), error_message)) = next(audio_gen)
+                        add_audio_data_to_card(
+                            getter_name=getter_name if getter_name != "default"
+                                                        else "[{}] {}".format(
+                                    self.configurations["scrappers"]["word"]["type"],
+                                    self.card_generator.name),
+                            getter_type="",
+                            audio_links=[audio_links[0]])
+                    else:
+                        for getter_name, (getter_type, ((audio_links, additional_info), error_message)) in audio_gen:
+                            add_audio_data_to_card(
+                                getter_name=getter_name if getter_name != "default"
+                                                        else "[{}] {}".format(
+                                    self.configurations["scrappers"]["word"]["type"],
+                                    self.card_generator.name),
+                                getter_type="",
+                                audio_links=audio_links)
                 else:
                     raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 

@@ -25,6 +25,10 @@ settings_menu_label = "Настройки"
 settings_image_search_configuration_label_text = "Поиск изображений"
 settings_card_processor_label_text = "Формат карточки"
 settings_format_processor_label_text = "Формат итогового файла"
+settings_audio_autopick_label_text = "Автовыбор аудио"
+settings_audio_autopick_off = "Нет"
+settings_audio_autopick_first_only = "Первое"
+settings_audio_autopick_all = "Все"
 
 chain_management_menu_label = "Цепи"
 chain_management_word_parsers_option = "Парсеры слов"
@@ -48,19 +52,19 @@ exit_menu_label = "Выход"
 
 # widgets
 browse_button_text = "Найти в браузере"
-configure_dictionary_button_text = "Настроить словарь"
 find_image_button_normal_text = "Добавить изображение"
 find_image_button_image_link_encountered_postfix = "★"
+fetch_audio_data_button_text = "Подгрузить аудио"
 sentence_button_text = "Добавить предложения"
 word_text_placeholder = "Слово"
 definition_text_placeholder = "Значение"
 sentence_text_placeholder_prefix = "Предложение"
-skip_button_text = "Skip"
-prev_button_text = "Prev"
-sound_button_text = "Play"
 anki_button_text = "Anki"
-bury_button_text = "Bury"
+bury_button_text = "Отложить"
 user_tags_field_placeholder = "Тэги"
+
+# display_audio_on_frame
+display_audio_on_frame_audio_not_found_message = "Аудио не найдено"
 
 # choose files
 choose_media_dir_message = "Выберете директорию для медиа файлов"
@@ -358,10 +362,6 @@ restart_app_text = "Изменения вступят в силу после п�
 # program exit
 on_closing_message_title = "Выход"
 on_closing_message = "Вы точно хотите выйти?"
-
-# configure_dictionary
-configure_dictionary_dict_label_text = "Словарь"
-configure_dictionary_audio_getter_label_text = "Получение аудио"
 
 # call_configuration_window
 configuration_window_conf_window_title = "конфигурации"

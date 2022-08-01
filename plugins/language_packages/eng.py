@@ -18,7 +18,6 @@ file_master_menu_label = "File"
 add_card_menu_label = "Add"
 search_inside_deck_menu_label = "Find"
 statistics_menu_label = "Statistics"
-
 settings_themes_label_text = "Theme"
 settings_language_label_text = "Language"
 settings_configure_anki_button_text = "Anki"
@@ -26,6 +25,10 @@ settings_menu_label = "Settings"
 settings_image_search_configuration_label_text = "Image search"
 settings_card_processor_label_text = "Card format"
 settings_format_processor_label_text = "Saving format"
+settings_audio_autopick_label_text = "Audio autochoose"
+settings_audio_autopick_off = "Off"
+settings_audio_autopick_first_only = "First only"
+settings_audio_autopick_all = "All"
 
 chain_management_menu_label = "Chains"
 chain_management_word_parsers_option = "Word parsers"
@@ -49,19 +52,19 @@ exit_menu_label = "Exit"
 
 # widgets
 browse_button_text = "Find in browser"
-configure_dictionary_button_text = "Configure dictionary"
 find_image_button_normal_text = "Add image"
 find_image_button_image_link_encountered_postfix = "★"
+fetch_audio_data_button_text = "Load audio"
 sentence_button_text = "Add sentences"
 word_text_placeholder = "Word"
 definition_text_placeholder = "Definition"
 sentence_text_placeholder_prefix = "Sentence"
-skip_button_text = "Skip"
-prev_button_text = "Prev"
-sound_button_text = "Play"
 anki_button_text = "Anki"
 bury_button_text = "Bury"
 user_tags_field_placeholder = "Tags"
+
+# display_audio_on_frame
+display_audio_on_frame_audio_not_found_message = "Audio not found"
 
 # choose files
 choose_media_dir_message = "Choose downloading media directory"
@@ -359,10 +362,6 @@ restart_app_text = "Changes will take effect when you restart app!"
 # program exit
 on_closing_message_title = "Exit"
 on_closing_message = "Are you sure?"
-
-# configure_dictionary
-configure_dictionary_dict_label_text = "Dictionary"
-configure_dictionary_audio_getter_label_text = "Audio getter"
 
 # call_configuration_window
 configuration_window_conf_window_title = "configuration"

@@ -33,6 +33,11 @@ class LanguagePackageInterface(Protocol):
     settings_image_search_configuration_label_text: str
     settings_card_processor_label_text: str
     settings_format_processor_label_text: str
+    settings_audio_autopick_label_text: str
+    settings_audio_autopick_off: str
+    settings_audio_autopick_first_only: str
+    settings_audio_autopick_all: str
+
     settings_configure_anki_button_text: str
 
     chain_management_menu_label: str
@@ -57,19 +62,19 @@ class LanguagePackageInterface(Protocol):
 
     # widgets
     browse_button_text: str
-    configure_dictionary_button_text: str
     find_image_button_normal_text: str
     find_image_button_image_link_encountered_postfix: str
+    fetch_audio_data_button_text: str
     sentence_button_text: str
     word_text_placeholder: str
     definition_text_placeholder: str
     sentence_text_placeholder_prefix: str
-    skip_button_text: str
-    prev_button_text: str
-    sound_button_text: str
     anki_button_text: str
     bury_button_text: str
     user_tags_field_placeholder: str
+
+    # display_audio_on_frame
+    display_audio_on_frame_audio_not_found_message: str
 
     # choose files
     choose_media_dir_message: str
@@ -148,10 +153,6 @@ class LanguagePackageInterface(Protocol):
     # program exit
     on_closing_message_title: str
     on_closing_message: str
-
-    # configure_dictionary
-    configure_dictionary_dict_label_text: str
-    configure_dictionary_audio_getter_label_text: str
 
     # call_configuration_window
     configuration_window_conf_window_title: str

@@ -58,6 +58,15 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
                            source_module.settings_card_processor_label_text)
         object.__setattr__(self, "settings_format_processor_label_text",
                            source_module.settings_format_processor_label_text)
+        object.__setattr__(self, "settings_audio_autopick_label_text",
+                           source_module.settings_audio_autopick_label_text)
+        object.__setattr__(self, "settings_audio_autopick_off",
+                           source_module.settings_audio_autopick_off)
+        object.__setattr__(self, "settings_audio_autopick_first_only",
+                           source_module.settings_audio_autopick_first_only)
+        object.__setattr__(self, "settings_audio_autopick_all",
+                           source_module.settings_audio_autopick_all)
+
 
         object.__setattr__(self, "chain_management_menu_label", source_module.chain_management_menu_label)
         object.__setattr__(self, "chain_management_word_parsers_option",
@@ -97,21 +106,21 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
 
         # widgets
         object.__setattr__(self, "browse_button_text", source_module.browse_button_text)
-        object.__setattr__(self, "configure_dictionary_button_text",
-                           source_module.configure_dictionary_button_text)
         object.__setattr__(self, "find_image_button_normal_text", source_module.find_image_button_normal_text)
         object.__setattr__(self, "find_image_button_image_link_encountered_postfix",
                            source_module.find_image_button_image_link_encountered_postfix)
+        object.__setattr__(self, "fetch_audio_data_button_text", source_module.fetch_audio_data_button_text)
         object.__setattr__(self, "sentence_button_text", source_module.sentence_button_text)
         object.__setattr__(self, "word_text_placeholder", source_module.word_text_placeholder)
         object.__setattr__(self, "definition_text_placeholder", source_module.definition_text_placeholder)
         object.__setattr__(self, "sentence_text_placeholder_prefix", source_module.sentence_text_placeholder_prefix)
-        object.__setattr__(self, "skip_button_text", source_module.skip_button_text)
-        object.__setattr__(self, "prev_button_text", source_module.prev_button_text)
-        object.__setattr__(self, "sound_button_text", source_module.sound_button_text)
         object.__setattr__(self, "anki_button_text", source_module.anki_button_text)
         object.__setattr__(self, "bury_button_text", source_module.bury_button_text)
         object.__setattr__(self, "user_tags_field_placeholder", source_module.user_tags_field_placeholder)
+
+        # display_audio_on_frame
+        object.__setattr__(self, "display_audio_on_frame_audio_not_found_message",
+                           source_module.display_audio_on_frame_audio_not_found_message)
 
         # choose files
         object.__setattr__(self, "choose_media_dir_message", source_module.choose_media_dir_message)
@@ -204,12 +213,6 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
         # program exit
         object.__setattr__(self, "on_closing_message_title", source_module.on_closing_message_title)
         object.__setattr__(self, "on_closing_message", source_module.on_closing_message)
-
-        # configure_dictionary
-        object.__setattr__(self, "configure_dictionary_dict_label_text",
-                           source_module.configure_dictionary_dict_label_text)
-        object.__setattr__(self, "configure_dictionary_audio_getter_label_text",
-                           source_module.configure_dictionary_audio_getter_label_text)
 
         object.__setattr__(self, "configuration_window_conf_window_title",
                            source_module.configuration_window_conf_window_title)

@@ -14,4 +14,4 @@ def save(deck: SavedDataDeck,
 
     if saving_object:
         with open(saving_path + ".json", "w", encoding="utf-8") as deck_file:
-            json.dump(saving_object, deck_file, cls=FrozenDictJSONEncoder)
+            json.dump(saving_object, deck_file, cls=FrozenDictJSONEncoder, indent=2)

@@ -13,71 +13,27 @@ Sentence-mining app written in Python using Tkinter.
 # [Demonstration](#structure)
 ![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/start_to_finish_demo.gif)
 
-## [Quickly create card](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/choose_sentence.gif)
-
-## [Add word](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Add_option/exact_word.gif)
-
-## [Add sentences from external sources](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/add_sentences.gif)
-
-## [Download images from web](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Image_downloading/pick_images.gif)
-
 ### [Drag & Drop](#download-images-from-web) 
 #### [Image from browser](#drag--drop) 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Image_downloading/drag_image_from_browser.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/drag_image_from_browser.gif)
 #### [Local image](#drag--drop) 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Image_downloading/drag_local_image.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/drag_local_image.gif)
 #### [Image link from any text field](#drag--drop) 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Image_downloading/drag_image_link_from_browser.gif)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Image_downloading/drag_image_link_from_editor.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/drag_image_link.gif)
 
 ### [Paste from clipboard](#download-images-from-web) 
 Hotkey: **Ctrl + V**
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Image_downloading/paste_screenshot.gif)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Image_downloading/paste_from_clipboard.gif)
-
-## [Download audio](#demonstration)
-### [Menu option](#download-audio)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Audio_downloading/menu_option.gif)
-
-### [On closing](#download-audio)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Audio_downloading/on_closing.gif)
-
-## [Browse anki](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/anki_search.gif)
-
-## [Use web browser](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/browser.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/paste_image_from_clipboard.gif)
 
 ## [Bury card to watch them later](#demonstration)
 ![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/bury_and_reopen.gif)
 
-## [Search in already created decks](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Find_option/word.gif)
+## [Query language](#demonstration)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/add_with_query_lang.gif)
 
-## [Skip redundant cards](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Find_option/move.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/search_in_deck_with_query_lang.gif)
 
-## [Use query language to find what you realy need](#demonstration)
-### [when adding new card](#use-query-language-to-find-what-you-realy-need)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Add_option/query_language.gif)
-
-### [when looking through created deck](#use-query-language-to-find-what-you-realy-need)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Find_option/query_language.gif)
-
-[More on query language](#query-language-documentation)
-
-## [View session statistics](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/statistics.gif)
-
-## [Change themes](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/themes.gif)
-
-## [Multiple languages support](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/language_packs.gif)
+[Query language docs](#query-language-documentation)
 
 # [Installation](#structure)
 ## [Windows](#installation)
@@ -104,7 +60,7 @@ To launch this app, open command line in the directory where mining.pyw is locat
 # [Hotkeys](#structure)
 ## [Local](#hotkeys)
 * Ctrl + 0: Moves app to upper left corner of the screen
-* Ctrl + 1..5: picks corresponding sentence
+* Ctrl + 1..9: picks corresponding sentence
 * Ctrl + d: skips current card
 * Ctrl + z: returns to a previous card
 * Ctrl + q: moves current card to a separate file
@@ -115,7 +71,7 @@ To launch this app, open command line in the directory where mining.pyw is locat
 ## [Global](#hotkeys)
 * Ctrl + c + Space: adds currently highlighted word to deck
 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/Add_option/global_hotkey.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/add_word_global_hotkey.gif)
 
 * Ctrl + c + Alt: adds currently highlighted text to the first sentence field
 
@@ -145,7 +101,7 @@ A Card is essentially a Python dictionary with the following keys:
   * audio_links: list[str]
   * tags: dict[str, str | list | dict]
 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/card_fiields_usage.png)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/card_fields_usage.png)
 
 Cards can have other fields, although they will not be displayed.
 But they could be used inside
@@ -208,27 +164,31 @@ To register a local dictionary, create a python file inside **./plugins/parsers/
 
 ### [Sentence parsers](#parsers)
 To create a sentence parser, create a python file inside **./plugins/parsers/sentence_parsers/** with the following protocol:
-  * get_sentence_batch(word: str, size: int) -> Iterator\[tuple\[list\[str], str]] function that takes word to which sentences 
-  are needed and size of batch of sentences that will be returned on every iteration. This function has to yield batch of sentences
-  allong with error message ("" empty string if no errors occured)
+  * get_sentence_batch(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
+  sentences are needed. This function has to have 2 stages
+    * initialization on first next() call
+    * current step batch size initialization on \<gen>.send(batch_size) that returns sentence batch of \<batch_size>
 
 ### [Image parsers](#parsers)
 To create an image parser, create a python file inside **./plugins/parsers/image_parsers/** with the following protocol:
   * get_image_links(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
   images are needed. This function has to have 2 stages
     * initialization on first next() call
-    * current step batch size initialization on <gen>.send(batch_size) that returns batch_size image links 
+    * current step batch size initialization on <gen>.send(batch_size) that returns image links batch of \<batch_size>
  
 ### [Audio getters](#parsers)
 #### [Web](#audio-getters)
 To register web audio getter, create a python file inside **./plugins/parsers/audio_getters/web/** with the following protocol:
-  * get_audios(word: str, card_data: dict) -> tuple[tuple[list[str], list[str]], str] function that takes word to whick audio is needed and current card data for the additional info and returns ((audio_urls, additional_information_to_be_displayed), error_message). len(audio_urls) = len(additional_information_to_be_displayed)!
+  * get_audios(word: str, card_data: dict) -> tuple\[tuple\[list\[str], list\[str]], str] function that takes 
+  word for which audio is needed and current card data for the additional info and returns a list of urls, list of associated to each url information,
+  and error message.
 
 #### [Local](#audio-getters)
 To register folder with audio files, create a python file inside **./plugins/parsers/audio_getters/local/** with the following protocol:
   * AUDIO_FOLDER: str - relative path to the folder with audio files that is located inside ./media folder
-  * get_audios(word: str, card_data: dict) -> list\[str] function that takes word to whick audio is needed and current card data for the additional info
-  and returns a list of paths.
+  * get_audios(word: str, card_data: dict) -> tuple\[tuple\[list\[str], list\[str]], str] function that takes 
+  word for which audio is needed and current card data for the additional info and returns a list of paths, list of associated to each path information,
+  and error message.
 
 ## [Saving](#plugins)
 ### [Card processors](#saving)

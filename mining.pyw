@@ -1119,11 +1119,9 @@ saving_image_height
         self.bind("<Control-e>", lambda event: self.statistics_dialog())
         self.bind("<Control-Shift_L><A>", lambda event: self.add_word_dialog())
         self.bind("<Control-z>", lambda event: self.replace_decks_pointers(-1))
-        self.bind("<Control-Key-1>", lambda event: self.choose_sentence(0))
-        self.bind("<Control-Key-2>", lambda event: self.choose_sentence(1))
-        self.bind("<Control-Key-3>", lambda event: self.choose_sentence(2))
-        self.bind("<Control-Key-4>", lambda event: self.choose_sentence(3))
-        self.bind("<Control-Key-5>", lambda event: self.choose_sentence(4))
+
+        for i in range(0, 10):
+            self.bind(f"<Control-Key-{i + 1}>", lambda event, index=i: self.choose_sentence(index))
 
         self.gb = Binder()
         self.gb.bind("Control", "c", "space",

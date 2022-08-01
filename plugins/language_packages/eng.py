@@ -86,23 +86,23 @@ save_files_message = "Files were saved"
 # help
 buttons_hotkeys_help_message = """
 Buttons:
-* 1-5: corresponding sentence buttons
-* Skip: skips current card
-* Prev: returns to a previous card
+* <-: returns to a previous card
 * Bury: moves current card to a separate file which 
 is located in the saving directory. Name of
 this file would be the same as the saved cards file name +
 _buried postfix 
+* ->: skips current card
 
 Hotkeys (local):
 * Ctrl + 0: Moves app to upper left corner of the screen
-* Ctrl + 1..5: picks corresponding sentence
+* Ctrl + 1..9: picks corresponding sentence
 * Ctrl + d: skips current card
 * Ctrl + z: returns to a previous card
 * Ctrl + q: moves current card to a separate file
 * Ctrl + Shift + a: calls <add word> window
 * Ctrl + e: calls <statistics> window
 * Ctrl + f: calls <find> window
+* Ctrl + v: pastes image in image browser
 
 Hotkeys (global):
 * Ctrl + c + Space: adds currently highlighted word to deck

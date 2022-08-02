@@ -741,50 +741,58 @@ saving_image_height
                     if not new_chain_name:
                         messagebox.showerror(title=self.lang_pack.error_title, 
                                              message=self.lang_pack.chain_management_empty_chain_name_entry_message)
-                        return 
-                    if not edit_mode and self.chaining_data[chain_type].get(new_chain_name) is not None:
+                        return
+
+                    if self.chaining_data[chain_type].get(new_chain_name) is not None and \
+                            (not edit_mode or chain_name != new_chain_name):
                         messagebox.showerror(title=self.lang_pack.error_title,
                                              message=self.lang_pack.chain_management_chain_already_exists_message)
                         return
 
                     chain = [item.name for item in chain_data]
-                    self.chaining_data[chain_type][new_chain_name] = {}
-                    self.chaining_data[chain_type][new_chain_name]["config_name"] = f"{remove_special_chars(new_chain_name)}.json"
-                    self.chaining_data[chain_type][new_chain_name]["chain"] = chain
+                    chosen_chain_config = {"config_name": "{}_{}.json".format(remove_special_chars(new_chain_name, "_"),
+                                                                              hash(time.time())),
+                                           "chain": chain}
+                    self.chaining_data[chain_type][new_chain_name] = chosen_chain_config
 
                     if edit_mode:
-                        chosen_parser_type = chaining_options[chain_type_option_menu["text"]]
-                        if chosen_parser_type == "word_parsers":
+                        if chain_type == "word_parsers":
                             if chain_name == self.card_generator.name:
                                 self.card_generator = CardGeneratorsChain(
                                     name=new_chain_name,
-                                    chain_data=self.chaining_data[chain_type][new_chain_name])
+                                    chain_data=chosen_chain_config)
                                 self.configurations["scrappers"]["word"]["name"] = new_chain_name
-                        elif chosen_parser_type == "sentence_parsers":
+
+                        elif chain_type == "sentence_parsers":
                             if chain_name == self.sentence_parser.name:
                                 self.sentence_parser = SentenceParsersChain(
                                     name=new_chain_name,
-                                    chain_data=self.chaining_data[chain_type][new_chain_name])
+                                    chain_data=chosen_chain_config)
                                 self.configurations["scrappers"]["sentence"]["name"] = new_chain_name
-                        elif chosen_parser_type == "image_parsers":
+
+                        elif chain_type == "image_parsers":
                             if chain_name == self.image_parser.name:
                                 self.sentence_parser = ImageParsersChain(
                                     name=new_chain_name,
-                                    chain_data=self.chaining_data[chain_type][new_chain_name])
+                                    chain_data=chosen_chain_config)
                                 self.configurations["scrappers"]["image"]["name"] = new_chain_name
-                        elif chosen_parser_type == "audio_getters":
-                            if self.audio_getter is not None and chain_name == self.audio_getter.name:
-                                self.audio_getter = AudioGettersChain(
-                                    name=new_chain_name,
-                                    chain_data=self.chaining_data[chain_type][new_chain_name])
-                                self.configurations["scrappers"]["audio"]["name"] = new_chain_name
+
+                        elif chain_type == "audio_getters":
+                            if self.audio_getter is not None:
+                                if chain_name == self.audio_getter.name:
+                                    old_get_all_val = self.audio_getter.config["get_all"]
+                                    self.audio_getter = AudioGettersChain(
+                                        name=new_chain_name,
+                                        chain_data=chosen_chain_config)
+                                    self.audio_getter.config["get_all"] = old_get_all_val
+                                    self.configurations["scrappers"]["audio"]["name"] = new_chain_name
                         else:
-                            raise NotImplementedError(f"Unknown chosen parser type: {chosen_parser_type}")
+                            raise NotImplementedError(f"Unknown chosen parser type: {chain_type}")
 
                         if chain_name != new_chain_name:
                             remove_option(str(chain_name))
                         else:
-                            recreate_option_menus(chosen_parser_type)
+                            recreate_option_menus(chain_type)
 
                         selected_item_index = existing_chains_treeview.focus()
                         existing_chains_treeview.set(selected_item_index, "#1", value=new_chain_name)

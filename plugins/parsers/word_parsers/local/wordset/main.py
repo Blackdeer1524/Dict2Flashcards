@@ -18,8 +18,8 @@ tags: {
 _CONF_VALIDATION_SCHEME = {}
 
 config = LoadableConfig(config_location=os.path.dirname(__file__),
-                validation_scheme=_CONF_VALIDATION_SCHEME,
-                docs="")
+                        validation_scheme=_CONF_VALIDATION_SCHEME,
+                        docs="")
 
 
 def translate(word: str, word_dict: dict):

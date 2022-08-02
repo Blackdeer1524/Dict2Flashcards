@@ -1914,13 +1914,6 @@ saving_image_height
         self.configurations["scrappers"]["word"]["name"] = raw_name
         self.typed_word_parser_name = typed_parser
         self.deck.update_card_generator(self.card_generator)
-        # self.self.configure_word_parser_button["command"] = \
-        #     lambda: self.call_configuration_window(
-        #         plugin_name=typed_parser,
-        #         plugin_config=self.card_generator.config,
-        #         plugin_load_function=lambda conf: conf.load(),
-        #         saving_action=lambda conf: conf.save()
-        #     )
 
     @error_handler(show_errors)
     def change_audio_getter(self, typed_getter: str):
@@ -2255,8 +2248,6 @@ saving_image_height
         if not dict_sentences:
             self.add_sentence_field(source="",
                                     sentence="")
-
-
 
         if not self.dict_card_data:
             # normal

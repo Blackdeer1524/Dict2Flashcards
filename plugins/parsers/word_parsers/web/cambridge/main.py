@@ -33,8 +33,8 @@ _CONF_VALIDATION_SCHEME = \
     }
 
 config = LoadableConfig(config_location=os.path.dirname(__file__),
-                validation_scheme=_CONF_VALIDATION_SCHEME,
-                docs=_CONFIG_DOCS)
+                        validation_scheme=_CONF_VALIDATION_SCHEME,
+                        docs=_CONFIG_DOCS)
 
 
 def translate(word: str, word_dict: dict):

@@ -1,5 +1,4 @@
 import copy
-import re
 from collections import Counter
 from typing import Iterable
 from typing import Optional, Callable

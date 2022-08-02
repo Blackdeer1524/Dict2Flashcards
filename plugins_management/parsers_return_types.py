@@ -1,4 +1,4 @@
-from typing import NewType, Generator, Iterator
+from typing import NewType, Generator
 
 
 AudioData = tuple[tuple[list[str], list[str]], str]

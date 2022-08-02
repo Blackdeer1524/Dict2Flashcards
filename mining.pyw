@@ -1984,7 +1984,6 @@ saving_image_height
             self.sentence_parser = loaded_plugins.get_sentence_parser(given_sentence_parser_name)
         self.external_sentence_fetcher = ExternalSentenceFetcher(sent_fetcher=self.sentence_parser.get_sentences)
         self.configurations["scrappers"]["sentence"]["name"] = given_sentence_parser_name
-        self.add_sentences_button["state"] = "normal"
 
     @error_handler(show_errors)
     def choose_sentence(self, sentence_number: int):
@@ -2194,14 +2193,15 @@ saving_image_height
         try:
             sent_batch, error_message = self.external_sentence_fetcher.get_sentences(self.word, batch_size)
         except StopIteration:
-            self.add_sentences_button["state"] = "disabled"
             return
+
+        typed_sentence_parser = self.sentence_parser.name if self.configurations["scrappers"]["sentence"]["type"] == "web" \
+                                                 else "[{}] {}".format(self.configurations["scrappers"]["sentence"]["type"],
+                                                                       self.sentence_parser.name)
 
         for sentence in sent_batch:
             self.add_sentence_field(
-                source=self.sentence_parser.name if self.configurations["scrappers"]["sentence"]["type"] == "web"
-                                                 else "[{}] {}".format(self.configurations["scrappers"]["sentence"]["type"],
-                                                                       self.sentence_parser.name),
+                source=f"{typed_sentence_parser}: {self.word}",
                 sentence=sentence)
 
         if error_message:
@@ -2250,8 +2250,6 @@ saving_image_height
         for sentence in self.dict_card_data.get(FIELDS.sentences, []):
             self.add_sentence_field(source=self.typed_word_parser_name,
                                     sentence=sentence)
-
-        self.add_sentences_button["state"] = "normal"
 
         if not self.dict_card_data:
             # normal

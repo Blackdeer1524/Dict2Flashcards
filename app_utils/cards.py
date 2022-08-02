@@ -287,19 +287,22 @@ class ExternalSentenceFetcher:
         self._word: str = ""
         self._sentences: list[str] = []
         self._sentence_fetcher: Callable[[str], SentenceGenerator] = sent_fetcher
-        self._sentence_pointer: int = 0
+        self._update_status: bool = False
+        self._start()
+
+    def _start(self):
         self._sent_batch_generator: SentenceGenerator = self._get_sent_batch_generator()
         next(self._sent_batch_generator)
-        self._update_status: bool = False
 
     def __call__(self, base_word):
         self._word = base_word
-        self._sentence_pointer = 0
+        self._start()
         self._update_status = False
 
     def update_word(self, new_word: str):
         if self._word != new_word:
             self._word = new_word
+            self._start()
             self._update_status = True
 
     def _get_sent_batch_generator(self) -> SentenceGenerator:
@@ -315,14 +318,12 @@ class ExternalSentenceFetcher:
             yield e.value
             return
 
+        self._update_status = False
         while True:
             try:
                 sentence_batch, error_message = sentence_generator.send(batch_size)
                 batch_size = yield sentence_batch, error_message
-                if self._update_status:
-                    self._update_status = False
-                    break
-                if error_message:
+                if self._update_status or error_message:
                     break
             except StopIteration:
                 break

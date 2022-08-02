@@ -1082,11 +1082,9 @@ saving_image_height
 
         def paste_in_sentence_field():
             clipboard_text = self.clipboard_get()
-            self.sentence_texts[0].clear()
-            self.sentence_texts[0].insert(1.0, clipboard_text)
+            self.add_sentence_field(source="<Control + c + Alt>", sentence=clipboard_text)
 
-        self.gb.bind("Control", "c", "Alt",
-                     action=paste_in_sentence_field)
+        self.gb.bind("Control", "c", "Alt", action=paste_in_sentence_field)
         self.gb.start()
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)

@@ -106,7 +106,7 @@ Hotkeys (local):
 
 Hotkeys (global):
 * Ctrl + c + Space: adds currently highlighted word to deck
-* Ctrl + c + Alt: adds currently highlighted text to the first sentence field
+* Ctrl + c + Alt: adds currently highlighted text to the app as a sentence
 """
 buttons_hotkeys_help_window_title = "Help"
 word_field_help = "word (str)"

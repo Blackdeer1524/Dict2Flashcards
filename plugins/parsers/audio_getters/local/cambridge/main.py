@@ -12,7 +12,7 @@ type:
     Audio region 
     valid values: either of ["uk", "us"] 
 
-pos_search:
+pos_only:
     Whether to search audio by Part Of Speach (pos) or not
     valid values: (true, false) 
 """
@@ -21,6 +21,7 @@ pos_search:
 _CONF_VALIDATION_SCHEME = \
     {
         "audio_region": ("us", [str], ["us", "uk"]),
+        "pos_only": (False, [bool], [False, True])
     }
 
 config = LoadableConfig(config_location=os.path.dirname(__file__),
@@ -57,6 +58,9 @@ def get_audios(word, card_data: dict) -> AudioData:
                 file_paths.append(file_path)
                 additional_info.append(f"[{pos}] {os.path.splitext(item)[0]}")
         return (file_paths, additional_info), ""
+
+    if config["pos_only"]:
+        return ([], []), ""
 
     no_pos_location = os.path.join(search_root, name)
     if os.path.exists(no_pos_location):

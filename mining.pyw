@@ -1020,7 +1020,7 @@ saving_image_height
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
         self.text_widgets_frame.grid_columnconfigure(0, weight=1)
-        self.text_widgets_frame.last_source = ""
+        self.text_widgets_frame.last_source = None
         self.text_widgets_frame.sentence_source_display_frame = None
 
         # ======
@@ -2226,7 +2226,7 @@ saving_image_height
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
         self.text_widgets_frame.grid_columnconfigure(0, weight=1)
-        self.text_widgets_frame.last_source = ""
+        self.text_widgets_frame.last_source = None
         self.text_widgets_frame.sentence_source_display_frame = None
 
         self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() + 1 \
@@ -2247,9 +2247,16 @@ saving_image_height
 
         self.external_sentence_fetcher(self.word)
 
-        for sentence in self.dict_card_data.get(FIELDS.sentences, []):
+        dict_sentences = self.dict_card_data.get(FIELDS.sentences, [])
+        for sentence in dict_sentences:
             self.add_sentence_field(source=self.typed_word_parser_name,
                                     sentence=sentence)
+
+        if not dict_sentences:
+            self.add_sentence_field(source="",
+                                    sentence="")
+
+
 
         if not self.dict_card_data:
             # normal

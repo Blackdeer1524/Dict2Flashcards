@@ -1069,7 +1069,7 @@ saving_image_height
 
                 choose_frame.choose_button = self.Button(choose_frame,
                                                          text=f"{next_index}",
-                                                         command=lambda x=i: self.choose_sentence(x),
+                                                         command=lambda x=next_index: self.choose_sentence(x),
                                                          width=6,
                                                          height=8)
                 choose_frame.choose_button.grid(row=0, column=1)

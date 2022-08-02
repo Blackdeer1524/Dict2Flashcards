@@ -24,7 +24,7 @@ config = LoadableConfig(config_location=os.path.dirname(__file__),
                         docs=_CONF_DOCS)
 
 
-def get_sentence_batch(word: str) -> SentenceGenerator:
+def get_sentences(word: str) -> SentenceGenerator:
     try:
         page = requests.get(f"https://searchsentences.com/words/{word}-in-a-sentence",
                             timeout=config["timeout"])

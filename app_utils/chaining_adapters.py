@@ -120,23 +120,23 @@ class SentenceParsersChain:
                  name: str,
                  chain_data: dict[str, str | list[str]]):
         self.name = name
-        self.enum_name2get_sentence_batch_functions: dict[str, Callable[[str], SentenceGenerator]] = {}
+        self.enum_name2get_sentences_functions: dict[str, Callable[[str], SentenceGenerator]] = {}
         parser_configs = []
         for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
             plugin_container = loaded_plugins.get_sentence_parser(parser_name)
-            self.enum_name2get_sentence_batch_functions[enum_name] = plugin_container.get_sentence_batch
+            self.enum_name2get_sentences_functions[enum_name] = plugin_container.get_sentences
             parser_configs.append(plugin_container.config)
         self.config = ChainConfig(config_dir=CHAIN_SENTENCE_PARSERS_DATA_DIR,
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
 
-    def get_sentence_batch(self, word: str) -> SentenceGenerator:
+    def get_sentences(self, word: str) -> SentenceGenerator:
         batch_size = yield
         yielded_once = False
-        for enum_name, get_sentence_batch_f in self.enum_name2get_sentence_batch_functions.items():
+        for enum_name, get_sentences_f in self.enum_name2get_sentences_functions.items():
             self.config.update_config(enum_name)
-            sent_generator = get_sentence_batch_f(word)
+            sent_generator = get_sentences_f(word)
             try:
                 next(sent_generator)
             except StopIteration as e:

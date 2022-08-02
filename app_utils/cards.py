@@ -281,7 +281,7 @@ class SavedDataDeck(PointerList):
         return saving_object
 
 
-class SentenceFetcher:
+class ExternalSentenceFetcher:
     def __init__(self,
                  sent_fetcher: Callable[[str], SentenceGenerator]):
         self._word: str = ""
@@ -290,19 +290,10 @@ class SentenceFetcher:
         self._sentence_pointer: int = 0
         self._sent_batch_generator: SentenceGenerator = self._get_sent_batch_generator()
         next(self._sent_batch_generator)
-        self._local_sentences_flag: bool = True
         self._update_status: bool = False
 
-    def fetch_local(self):
-        self._local_sentences_flag = True
-
-    def is_local(self):
-        return self._local_sentences_flag
-
-    def __call__(self, base_word, base_sentences):
+    def __call__(self, base_word):
         self._word = base_word
-        self._sentences = base_sentences  # REFERENCE!!!
-        self._local_sentences_flag = True
         self._sentence_pointer = 0
         self._update_status = False
 
@@ -316,41 +307,27 @@ class SentenceFetcher:
         Yields: Sentence_batch, error_message
         """
         batch_size = yield
+
+        sentence_generator = self._sentence_fetcher(self._word)
+        try:
+            next(sentence_generator)
+        except StopIteration as e:
+            yield e.value
+            return
+
         while True:
-            if self._local_sentences_flag:
-                self._sentence_pointer = 0
-                # Always do the first iteration (not considering update condition)
-                while not self._update_status:
-                    self._sentence_pointer += batch_size
-                    batch_size = yield self._sentences[self._sentence_pointer - batch_size:self._sentence_pointer], ""
-                    if self._sentence_pointer and self._sentence_pointer >= len(self._sentences):
-                        break
-                self._local_sentences_flag = False
-                # _sentence_fetcher doesn't need update before it's first iteration
-                # because of its first argument
-                self._update_status = False
-
-            sentence_generator = self._sentence_fetcher(self._word)
             try:
-                next(sentence_generator)
-            except StopIteration as e:
-                yield e.value
-                continue
-
-            while True:
-                try:
-                    sentence_batch, error_message = sentence_generator.send(batch_size)
-                    batch_size = yield sentence_batch, error_message
-                    if self._update_status:
-                        self._update_status = False
-                        break
-                    if self._local_sentences_flag or error_message:
-                        break
-                except StopIteration:
-                    self._local_sentences_flag = True
+                sentence_batch, error_message = sentence_generator.send(batch_size)
+                batch_size = yield sentence_batch, error_message
+                if self._update_status:
+                    self._update_status = False
                     break
+                if error_message:
+                    break
+            except StopIteration:
+                break
 
-    def get_sentence_batch(self, word: str, batch_size: int) -> tuple[list[str], str, bool]:
+    def get_sentences(self, word: str, batch_size: int) -> tuple[list[str], str]:
         self.update_word(word)
         sentences, error_message = self._sent_batch_generator.send(batch_size)
-        return sentences, error_message, self._local_sentences_flag
+        return sentences, error_message

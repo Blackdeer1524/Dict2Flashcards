@@ -233,7 +233,7 @@ class WebSentenceParserInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def get_sentence_batch(word: str, size: int) -> SentenceGenerator:
+    def get_sentences(word: str) -> SentenceGenerator:
         ...
 
 

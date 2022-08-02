@@ -25,7 +25,7 @@ config = LoadableConfig(config_location=os.path.dirname(__file__),
                         docs=_CONF_DOCS)
 
 
-def get_sentence_batch(word: str) -> SentenceGenerator:
+def get_sentences(word: str) -> SentenceGenerator:
     re_pattern = re.compile("^(.?\d+.? )")
 
     try:

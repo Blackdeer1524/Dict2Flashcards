@@ -164,7 +164,7 @@ To register a local dictionary, create a python file inside **./plugins/parsers/
 
 ### [Sentence parsers](#parsers)
 To create a sentence parser, create a python file inside **./plugins/parsers/sentence_parsers/** with the following protocol:
-  * get_sentence_batch(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
+  * get_sentences(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
   sentences are needed. This function has to have 2 stages
     * initialization on first next() call
     * current step batch size initialization on \<gen>.send(batch_size) that returns sentence batch of \<batch_size>

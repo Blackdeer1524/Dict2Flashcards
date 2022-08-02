@@ -325,12 +325,12 @@ class LocalWordParserContainer(_PluginContainer):
 
 class WebSentenceParserContainer(_PluginContainer):
     config: LoadableConfig
-    get_sentence_batch: Callable[[str, int], SentenceGenerator]
+    get_sentences: Callable[[str], SentenceGenerator]
 
     def __init__(self, name: str, source_module: WebSentenceParserInterface):
         super(WebSentenceParserContainer, self).__init__(name)
         object.__setattr__(self, "config", source_module.config)
-        object.__setattr__(self, "get_sentence_batch", source_module.get_sentence_batch)
+        object.__setattr__(self, "get_sentences", source_module.get_sentences)
 
 
 class ImageParserContainer(_PluginContainer):

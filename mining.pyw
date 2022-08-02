@@ -26,7 +26,7 @@ from tkinterdnd2 import Tk
 
 from app_utils.audio_utils import AudioDownloader
 from app_utils.cards import Card
-from app_utils.cards import Deck, SentenceFetcher, SavedDataDeck, CardStatus
+from app_utils.cards import Deck, ExternalSentenceFetcher, SavedDataDeck, CardStatus
 from app_utils.chaining_adapters import ImageParsersChain, CardGeneratorsChain, SentenceParsersChain, AudioGettersChain
 from app_utils.error_handling import create_exception_message
 from app_utils.error_handling import error_handler
@@ -137,7 +137,7 @@ class App(Tk):
                 name=self.configurations["scrappers"]["sentence"]["name"],
                 chain_data=self.chaining_data["sentence_parsers"][self.configurations["scrappers"]["sentence"]["name"]])
 
-        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch)
+        self.external_sentence_fetcher = ExternalSentenceFetcher(sent_fetcher=self.sentence_parser.get_sentences)
 
         if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
             self.image_parser = loaded_plugins.get_image_parser(self.configurations["scrappers"]["image"]["name"])
@@ -955,7 +955,6 @@ saving_image_height
         self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
         self.sound_inner_frame.grid_propagate(False)
 
-        self.sentence_button_text = self.lang_pack.sentence_button_text
         if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
             typed_sentence_parser_name = self.sentence_parser.name
         else:
@@ -987,8 +986,8 @@ saving_image_height
         self.skip_button.grid(row=0, column=2, sticky="news")
         # ======
         self.add_sentences_button = self.Button(self,
-                                                text=self.sentence_button_text,
-                                                command=self.replace_sentences)
+                                                text=self.lang_pack.sentence_button_text,
+                                                command=self.add_external_sentences)
         self.add_sentences_button.grid(row=8, column=0, columnspan=3, sticky="news", padx=(self.text_padx, 0))
 
         self.sentence_parser_option_menu = self.get_option_menu(self,
@@ -1011,74 +1010,18 @@ saving_image_height
         self.configure_sentence_parser_button.grid(row=8, column=7, sticky="news", padx=(0, self.text_padx))
         # ======
 
-        self.text_frames = []
-        self.sent_button_list = []
+        self.sentence_texts = []
 
-        self.text_widgets_frame = self.Frame(self,
-                                             # bg="red"
-                                             )
-        self.text_widgets_frame.grid(row=9, column=0, columnspan=8, sticky="news",
-                                        padx=self.text_padx, pady=self.text_pady)
+        self.text_widgets_sf = ScrolledFrame(self, scrollbars="vertical",
+                                        canvas_bg=self.theme.frame_cfg.get("bg"))
+        self.text_widgets_sf.grid(row=9, column=0, columnspan=8, sticky="news",
+                                     padx=self.text_padx, pady=self.text_pady)
 
+        self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
+        self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
         self.text_widgets_frame.grid_columnconfigure(0, weight=1)
-
-        DELAY = 0.1  # in seconds
-        text_widgets_last_call_time = 0
-
-        self.sentence_buffer = []
-
-        def resize_text_widgets_frame():
-            nonlocal DELAY, text_widgets_last_call_time
-
-            if (call_time := time.time()) - text_widgets_last_call_time < DELAY:
-                return
-
-            OPTIMAL_TEXT_HEIGHT = 70
-            text_widgets_last_call_time = call_time
-            self.text_widgets_frame.update()
-            while True:
-                current_frame_height = self.text_widgets_frame.winfo_height() - (len(self.text_frames) + 1) // 2 * self.text_pady * 2
-                if current_frame_height < len(self.text_frames) * OPTIMAL_TEXT_HEIGHT:
-                    if lost_sentence := self.text_frames[-1].text.get(1.0, "end"):
-                        self.sentence_buffer.append(lost_sentence)
-                    self.text_frames[-1].destroy()
-                    self.text_frames.pop()
-                    self.sent_button_list.pop()
-                    continue
-                break
-
-            while True:
-                next_index = len(self.text_frames) + 1
-                current_frame_height = self.text_widgets_frame.winfo_height() - next_index // 2 * self.text_pady * 2
-                if current_frame_height < next_index * OPTIMAL_TEXT_HEIGHT:
-                    return
-
-                c_pady = self.text_pady if next_index % 2 else 0
-                choose_frame = self.Frame(self.text_widgets_frame, height=OPTIMAL_TEXT_HEIGHT)
-                choose_frame.grid(row=len(self.text_frames), column=0, sticky="we", pady=c_pady)
-
-                choose_frame.grid_columnconfigure(0, weight=1)
-                choose_frame.grid_rowconfigure(0, weight=1)
-                choose_frame.grid_propagate(False)
-
-                choose_frame.text = self.Text(
-                    choose_frame,
-                    placeholder=f"{self.lang_pack.sentence_text_placeholder_prefix} {next_index}")
-                choose_frame.text.grid(row=0, column=0, sticky="we")
-                if self.sentence_buffer:
-                    choose_frame.text.insert(1.0, self.sentence_buffer.pop(0))
-
-                choose_frame.choose_button = self.Button(choose_frame,
-                                                         text=f"{next_index}",
-                                                         command=lambda x=next_index: self.choose_sentence(x),
-                                                         width=6,
-                                                         height=8)
-                choose_frame.choose_button.grid(row=0, column=1)
-                choose_frame.update()
-                self.text_frames.append(choose_frame)
-                self.sent_button_list.append(choose_frame.choose_button)
-
-        self.text_widgets_frame.bind("<Configure>", lambda event: resize_text_widgets_frame())
+        self.text_widgets_frame.last_source = ""
+        self.text_widgets_frame.sentence_source_display_frame = None
 
         # ======
         self.anki_button = self.Button(self,
@@ -1109,8 +1052,8 @@ saving_image_height
             return "break"
 
         self.new_order = [self.browse_button, self.word_text, self.find_image_button, self.definition_text,
-                          self.add_sentences_button] + [text_frame.text for text_frame in self.text_frames] + \
-                         [self.user_tags_field] + self.sent_button_list + [self.skip_button, self.prev_button,
+                          self.add_sentences_button] + self.sentence_texts + \
+                         [self.user_tags_field] + [self.skip_button, self.prev_button,
                                                                        self.anki_button, self.bury_button,
                                                                        self.tag_prefix_field]
 
@@ -1139,8 +1082,8 @@ saving_image_height
 
         def paste_in_sentence_field():
             clipboard_text = self.clipboard_get()
-            self.text_frames[0].text.clear()
-            self.text_frames[0].text.insert(1.0, clipboard_text)
+            self.sentence_texts[0].clear()
+            self.sentence_texts[0].insert(1.0, clipboard_text)
 
         self.gb.bind("Control", "c", "Alt",
                      action=paste_in_sentence_field)
@@ -1158,7 +1101,7 @@ saving_image_height
         self.after(AUTOSAVE_INTERVAL, autosave)
 
         self.update()
-        resize_text_widgets_frame()
+        # resize_text_widgets_frame()
         self.refresh()
 
     def show_window(self, title: str, text: str) -> Toplevel:
@@ -1399,7 +1342,7 @@ saving_image_height
 
     @error_handler(show_errors)
     def get_sentence(self, n: int):
-        return self.text_frames[n].text.get(1.0, "end").rstrip()
+        return self.sentence_texts[n].get(1.0, "end").rstrip()
 
     @error_handler(show_errors)
     def change_file(self):
@@ -2033,20 +1976,21 @@ saving_image_height
     @error_handler(show_errors)
     def change_sentence_parser(self, given_sentence_parser_name: str):
         if given_sentence_parser_name.startswith(f"[{parser_types.CHAIN}]"):
-            self.configurations["scrappers"]["image"]["type"] = parser_types.CHAIN
+            self.configurations["scrappers"]["sentence"]["type"] = parser_types.CHAIN
             given_sentence_parser_name = given_sentence_parser_name[8:]
             self.sentence_parser = SentenceParsersChain(
                 name=given_sentence_parser_name,
                 chain_data=self.chaining_data["sentence_parsers"][given_sentence_parser_name])
         else:
-            self.configurations["scrappers"]["image"]["type"] = parser_types.WEB
+            self.configurations["scrappers"]["sentence"]["type"] = parser_types.WEB
             self.sentence_parser = loaded_plugins.get_sentence_parser(given_sentence_parser_name)
-        self.sentence_fetcher = SentenceFetcher(sent_fetcher=self.sentence_parser.get_sentence_batch)
+        self.external_sentence_fetcher = ExternalSentenceFetcher(sent_fetcher=self.sentence_parser.get_sentences)
         self.configurations["scrappers"]["sentence"]["name"] = given_sentence_parser_name
+        self.add_sentences_button["state"] = "normal"
 
     @error_handler(show_errors)
     def choose_sentence(self, sentence_number: int):
-        if sentence_number >= len(self.text_frames):
+        if sentence_number >= len(self.sentence_texts):
             return
 
         word = self.word
@@ -2207,27 +2151,60 @@ saving_image_height
     def bury_command(self):
         self.saved_cards_data.append(status=CardStatus.BURY, card_data=self.dict_card_data)
         self.refresh()
-    
+
+    def add_sentence_field(self, source: str, sentence: str):
+        OPTIMAL_TEXT_HEIGHT = 80
+
+        next_index = len(self.sentence_texts) + 1
+
+        if self.text_widgets_frame.last_source != source:
+            self.text_widgets_frame.last_source = source
+            self.text_widgets_frame.sentence_source_display_frame = LabelFrame(self.text_widgets_frame,
+                                                                               text=source,
+                                                                               fg=self.theme.button_cfg.get("foreground"),
+                                                                               **self.theme.frame_cfg)
+            self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame.sentence_source_display_frame)
+            self.text_widgets_frame.sentence_source_display_frame.grid_columnconfigure(0, weight=1)
+            self.text_widgets_frame.sentence_source_display_frame.pack(side="top", fill="both")
+
+        choose_frame = self.Frame(self.text_widgets_frame.sentence_source_display_frame, height=OPTIMAL_TEXT_HEIGHT)
+        choose_frame.grid(row=len(self.sentence_texts), column=0, sticky="we", pady=(0, self.text_pady))
+        self.text_widgets_sf.bind_scroll_wheel(choose_frame)
+        
+        choose_frame.grid_columnconfigure(0, weight=1)
+        choose_frame.grid_rowconfigure(0, weight=1)
+        choose_frame.grid_propagate(False)
+
+        sentence_text = self.Text(
+            choose_frame,
+            placeholder=f"{self.lang_pack.sentence_text_placeholder_prefix} {next_index}")
+        sentence_text.insert(1.0, sentence)
+        sentence_text.grid(row=0, column=0, sticky="we")
+        self.text_widgets_sf.bind_scroll_wheel(sentence_text)
+
+        choose_button = self.Button(choose_frame,
+                                                 text=f"{next_index}",
+                                                 command=lambda x=len(self.sentence_texts): self.choose_sentence(x),
+                                                 width=3)
+        choose_button.grid(row=0, column=1, sticky="ns")
+        self.text_widgets_sf.bind_scroll_wheel(choose_button)
+
+        self.sentence_texts.append(sentence_text)
+
     @error_handler(show_errors)
-    def replace_sentences(self) -> None:
-        sentences_from_buffer = self.sentence_buffer[:len(self.text_frames)]
+    def add_external_sentences(self, batch_size: int = 5) -> None:
+        try:
+            sent_batch, error_message = self.external_sentence_fetcher.get_sentences(self.word, batch_size)
+        except StopIteration:
+            self.add_sentences_button["state"] = "disabled"
+            return
 
-        sent_batch, error_message, local_flag = self.sentence_fetcher.get_sentence_batch(
-            self.word, max(0, len(self.text_frames) - len(sentences_from_buffer)))
-        sentences_from_buffer.extend(sent_batch)
-        del self.sentence_buffer[:len(self.text_frames)]
+        for sentence in sent_batch:
+            self.add_sentence_field(source=self.sentence_parser.name,
+                                    sentence=sentence)
 
-        for text_frame in self.text_frames:
-            text_frame.text.clear()
-            text_frame.text.fill_placeholder()
-        for i in range(len(sentences_from_buffer)):
-            self.text_frames[i].text.remove_placeholder()
-            self.text_frames[i].text.insert(1.0, sentences_from_buffer[i])
         if error_message:
-            self.sentence_fetcher.fetch_local()
-            messagebox.showerror(title=self.lang_pack.error_title,
-                                 message=error_message)
-        self.add_sentences_button["text"] = self.sentence_button_text if local_flag else self.sentence_button_text + " +"
+            messagebox.showerror(title=self.lang_pack.error_title, message=error_message)
 
     @error_handler(show_errors)
     def refresh(self) -> bool:
@@ -2243,6 +2220,13 @@ saving_image_height
         self.card_processor.process_card(self.dict_card_data)
 
         self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
+
+        self.sentence_texts.clear()
+        self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
+        self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
+        self.text_widgets_frame.grid_columnconfigure(0, weight=1)
+        self.text_widgets_frame.last_source = ""
+        self.text_widgets_frame.sentence_source_display_frame = None
 
         self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() + 1 \
                                              else "disabled"
@@ -2260,8 +2244,14 @@ saving_image_height
         self.definition_text.insert(1.0, self.dict_card_data.get(FIELDS.definition, ""))
         self.definition_text.fill_placeholder()
 
-        self.sentence_fetcher(self.word, self.dict_card_data.get(FIELDS.sentences, []))
-        self.replace_sentences()
+        self.external_sentence_fetcher(self.word)
+
+        for sentence in self.dict_card_data.get(FIELDS.sentences, []):
+            self.add_sentence_field(source=self.typed_word_parser_name,
+                                    sentence=sentence)
+
+        self.add_sentences_button["state"] = "normal"
+
         if not self.dict_card_data:
             # normal
             self.find_image_button["text"] = self.lang_pack.find_image_button_normal_text

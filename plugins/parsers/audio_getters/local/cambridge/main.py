@@ -46,20 +46,21 @@ def get_audios(word, card_data: dict) -> AudioData:
     pos = card_data.get(FIELDS.dict_tags, {}).get("pos", "")
     clear_pos = remove_special_chars(pos.lower(), '-', _AUDIO_NAME_SPEC_CHARS)
     res = os.path.join(search_root, clear_pos, name)
-    if not os.path.exists(res):
-        return ([], []), ""
-    if os.path.isfile(res):
-        return ([res], [f"[{pos}] {os.path.splitext(name)[0]}"]), ""
-    if os.path.isdir(res):
-        file_paths = []
-        additional_info = []
-        for item in os.listdir(res):
-            if os.path.isfile((file_path := os.path.join(res, item))):
-                file_paths.append(file_path)
-                additional_info.append(f"[{pos}] {os.path.splitext(item)[0]}")
-        return (file_paths, additional_info), ""
 
-    if config["pos_only"]:
+    if os.path.exists(res):
+        if os.path.isfile(res):
+            return ([res], [f"[{pos}] {os.path.splitext(name)[0]}"]), ""
+        if os.path.isdir(res):
+            file_paths = []
+            additional_info = []
+            for item in os.listdir(res):
+                if os.path.isfile((file_path := os.path.join(res, item))):
+                    file_paths.append(file_path)
+                    additional_info.append(f"[{pos}] {os.path.splitext(item)[0]}")
+            return (file_paths, additional_info), ""
+        else:
+            return ([], []), f"Can't deduce whether {res} is file of directory"
+    elif config["pos_only"]:
         return ([], []), ""
 
     no_pos_location = os.path.join(search_root, name)

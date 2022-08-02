@@ -2200,8 +2200,11 @@ saving_image_height
             return
 
         for sentence in sent_batch:
-            self.add_sentence_field(source=self.sentence_parser.name,
-                                    sentence=sentence)
+            self.add_sentence_field(
+                source=self.sentence_parser.name if self.configurations["scrappers"]["sentence"]["type"] == "web"
+                                                 else "[{}] {}".format(self.configurations["scrappers"]["sentence"]["type"],
+                                                                       self.sentence_parser.name),
+                sentence=sentence)
 
         if error_message:
             messagebox.showerror(title=self.lang_pack.error_title, message=error_message)

@@ -1043,6 +1043,7 @@ saving_image_height
                         self.sentence_buffer.append(lost_sentence)
                     self.text_frames[-1].destroy()
                     self.text_frames.pop()
+                    self.sent_button_list.pop()
                     continue
                 break
 

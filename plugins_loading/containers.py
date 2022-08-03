@@ -62,8 +62,14 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
                            source_module.settings_audio_autopick_label_text)
         object.__setattr__(self, "settings_audio_autopick_off",
                            source_module.settings_audio_autopick_off)
-        object.__setattr__(self, "settings_audio_autopick_first_only",
-                           source_module.settings_audio_autopick_first_only)
+        object.__setattr__(self, "settings_audio_autopick_first_default_audio",
+                           source_module.settings_audio_autopick_first_default_audio)
+        object.__setattr__(self, "settings_audio_autopick_all_default_audios",
+                           source_module.settings_audio_autopick_all_default_audios)
+        object.__setattr__(self, "settings_audio_autopick_first_available_audio",
+                           source_module.settings_audio_autopick_first_available_audio)
+        object.__setattr__(self, "settings_audio_autopick_first_available_audio_source",
+                           source_module.settings_audio_autopick_first_available_audio_source)
         object.__setattr__(self, "settings_audio_autopick_all",
                            source_module.settings_audio_autopick_all)
 

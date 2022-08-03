@@ -35,7 +35,10 @@ class LanguagePackageInterface(Protocol):
     settings_format_processor_label_text: str
     settings_audio_autopick_label_text: str
     settings_audio_autopick_off: str
-    settings_audio_autopick_first_only: str
+    settings_audio_autopick_first_default_audio: str
+    settings_audio_autopick_all_default_audios: str
+    settings_audio_autopick_first_available_audio: str
+    settings_audio_autopick_first_available_audio_source: str
     settings_audio_autopick_all: str
 
     settings_configure_anki_button_text: str

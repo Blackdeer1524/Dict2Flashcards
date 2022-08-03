@@ -373,8 +373,14 @@ saving_image_height
             def save_audio_autochoose_option(option: str):
                 if option == self.lang_pack.settings_audio_autopick_off:
                     raw_option = "off"
-                elif option == self.lang_pack.settings_audio_autopick_first_only:
-                    raw_option = "first_only"
+                elif option == self.lang_pack.settings_audio_autopick_first_default_audio:
+                    raw_option = "first_default_audio"
+                elif option == self.lang_pack.settings_audio_autopick_all_default_audios:
+                    raw_option = "all_default_audios"
+                elif option == self.lang_pack.settings_audio_autopick_first_available_audio:
+                    raw_option = "first_available_audio"
+                elif option == self.lang_pack.settings_audio_autopick_first_available_audio_source:
+                    raw_option = "first_available_audio_source"
                 elif option == self.lang_pack.settings_audio_autopick_all:
                     raw_option = "all"
                 else:
@@ -384,8 +390,14 @@ saving_image_height
             cur_mode = self.configurations["app"]["audio_autochoose_mode"]
             if cur_mode == "off":
                 audio_autochoose_option_init_text = self.lang_pack.settings_audio_autopick_off
-            elif cur_mode == "first_only":
-                audio_autochoose_option_init_text = self.lang_pack.settings_audio_autopick_first_only
+            elif cur_mode == "first_default_audio":
+                audio_autochoose_option_init_text = self.lang_pack.settings_audio_autopick_first_default_audio
+            elif cur_mode == "all_default_audios":
+                audio_autochoose_option_init_text = self.lang_pack.settings_audio_autopick_all_default_audios
+            elif cur_mode == "first_available_audio":
+                audio_autochoose_option_init_text = self.lang_pack.settings_audio_autopick_first_available_audio
+            elif cur_mode == "first_available_audio_source":
+                audio_autochoose_option_init_text = self.lang_pack.settings_audio_autopick_first_available_audio_source
             elif cur_mode == "all":
                 audio_autochoose_option_init_text = self.lang_pack.settings_audio_autopick_all
             else:
@@ -395,7 +407,10 @@ saving_image_height
                 settings_window,
                 init_text=audio_autochoose_option_init_text,
                 values=[self.lang_pack.settings_audio_autopick_off,
-                        self.lang_pack.settings_audio_autopick_first_only,
+                        self.lang_pack.settings_audio_autopick_first_default_audio,
+                        self.lang_pack.settings_audio_autopick_all_default_audios,
+                        self.lang_pack.settings_audio_autopick_first_available_audio,
+                        self.lang_pack.settings_audio_autopick_first_available_audio_source,
                         self.lang_pack.settings_audio_autopick_all],
                 command=save_audio_autochoose_option
             )
@@ -569,7 +584,7 @@ saving_image_height
                 m = Menu(root, tearoff=0)
                 m.add_command(label=self.lang_pack.chain_management_pop_up_menu_edit_label,
                               command=edit_selected_chain)
-                m.add_command(label=self.lang_pack.chain_management_pop_up_menu_remove_label, 
+                m.add_command(label=self.lang_pack.chain_management_pop_up_menu_remove_label,
                               command=remove_selected_chain)
 
                 @error_handler(self.show_errors)
@@ -677,8 +692,8 @@ saving_image_height
 
                     chain_data.append(ChainData(name=placing_name,
                                                 label=a,
-                                                up_button=up_button, 
-                                                deselect_button=deselect_button, 
+                                                up_button=up_button,
+                                                deselect_button=deselect_button,
                                                 down_button=down_button))
                     place_widget_to_chain(chain_data[-1], new_chain_ind)
 
@@ -692,12 +707,12 @@ saving_image_height
                 chaining_window.grid_rowconfigure(1, weight=1)
 
                 chain_name_entry: Entry = self.Entry(
-                    chaining_window, 
+                    chaining_window,
                     placeholder=self.lang_pack.chain_management_chain_name_entry_placeholder)
                 chain_name_entry.insert(0, chain_name)
 
                 chain_name_entry.grid(row=0, column=0, columnspan=2, sticky="we", padx=10, pady=10)
-                
+
                 choosing_main_frame = ScrolledFrame(chaining_window, scrollbars="vertical",
                                                     canvas_bg=self.theme.frame_cfg.get("bg"))
                 choosing_main_frame.grid(row=1, column=0, sticky="news", padx=10, pady=(0, 10))
@@ -756,7 +771,7 @@ saving_image_height
                 def save_chain_sequence():
                     new_chain_name = chain_name_entry.get().strip()
                     if not new_chain_name:
-                        messagebox.showerror(title=self.lang_pack.error_title, 
+                        messagebox.showerror(title=self.lang_pack.error_title,
                                              message=self.lang_pack.chain_management_empty_chain_name_entry_message)
                         return
 
@@ -821,8 +836,8 @@ saving_image_height
                     chaining_window.destroy()
 
                 save_chain_button = self.Button(
-                    command_frame, 
-                    text=self.lang_pack.chain_management_save_chain_button_text, 
+                    command_frame,
+                    text=self.lang_pack.chain_management_save_chain_button_text,
                     command=save_chain_sequence)
                 save_chain_button.pack(side="right", padx=5, pady=5)
 
@@ -1182,7 +1197,12 @@ saving_image_height
                 "theme":                ("dark", [str], []),
                 "main_window_geometry": ("500x800+0+0", [str], []),
                 "language_package":     ("eng", [str], []),
-                "audio_autochoose_mode":  ("off", [str], ["off", "first_only", "all"])
+                "audio_autochoose_mode":  ("off", [str], ["off",
+                                                          "first_default_audio",
+                                                          "all_default_audios",
+                                                          "first_available_audio",
+                                                          "first_available_audio_source",
+                                                          "all"])
             },
             "image_search": {
                 "starting_position":   ("+0+0", [str], []),
@@ -1787,7 +1807,7 @@ saving_image_height
             self.save_files()
             self.gb.stop()
             self.download_audio(closing=True)
-    
+
     @error_handler(show_errors)
     def web_search_command(self):
         search_term = self.word
@@ -1807,33 +1827,33 @@ saving_image_height
         conf_window = self.Toplevel(self)
         conf_window.title(f"{plugin_name} {self.lang_pack.configuration_window_conf_window_title}")
 
-        text_pane_win = PanedWindow(conf_window, **self.theme.frame_cfg)        
+        text_pane_win = PanedWindow(conf_window, **self.theme.frame_cfg)
         text_pane_win.pack(side="top", expand=1, fill="both", anchor="n")
-        
+
         conf_sf = ScrolledFrame(text_pane_win, scrollbars="both",
                                 canvas_bg=self.theme.frame_cfg.get("bg"))
         text_pane_win.add(conf_sf, stretch="always", sticky="news")
         conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
-        
+
         conf_text = self.Text(conf_inner_frame)
         conf_text.insert(1.0, json.dumps(plugin_config.data, indent=4))
         conf_text.pack(fill="both", expand=True)
         conf_sf.bind_scroll_wheel(conf_text)
-        
+
         docs_pane_win = PanedWindow(text_pane_win, orient="vertical",
                                     showhandle=True, **self.theme.frame_cfg)
-        
+
         docs_sf = ScrolledFrame(text_pane_win, scrollbars="both",
                                 canvas_bg=self.theme.frame_cfg.get("bg"))
         docs_pane_win.add(docs_sf, stretch="always", sticky="news")
         docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
-        
+
         conf_docs_text = self.Text(docs_inner_frame)
         conf_docs_text.insert(1.0, plugin_config.docs)
         conf_docs_text["state"] = "disabled"
         conf_docs_text.pack(fill="both", expand=True)
         docs_sf.bind_scroll_wheel(conf_docs_text)
-        
+
         text_pane_win.add(docs_pane_win, stretch="always")
 
         @error_handler(self.show_errors)
@@ -1978,7 +1998,7 @@ saving_image_height
                 plugin_config=self.audio_getter.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save())
-    
+
     @error_handler(show_errors)
     def change_image_parser(self, given_image_parser_name: str):
         if not given_image_parser_name.startswith(f"[{parser_types.CHAIN}]"):
@@ -2036,7 +2056,7 @@ saving_image_height
         def add_audio_data_to_card(getter_name: str, getter_type: str, audio_links: list[str], add_type_prefix: bool):
             if not audio_links:
                 return
-            
+
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS].extend(audio_links)
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE].extend((getter_type for _ in range(len(audio_links))))
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SAVING_PATHS].extend((
@@ -2049,7 +2069,7 @@ saving_image_height
                                  self.dict_card_data))
                 for i in range(len(audio_links))
             ))
-        
+
         chosen_smth = False
         for labeled_frame in self.sound_inner_frame.winfo_children():
             for audio_frame in labeled_frame.winfo_children():
@@ -2062,15 +2082,21 @@ saving_image_height
                                            add_type_prefix=False)
 
         if not chosen_smth and (audio_autochoose_mode := self.configurations["app"]["audio_autochoose_mode"]) != "off":
-            if audio_autochoose_mode == "first_only":
+            if audio_autochoose_mode == ("first_default_audio", "first_available_audio"):
                 choosing_slice = slice(0, 1)
-            elif audio_autochoose_mode == "all":
+            elif audio_autochoose_mode in ("all_default_audios", "first_available_audio_source", "all"):
                 choosing_slice = slice(None, None, 1)
             else:
-                raise NotImplementedError(f"Unknown audio_autochoose_mode: {audio_autochoose_mode}")
+                raise NotImplementedError(f"Unknown audio autochoose mode: {audio_autochoose_mode}")
 
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-            if self.audio_getter is not None:
+            if (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
+                add_audio_data_to_card(getter_name=self.card_generator.name,
+                                       getter_type=parser_types.WEB,
+                                       audio_links=web_audios[choosing_slice],
+                                       add_type_prefix=True)
+
+            if self.audio_getter is not None and (audio_autochoose_mode == "all" or not web_audios and audio_autochoose_mode in ("first_available_audio", "first_available_audio_source")):
                 if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
                     ((audio_links, additional_info), error_message) = self.audio_getter.get_audios(word, self.dict_card_data)
                     add_audio_data_to_card(getter_name=self.audio_getter.name,
@@ -2080,15 +2106,15 @@ saving_image_height
                 elif audio_getter_type == parser_types.CHAIN:
                     audio_data_dict = self.audio_getter.get_audios(word, self.dict_card_data)
                     audio_gen = (i for i in audio_data_dict.items())
-                    if audio_autochoose_mode == "first_only":
+                    if audio_autochoose_mode in ("first_available_audio", "first_available_audio_source"):
                         getter_name, (getter_type, ((audio_links, additional_info), error_message)) = next(audio_gen)
                         add_audio_data_to_card(
                             getter_name=getter_name,
                             getter_type=getter_type,
-                            audio_links=[audio_links[0]],
+                            audio_links=audio_links[choosing_slice],
                             add_type_prefix=False
                         )
-                    else:
+                    elif audio_autochoose_mode == "all":
                         for getter_name, (getter_type, ((audio_links, additional_info), error_message)) in audio_gen:
                             add_audio_data_to_card(
                                 getter_name=getter_name,
@@ -2096,14 +2122,10 @@ saving_image_height
                                 audio_links=audio_links,
                                 add_type_prefix=False
                             )
+                    else:
+                        raise NotImplementedError(f"Unreachable audio_autochoose_mode: {audio_autochoose_mode}")
                 else:
                     raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
-
-            elif (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
-                add_audio_data_to_card(getter_name=self.card_generator.name,
-                                       getter_type=parser_types.WEB,
-                                       audio_links=web_audios[choosing_slice],
-                                       add_type_prefix=True)
 
         if (hierarchical_prefix := self.tag_prefix_field.get().strip()):
             additional[SavedDataDeck.HIERARCHICAL_PREFIX] = hierarchical_prefix

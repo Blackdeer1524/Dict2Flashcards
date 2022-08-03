@@ -38,59 +38,75 @@ def get_audios(word, card_data: dict) -> AudioData:
         return ([], []), ""
 
     audio_folder = f"{config['audio_region']}_audios"
-
-    letter_group = word[0] if word[0].lower() in _LETTERS else "0-9"
-    name = f"{remove_special_chars(word, '-', _AUDIO_NAME_SPEC_CHARS)}.mp3"
+    letter_group = lower_first_letter if (lower_first_letter := word[0].lower()) in _LETTERS else "0-9"
     search_root = os.path.join(LOCAL_MEDIA_DIR, audio_folder, letter_group)
+
+    filename_without_extension = f"{remove_special_chars(word, '-', _AUDIO_NAME_SPEC_CHARS)}"
+    extension = ".mp3"
+    filename_with_extension = filename_without_extension + extension
 
     pos = card_data.get(FIELDS.dict_tags, {}).get("pos", "")
     clear_pos = remove_special_chars(pos.lower(), '-', _AUDIO_NAME_SPEC_CHARS)
-    res = os.path.join(search_root, clear_pos, name)
-
-    if os.path.exists(res):
-        if os.path.isfile(res):
-            return ([res], [f"[{pos}] {os.path.splitext(name)[0]}"]), ""
-        if os.path.isdir(res):
+    
+    if clear_pos:
+        given_pos_dir = os.path.join(search_root, clear_pos)
+        pos_audio_file_path = os.path.join(given_pos_dir, filename_with_extension)
+        if os.path.isfile(pos_audio_file_path):
+            return ([pos_audio_file_path], [f"[{pos}] {filename_without_extension}"]), ""
+        
+        pos_named_dir = os.path.join(given_pos_dir, filename_without_extension)
+        if os.path.isdir(pos_named_dir):
             file_paths = []
             additional_info = []
-            for item in os.listdir(res):
-                if os.path.isfile((file_path := os.path.join(res, item))):
+            for item in os.listdir(pos_named_dir):
+                if os.path.isfile(file_path := os.path.join(pos_named_dir, item)):
                     file_paths.append(file_path)
                     additional_info.append(f"[{pos}] {os.path.splitext(item)[0]}")
             return (file_paths, additional_info), ""
-        else:
-            return ([], []), f"Can't deduce whether {res} is file of directory"
-    elif config["pos_only"]:
+    
+    if config["pos_only"]:
         return ([], []), ""
 
-    no_pos_location = os.path.join(search_root, name)
-    if os.path.exists(no_pos_location):
-        if os.path.isfile(no_pos_location):
-            return ([no_pos_location], [name]), ""
-        if os.path.isdir(no_pos_location):
+    no_pos_audio_file_path = os.path.join(search_root, filename_with_extension)
+    if os.path.isfile(no_pos_audio_file_path):
+        return ([no_pos_audio_file_path], [filename_without_extension]), ""
+
+    no_pos_audio_file_dir = os.path.join(search_root, filename_without_extension)
+    if os.path.isdir(no_pos_audio_file_dir):
+        file_paths = []
+        additional_info = []
+        for item in os.listdir(no_pos_audio_file_dir):
+            if os.path.isfile((file_path := os.path.join(no_pos_audio_file_dir, item))):
+                file_paths.append(file_path)
+                additional_info.append(os.path.splitext(item)[0])
+        return (file_paths, additional_info), ""
+    
+    pos_dirs = [(directory_path, directory) for directory in os.listdir(search_root)
+                if os.path.isdir(directory_path := os.path.join(search_root, directory))]
+    
+    for pos_dir_abspath, pos in pos_dirs:
+        files = []
+        dirs = []
+
+        for item in os.listdir(pos_dir_abspath):
+            joined_name = os.path.join(pos_dir_abspath, item)
+            if os.path.isfile(joined_name):
+                files.append(item)
+            elif os.path.isdir(joined_name):
+                dirs.append(item)
+
+        if filename_with_extension in files:
+            return ([os.path.join(pos_dir_abspath, filename_with_extension)],
+                    [f"[{pos}] {filename_without_extension}"]), ""
+
+        if filename_without_extension in dirs:
+            directory = os.path.join(pos_dir_abspath, filename_without_extension)
             file_paths = []
             additional_info = []
-            for item in os.listdir(no_pos_location):
-                if os.path.isfile((file_path := os.path.join(no_pos_location, item))):
+            for item in os.listdir(directory):
+                if os.path.isfile((file_path := os.path.join(directory, item))):
                     file_paths.append(file_path)
-                    additional_info.append(os.path.splitext(item)[0])
+                    additional_info.append(f"[{pos}/{filename_without_extension}] {os.path.splitext(item)[0]}")
             return (file_paths, additional_info), ""
-    
-    pos_dirs = [directory_path for directory in os.listdir(search_root)
-                if os.path.isdir(directory_path := os.path.join(search_root, directory))]
-    for dir_root in pos_dirs:
-        for current_dir_path, dirs, files in os.walk(dir_root):
-            if name in files:
-                return ([os.path.join(str(current_dir_path), name)],
-                        [f"[{os.path.split(current_dir_path)[-1]}] {os.path.splitext(name)[0]}"]), ""
-            elif name in dirs:
-                directory = os.path.join(str(current_dir_path), name)
-                file_paths = []
-                additional_info = []
-                for item in os.listdir(directory):
-                    if os.path.isfile((file_path := os.path.join(directory, item))):
-                        file_paths.append(file_path)
-                        additional_info.append(f"[{name}] {os.path.splitext(item)[0]}")
-                return (file_paths, additional_info), ""
     return ([], []), ""
 

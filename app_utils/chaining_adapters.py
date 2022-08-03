@@ -201,11 +201,6 @@ class AudioGettersChain:
         names = []
         parser_configs = []
         for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
-            if parser_name == "default":
-                parser_type = "web"
-                self.enum_name2parsers_data[enum_name] = (parser_type, None)
-                continue
-
             names.append(parser_name)
             if parser_name.startswith(f"[{parser_types.WEB}]"):
                 parser_type = parser_types.WEB
@@ -236,16 +231,11 @@ get_all:
     def get_audios(self, word: str, card_data: dict) -> dict[str, tuple[str, AudioData]]:
         result = {}
         for enum_name, (parser_type, audio_getting_function) in self.enum_name2parsers_data.items():
-            if audio_getting_function is None:
-                audios = card_data.get(FIELDS.audio_links, [])
-                additional_info = ("" for _ in range(len(audios)))
-                error_message = ""
-            else:
-                self.config.update_config(enum_name)
-                (audios, additional_info), error_message = audio_getting_function(word, card_data)
+            self.config.update_config(enum_name)
+            (audios, additional_info), error_message = audio_getting_function(word, card_data)
 
             if audios:
-                result[enum_name] = (parser_type, ((audios, additional_info), error_message))
+                result[f"{enum_name}: {word}"] = (parser_type, ((audios, additional_info), error_message))
                 if not self.config["get_all"]:
                     break
         return result

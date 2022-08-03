@@ -189,6 +189,7 @@ class App(Tk):
         main_menu.add_command(label=self.lang_pack.search_inside_deck_menu_label, command=self.find_dialog)
         main_menu.add_command(label=self.lang_pack.statistics_menu_label, command=self.statistics_dialog)
 
+        @error_handler(self.show_errors)
         def settings_dialog():
             settings_window = self.Toplevel(self)
             settings_window.title(self.lang_pack.settings_menu_label)
@@ -308,6 +309,7 @@ saving_image_height
     no scaling if null
 """
 
+            @error_handler(self.show_errors)
             def get_image_search_conf() -> Config:
                 image_search_conf = copy.deepcopy(self.configurations["image_search"])
                 image_search_conf.pop("starting_position", None)
@@ -316,6 +318,7 @@ saving_image_height
                               initial_value=image_search_conf)
                 return conf
 
+            @error_handler(self.show_errors)
             def save_image_search_conf(config):
                 for key, value in config.items():
                     self.configurations["image_search"][key] = value
@@ -366,6 +369,7 @@ saving_image_height
                                               text=self.lang_pack.settings_audio_autopick_label_text)
             audio_autopick_label.grid(row=5, column=0, sticky="news")
 
+            @error_handler(self.show_errors)
             def save_audio_autochoose_option(option: str):
                 if option == self.lang_pack.settings_audio_autopick_off:
                     raw_option = "off"
@@ -410,6 +414,7 @@ saving_image_height
 
         main_menu.add_command(label=self.lang_pack.settings_menu_label, command=settings_dialog)
 
+        @error_handler(self.show_errors)
         def chain_dialog():
             chain_type_window: Toplevel = self.Toplevel(self)
             chain_type_window.grid_columnconfigure(0, weight=1)
@@ -420,6 +425,7 @@ saving_image_height
                                 self.lang_pack.chain_management_image_parsers_option    : "image_parsers",
                                 self.lang_pack.chain_management_audio_getters_option    : "audio_getters"}
 
+            @error_handler(self.show_errors)
             def select_chain_type(picked_value: str) -> None:
                 close_chain_type_selection_button["state"] = call_chain_building_button["state"] = "normal"
                 existing_chains_treeview.delete(*existing_chains_treeview.get_children())
@@ -457,6 +463,7 @@ saving_image_height
             existing_chains_treeview.column("#1", anchor="center", stretch=True)
             existing_chains_treeview.column("#2", anchor="center", stretch=True)
 
+            @error_handler(self.show_errors)
             def recreate_option_menus(chosen_parser_type: str):
                 if chosen_parser_type == "word_parsers":
                     self.word_parser_option_menu.destroy()
@@ -527,15 +534,18 @@ saving_image_height
                 else:
                     raise NotImplementedError(f"Unknown chosen parser type: {chosen_parser_type}")
 
+            @error_handler(self.show_errors)
             def remove_option(option: str):
                 chosen_parser_type = chaining_options[chain_type_option_menu["text"]]
                 self.chaining_data[chosen_parser_type].pop(option)
                 recreate_option_menus(chosen_parser_type)
 
+            @error_handler(self.show_errors)
             def do_popup(event):
                 if not existing_chains_treeview.focus():
                     return
 
+                @error_handler(self.show_errors)
                 def edit_selected_chain():
                     selected_item_index = existing_chains_treeview.focus()
                     if not selected_item_index:
@@ -547,6 +557,7 @@ saving_image_height
                                 initial_chain=chain_data["chain"],
                                 edit_mode=True)
 
+                @error_handler(self.show_errors)
                 def remove_selected_chain():
                     selected_item_index = existing_chains_treeview.focus()
                     if not selected_item_index:
@@ -561,11 +572,12 @@ saving_image_height
                 m.add_command(label=self.lang_pack.chain_management_pop_up_menu_remove_label, 
                               command=remove_selected_chain)
 
-                def popup_FocusOut(event=None):
+                @error_handler(self.show_errors)
+                def popup_FocusOut():
                     m.grab_release()
                     m.destroy()
 
-                m.bind("<FocusOut>", popup_FocusOut)
+                m.bind("<FocusOut>", lambda event: popup_FocusOut())
 
                 try:
                     m.tk_popup(event.x_root, event.y_root)
@@ -577,6 +589,7 @@ saving_image_height
             command_panel: Frame = self.Frame(chain_type_window)
             command_panel.grid(row=3, column=0, sticky="we")
 
+            @error_handler(self.show_errors)
             def build_chain(chain_name: str,
                             initial_chain: list[str],
                             edit_mode: bool = False):
@@ -587,11 +600,13 @@ saving_image_height
                 ChoosingData = namedtuple("ChoosingData", ("name", "label", "select_button"))
                 ChainData = namedtuple("ChainData", ("name", "label", "up_button", "deselect_button", "down_button"))
 
+                @error_handler(self.show_errors)
                 def add_to_chain(placing_name: str):
                     new_chain_ind = len(chain_data) * 3
                     a = self.Label(built_chain_inner_frame, text=placing_name, justify='center')
                     built_chain_main_frame.bind_scroll_wheel(a)
 
+                    @error_handler(self.show_errors)
                     def place_widget_to_chain(item: ChainData, next_3i: int):
                         item.label.grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
                         item.up_button.grid(row=next_3i, column=1, sticky="news", pady=(pady, 0))
@@ -615,6 +630,7 @@ saving_image_height
                                 command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
                                                                         direction=1))
 
+                    @error_handler(self.show_errors)
                     def swap_places(current_ind: int, direction: int):
                         current = chain_data[current_ind]
                         operand = chain_data[current_ind + direction]
@@ -629,6 +645,7 @@ saving_image_height
                         place_widget_to_chain(operand, old_3)
                         chain_data[old_3 // 3], chain_data[new_3 // 3] = chain_data[new_3 // 3], chain_data[old_3 // 3]
 
+                    @error_handler(self.show_errors)
                     def remove_from_chain(ind: int):
                         for i in range(1, len(chain_data[ind])):
                             chain_data[ind][i].destroy()
@@ -736,6 +753,7 @@ saving_image_height
                 command_frame: Frame = self.Frame(chaining_window, height=30, bg="grey")
                 command_frame.grid(row=2, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 10))
 
+                @error_handler(self.show_errors)
                 def save_chain_sequence():
                     new_chain_name = chain_name_entry.get().strip()
                     if not new_chain_name:
@@ -1080,6 +1098,7 @@ saving_image_height
                      action=lambda: self.define_word(word_query=self.clipboard_get(), additional_query="")
                      )
 
+        @error_handler(self.show_errors)
         def paste_in_sentence_field():
             clipboard_text = self.clipboard_get()
             self.add_sentence_field(source="<Control + c + Alt>", sentence=clipboard_text)
@@ -1092,6 +1111,7 @@ saving_image_height
 
         AUTOSAVE_INTERVAL = 300_000  # time in milliseconds
 
+        @error_handler(self.show_errors)
         def autosave():
             self.save_files()
             self.after(AUTOSAVE_INTERVAL, autosave)
@@ -1122,6 +1142,7 @@ saving_image_height
         error_window = self.show_window(title=self.lang_pack.error_title, text=error_log)
         error_window.grab_set()
 
+    @error_handler(show_errors)
     def load_conf_file(self) -> tuple[LoadableConfig, LanguagePackageContainer, bool]:
         validation_scheme = \
         {
@@ -1215,6 +1236,7 @@ saving_image_height
                 history_json = json.load(f)
         return history_json
 
+    @error_handler(show_errors)
     def load_chaining_data(self) -> LoadableConfig:
         validation_scheme = \
         {
@@ -1232,7 +1254,9 @@ saving_image_height
                                        _config_file_name=chaining_data_file_name)
         return chaining_data
 
+    @error_handler(show_errors)
     def display_audio_on_frame(self):
+        @error_handler(self.show_errors)
         def web_playsound(src: str):
             audio_name = self.card_processor.get_save_audio_name(word,
                                                                  self.typed_word_parser_name,
@@ -1646,6 +1670,7 @@ saving_image_height
                 return
 
             if (move_list := self.deck.find_card(searching_func=searching_filter)):
+                @error_handler(self.show_errors)
                 def rotate(n: int):
                     nonlocal move_list, found_item_number
 
@@ -2002,7 +2027,7 @@ saving_image_height
         if user_tags:
             additional[SavedDataDeck.USER_TAGS] = user_tags
 
-        # TODO
+        @error_handler(self.show_errors)
         def add_audio_data_to_card(getter_name: str, getter_type: str, audio_links: list[str], add_type_prefix: bool):
             if not audio_links:
                 return

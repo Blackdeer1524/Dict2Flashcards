@@ -2275,12 +2275,9 @@ saving_image_height
 
         self.external_sentence_fetcher(self.word)
 
-        dict_sentences = self.dict_card_data.get(FIELDS.sentences, [])
+        dict_sentences = self.dict_card_data.get(FIELDS.sentences, [""])
         for sentence in dict_sentences:
-            self.add_sentence_field(source=self.typed_word_parser_name, sentence=sentence)
-
-        if not dict_sentences:
-            self.add_sentence_field(source="", sentence="")
+            self.add_sentence_field(source="", sentence=sentence)
 
         if not self.dict_card_data:
             # normal

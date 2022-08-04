@@ -1,6 +1,8 @@
 import copy
 import itertools
 import json
+import os
+from threading import Thread
 import re
 import time
 import webbrowser
@@ -1305,24 +1307,39 @@ saving_image_height
                                word: str,
                                parser_results: dict[str, tuple[str, AudioData]]):
         @error_handler(self.show_errors)
+        def playsound_in_another_thread(audio_path: str):
+            @error_handler(self.show_errors)
+            def quite_playsound(_audio_path: str):
+                try:
+                    playsound(_audio_path)
+                except UnicodeDecodeError:
+                    pass
+
+            # cross-platform analog of playsound with block=False
+            Thread(target=lambda: quite_playsound(audio_path)).start()
+
+        @error_handler(self.show_errors)
         def web_playsound(src: str):
             audio_name = self.card_processor.get_save_audio_name(word,
                                                                  self.typed_word_parser_name,
-                                                                 "-1",
+                                                                 "0",
                                                                  self.dict_card_data)
 
             temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name)
+            if os.path.exists(temp_audio_path):
+                # you need to remove old file because Windows will raise permission denied error
+                os.remove(temp_audio_path)
 
             def show_download_error(exc):
                 messagebox.showerror(message=f"{self.lang_pack.error_title}\n{exc}")
 
             success = AudioDownloader.fetch_audio(url=src,
                                                   save_path=temp_audio_path,
-                                                  timeout=5,
+                                                  timeout=1,
                                                   headers=self.headers,
                                                   exception_action=lambda exc: show_download_error(exc))
             if success:
-                playsound(temp_audio_path)
+                playsound_in_another_thread(temp_audio_path)
 
         error_messages: list[tuple[str, str]] = []
         for typed_audio_getter_name, (audio_getter_type, ((audio_sources, additional_info), error_message)) in parser_results.items():
@@ -1343,7 +1360,7 @@ saving_image_height
             if audio_getter_type == parser_types.WEB:
                 play_sound_button_cmd = web_playsound
             elif audio_getter_type == parser_types.LOCAL:
-                play_sound_button_cmd = playsound
+                play_sound_button_cmd = playsound_in_another_thread
             else:
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 

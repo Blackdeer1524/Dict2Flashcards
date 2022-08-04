@@ -27,9 +27,12 @@ def get_audio_link(onclickFunction) -> str:
     #Play(6687207,'OTU5NzcxMy8xMzgvOTU5NzcxM18xMzhfNjk2MDEyMi5tcDM=','OTU5NzcxMy8xMzgvOTU5NzcxM18xMzhfNjk2MDEyMi5vZ2c=',false,'','','l');return false;
     # All audios have an ogg version as a fallback on the mp3. Ogg is open source and compresses audio to a smaller size than mp3.
     # So I grab the ogg base64 string and decode it.
-    base64audio = onclickFunction.split(',')[2].replace('\'', "")
+    #
+    # Ogg doesn't work properly with playsound on Windows :(
+    # Ogg index - 2; MP3 index - 1
+    base64audio = onclickFunction.split(',')[1].replace('\'', "")
     decodedLink = base64.b64decode(base64audio.encode('ascii')).decode('ascii')
-    return "https://audio00.forvo.com/ogg/" + decodedLink
+    return "https://audio00.forvo.com/mp3/" + decodedLink
 
 
 def get_forvo_audio_link(audioLi) -> str:

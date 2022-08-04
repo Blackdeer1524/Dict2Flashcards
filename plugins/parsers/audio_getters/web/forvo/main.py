@@ -61,5 +61,5 @@ def get_audios(word: str, card_data: dict) -> AudioData:
             audio_links.append(get_audio_link(onclick))
             additional_info.append(li.get("class", ""))
 
-    CACHED_RESULT= {word: ((audio_links, additional_info), "")}
+    CACHED_RESULT = {word: ((audio_links, additional_info), "")}
     return CACHED_RESULT[word]

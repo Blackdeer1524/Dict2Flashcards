@@ -436,6 +436,7 @@ saving_image_height
             chain_type_window: Toplevel = self.Toplevel(self)
             chain_type_window.grid_columnconfigure(0, weight=1)
             chain_type_window.title(self.lang_pack.chain_management_menu_label)
+            chain_type_window.bind("<Escape>", lambda event: chain_type_window.destroy())
 
             chaining_options = {self.lang_pack.chain_management_word_parsers_option     : "word_parsers",
                                 self.lang_pack.chain_management_sentence_parsers_option : "sentence_parsers",
@@ -620,7 +621,8 @@ saving_image_height
                 @error_handler(self.show_errors)
                 def add_to_chain(placing_name: str):
                     new_chain_ind = len(chain_data) * 3
-                    a = self.Label(built_chain_inner_frame, text=placing_name, justify='center')
+                    a = self.Label(built_chain_inner_frame, text=placing_name, justify='center',
+                                   relief="ridge", borderwidth=2)
                     built_chain_main_frame.bind_scroll_wheel(a)
 
                     @error_handler(self.show_errors)
@@ -702,6 +704,8 @@ saving_image_height
                 chaining_window = self.Toplevel(chain_type_window)
                 chaining_window.title(self.lang_pack.chain_management_menu_label)
                 chaining_window.geometry(f"{self.winfo_screenwidth() // 3}x{self.winfo_screenheight() // 3}")
+                chaining_window.bind("<Escape>", lambda event: chaining_window.destroy())
+                chaining_window.bind("<Return>", lambda event: save_chain_sequence())
                 chaining_window.grab_set()
 
                 chaining_window.grid_columnconfigure(0, weight=1)
@@ -719,8 +723,7 @@ saving_image_height
                                                     canvas_bg=self.theme.frame_cfg.get("bg"))
                 choosing_main_frame.grid(row=1, column=0, sticky="news", padx=10, pady=(0, 10))
                 choosing_inner_frame = choosing_main_frame.display_widget(self.Frame,
-                                                                  fit_width=True,
-                                                                  bg="grey")
+                                                                  fit_width=True)
                 choosing_main_frame.bind_scroll_wheel(choosing_inner_frame)
                 choosing_inner_frame.grid_columnconfigure(0, weight=1)
 
@@ -745,7 +748,8 @@ saving_image_height
                     raise NotImplementedError(f"Unknown chain type: {chain_type}")
 
                 for i, parser_name in enumerate(displaying_options):
-                    a = self.Label(choosing_inner_frame, text=parser_name, justify='center')
+                    a = self.Label(choosing_inner_frame, text=parser_name, justify='center',
+                                   relief="ridge", borderwidth=2)
                     a.grid(row=i, column=0, sticky="news", pady=pady)
                     choosing_main_frame.bind_scroll_wheel(a)
                     b = self.Button(choosing_inner_frame, text=">",
@@ -758,15 +762,14 @@ saving_image_height
                                                        canvas_bg=self.theme.frame_cfg.get("bg"))
                 built_chain_main_frame.grid(row=1, column=1, sticky="news", padx=10, pady=(0, 10))
                 built_chain_inner_frame = built_chain_main_frame.display_widget(self.Frame,
-                                                                  fit_width=True,
-                                                                  bg="grey")
+                                                                  fit_width=True)
                 built_chain_main_frame.bind_scroll_wheel(built_chain_inner_frame)
                 built_chain_inner_frame.grid_columnconfigure(0, weight=1)
 
                 for name in initial_chain:
                     add_to_chain(name)
 
-                command_frame: Frame = self.Frame(chaining_window, height=30, bg="grey")
+                command_frame: Frame = self.Frame(chaining_window, height=30)
                 command_frame.grid(row=2, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 10))
 
                 @error_handler(self.show_errors)
@@ -1850,7 +1853,7 @@ saving_image_height
         conf_sf = ScrolledFrame(text_pane_win, scrollbars="both",
                                 canvas_bg=self.theme.frame_cfg.get("bg"))
         text_pane_win.add(conf_sf, stretch="always", sticky="news")
-        conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
+        conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True)
 
         conf_text = self.Text(conf_inner_frame)
         conf_text.insert(1.0, json.dumps(plugin_config.data, indent=4))
@@ -1863,7 +1866,7 @@ saving_image_height
         docs_sf = ScrolledFrame(text_pane_win, scrollbars="both",
                                 canvas_bg=self.theme.frame_cfg.get("bg"))
         docs_pane_win.add(docs_sf, stretch="always", sticky="news")
-        docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
+        docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True)
 
         conf_docs_text = self.Text(docs_inner_frame)
         conf_docs_text.insert(1.0, plugin_config.docs)

@@ -1339,11 +1339,11 @@ n_sentences_per_batch:
                 "starting_position":   ("+0+0", [str], []),
                 "saving_image_width":  (300, [int, type(None)], []),
                 "saving_image_height": (None, [int, type(None)], []),
-                "max_request_tries":   (5, [int], []),
+                "max_request_tries":   (1, [int], []),
                 "timeout":             (1, [int, float], []),
                 "show_image_width":    (250, [int, type(None)], []),
                 "show_image_height":   (None, [int, type(None)], []),
-                "n_images_in_row":     (3, [int], []),
+                "n_images_in_row":     (2, [int], []),
                 "n_rows":              (2, [int], [])
             },
             "extern_sentence_placer": {

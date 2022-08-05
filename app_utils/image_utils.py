@@ -334,45 +334,56 @@ class ImageSearch(Toplevel):
         :param n_retries: (if some error occurred) replace "bad" image with the new one and tries to fetch it.
         :return:
         """
-        def add_fetching_to_queue():
-            nonlocal n_retries
-            self._generate_urls(1)
-            if len(self._img_urls) and n_retries < self._max_request_tries:
-                image_fetching_futures.append(self._pool.submit(self.fetch_image, self._img_urls.popleft()[0]))
-                n_retries += 1
+        def wait_url_generation_future(future, on_completion_action: Callable):
+            if future.running():
+                self.after(100, lambda: wait_url_generation_future(future, on_completion_action))
+            else:
+                future.result()
+                on_completion_action()
 
-        self._generate_urls(batch_size)
-        url_batch = self._img_urls.popleft(batch_size)
-        button_images_batch = []
-        image_fetching_futures = self._schedule_batch_fetching(url_batch)
+        def schedule_button_placement():
+            def add_fetching_to_queue():
+                def schedule_fetch_image():
+                    nonlocal n_retries
 
-        def place_on_future_completion():
-            if not image_fetching_futures:
-                self._place_buttons(button_images_batch)
-                return
-            current_future = image_fetching_futures[0]
-            if current_future.running():
-                self.after(100, place_on_future_completion)
-                return
-            image_fetching_futures.pop(0)
-            fetching_status, content, url = current_future.result()
-            if fetching_status == ImageSearch.StatusCodes.NORMAL:
-                processing_status, button_img, img = self.process_bin_data(content)
-                if processing_status == ImageSearch.StatusCodes.NORMAL:
-                    button_images_batch.append(button_img)
-                    self.saving_images.append(img)
-                    self.images_source.append(url)
+                    if len(self._img_urls) and n_retries < self._max_request_tries:
+                        image_fetching_futures.append(self._pool.submit(self.fetch_image, self._img_urls.popleft()[0]))
+                        n_retries += 1
+
+                wait_url_generation_future(self._pool.submit(self._generate_urls, 1), schedule_fetch_image)
+
+            url_batch = self._img_urls.popleft(batch_size)
+            button_images_batch = []
+            image_fetching_futures = self._schedule_batch_fetching(url_batch)
+
+            def place_buttons_on_future_completion():
+                if not image_fetching_futures:
+                    self._place_buttons(button_images_batch)
+                    return
+                current_future = image_fetching_futures[0]
+                if current_future.running():
+                    self.after(100, place_buttons_on_future_completion)
+                    return
+                image_fetching_futures.pop(0)
+                fetching_status, content, url = current_future.result()
+                if fetching_status == ImageSearch.StatusCodes.NORMAL:
+                    processing_status, button_img, img = self.process_bin_data(content)
+                    if processing_status == ImageSearch.StatusCodes.NORMAL:
+                        button_images_batch.append(button_img)
+                        self.saving_images.append(img)
+                        self.images_source.append(url)
+                    else:
+                        add_fetching_to_queue()
+                elif fetching_status == ImageSearch.StatusCodes.RETRIABLE_FETCHING_ERROR:
+                    self._img_urls.append(url)
+                    add_fetching_to_queue()
                 else:
                     add_fetching_to_queue()
-            elif fetching_status == ImageSearch.StatusCodes.RETRIABLE_FETCHING_ERROR:
-                self._img_urls.append(url)
-                add_fetching_to_queue()
-            else:
-                add_fetching_to_queue()
-            self.after(100, place_on_future_completion)
+                self.after(100, place_buttons_on_future_completion)
 
-        place_on_future_completion()
+            place_buttons_on_future_completion()
 
+        wait_url_generation_future(self._pool.submit(self._generate_urls, batch_size), schedule_button_placement)
 
     def _show_more(self):
         self.update()
@@ -428,11 +439,15 @@ class ImageSearch(Toplevel):
 
 if __name__ == "__main__":
     from tkinterdnd2 import Tk
-    from plugins.parsers.image_parsers.google import get_image_links
+    from plugins.parsers.image_parsers.google.main import get_image_links
     from pprint import pprint
+    from plugins_loading.factory import loaded_plugins
 
     def start_image_search(word, master, **kwargs):
-        image_finder = ImageSearch(search_term=word, master=master, **kwargs)
+        image_finder = ImageSearch(search_term=word,
+                                   master=master,
+                                   lang_pack=loaded_plugins.get_language_package("eng"),
+                                   **kwargs)
         image_finder.start()
 
     test_urls = ["https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png"]
@@ -460,5 +475,5 @@ if __name__ == "__main__":
     root.after(0, start_image_search("test", root,
                                      local_images=["/home/blackdeer/Desktop/conv_2.png"],
                                      url_scrapper=get_image_links, show_image_width=300,
-                                     on_closing_action=get_chosen_urls, timeout=0.2, max_request_tries=1))
+                                     on_closing_action=get_chosen_urls, timeout=0.2, max_request_tries=5))
     root.mainloop()

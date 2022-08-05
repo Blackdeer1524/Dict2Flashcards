@@ -227,41 +227,6 @@ class App(Tk):
                                                                 change_language(language))
             language_option_menu.grid(row=1, column=1, sticky="news")
 
-            @error_handler(self.show_exception_logs)
-            def anki_dialog():
-                anki_window = self.Toplevel(settings_window)
-
-                @error_handler(self.show_exception_logs)
-                def save_anki_settings_command():
-                    self.configurations["anki"]["deck"] = anki_deck_entry.get().strip()
-                    self.configurations["anki"]["field"] = anki_field_entry.get().strip()
-                    anki_window.destroy()
-
-                anki_window.title(self.lang_pack.anki_dialog_anki_window_title)
-                anki_deck_entry = self.Entry(anki_window,
-                                             placeholder=self.lang_pack.anki_dialog_anki_deck_entry_placeholder)
-                anki_deck_entry.insert(0, self.configurations["anki"]["deck"])
-                anki_deck_entry.fill_placeholder()
-
-                anki_field_entry = self.Entry(anki_window,
-                                              placeholder=self.lang_pack.anki_dialog_anki_field_entry_placeholder)
-                anki_field_entry.insert(0, self.configurations["anki"]["field"])
-                anki_field_entry.fill_placeholder()
-
-                save_anki_settings_button = self.Button(anki_window,
-                                                        text=self.lang_pack.anki_dialog_save_anki_settings_button_text,
-                                                        command=save_anki_settings_command)
-
-                padx = pady = 5
-                anki_deck_entry.grid(row=0, column=0, sticky="we", padx=padx, pady=pady)
-                anki_field_entry.grid(row=1, column=0, sticky="we", padx=padx, pady=pady)
-                save_anki_settings_button.grid(row=2, column=0, sticky="ns", padx=padx)
-                anki_window.bind("<Return>", lambda event: save_anki_settings_command())
-                anki_window.bind("<Escape>", lambda event: anki_window.destroy())
-                spawn_window_in_center(self, anki_window)
-                anki_window.resizable(False, False)
-                anki_window.grab_set()
-
             image_search_configuration_label = self.Label(settings_window,
                                                           text=self.lang_pack
                                                                    .settings_image_search_configuration_label_text)
@@ -419,6 +384,41 @@ saving_image_height
                 command=save_audio_autochoose_option
             )
             audio_autochoose_option_menu.grid(row=5, column=1, sticky="news")
+
+            @error_handler(self.show_exception_logs)
+            def anki_dialog():
+                anki_window = self.Toplevel(settings_window)
+
+                @error_handler(self.show_exception_logs)
+                def save_anki_settings_command():
+                    self.configurations["anki"]["deck"] = anki_deck_entry.get().strip()
+                    self.configurations["anki"]["field"] = anki_field_entry.get().strip()
+                    anki_window.destroy()
+
+                anki_window.title(self.lang_pack.anki_dialog_anki_window_title)
+                anki_deck_entry = self.Entry(anki_window,
+                                             placeholder=self.lang_pack.anki_dialog_anki_deck_entry_placeholder)
+                anki_deck_entry.insert(0, self.configurations["anki"]["deck"])
+                anki_deck_entry.fill_placeholder()
+
+                anki_field_entry = self.Entry(anki_window,
+                                              placeholder=self.lang_pack.anki_dialog_anki_field_entry_placeholder)
+                anki_field_entry.insert(0, self.configurations["anki"]["field"])
+                anki_field_entry.fill_placeholder()
+
+                save_anki_settings_button = self.Button(anki_window,
+                                                        text=self.lang_pack.anki_dialog_save_anki_settings_button_text,
+                                                        command=save_anki_settings_command)
+
+                padx = pady = 5
+                anki_deck_entry.grid(row=0, column=0, sticky="we", padx=padx, pady=pady)
+                anki_field_entry.grid(row=1, column=0, sticky="we", padx=padx, pady=pady)
+                save_anki_settings_button.grid(row=2, column=0, sticky="ns", padx=padx)
+                anki_window.bind("<Return>", lambda event: save_anki_settings_command())
+                anki_window.bind("<Escape>", lambda event: anki_window.destroy())
+                spawn_window_in_center(self, anki_window)
+                anki_window.resizable(False, False)
+                anki_window.grab_set()
 
             configure_anki_button = self.Button(settings_window,
                                                 text=self.lang_pack.settings_configure_anki_button_text,
@@ -938,13 +938,15 @@ saving_image_height
         self.image_parser_option_menu.grid(row=3, column=3, columnspan=4, sticky="news",
                                            padx=0, pady=self.text_pady)
 
-        self.configure_image_parser_button = self.Button(self,
-                                                         text="</>",
-                                                         command=lambda: self.call_configuration_window(
-                                                             plugin_name=self.image_parser.name,
-                                                             plugin_config=self.image_parser.config,
-                                                             plugin_load_function=lambda conf: conf.load(),
-                                                             saving_action=lambda conf: conf.save()))
+        self.configure_image_parser_button = self.Button(
+            self,
+            text="</>",
+            command=lambda: self.call_configuration_window(
+                plugin_name=self.image_parser.name if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB
+                                                   else f"[{parser_types.CHAIN}] {self.image_parser.name}",
+                plugin_config=self.image_parser.config,
+                plugin_load_function=lambda conf: conf.load(),
+                saving_action=lambda conf: conf.save()))
         self.configure_image_parser_button.grid(row=3, column=7, sticky="news",
                                                 padx=(0, self.text_padx), pady=self.text_pady)
 
@@ -1087,14 +1089,16 @@ saving_image_height
                                                                 self.change_sentence_parser(parser_name))
         self.sentence_parser_option_menu.grid(row=8, column=3, columnspan=4, sticky="news")
 
-        self.configure_sentence_parser_button = self.Button(self,
-                                                            text="</>",
-                                                            command=lambda: self.call_configuration_window(
-                                                                plugin_name=self.sentence_parser.name,
-                                                                plugin_config=self.sentence_parser.config,
-                                                                plugin_load_function=lambda conf: conf.load(),
-                                                                saving_action=lambda conf: conf.save()),
-                                                            width=6)
+        self.configure_sentence_parser_button = self.Button(
+            self,
+            text="</>",
+            command=lambda: self.call_configuration_window(
+                plugin_name=self.sentence_parser.name if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB
+                                                      else f"[{parser_types.CHAIN}] {self.sentence_parser.name}",
+                plugin_config=self.sentence_parser.config,
+                plugin_load_function=lambda conf: conf.load(),
+                saving_action=lambda conf: conf.save()),
+            width=6)
         self.configure_sentence_parser_button.grid(row=8, column=7, sticky="news", padx=(0, self.text_padx))
         # ======
 

@@ -67,7 +67,7 @@ bury_button_text = "Отложить"
 user_tags_field_placeholder = "Тэги"
 
 # display_audio_on_frame
-display_audio_on_frame_audio_not_found_message = "Аудио не найдено"
+display_audio_getter_results_audio_not_found_message = "Аудио не найдено"
 
 # choose files
 choose_media_dir_message = "Выберете директорию для медиа файлов"

@@ -67,7 +67,7 @@ bury_button_text = "Bury"
 user_tags_field_placeholder = "Tags"
 
 # display_audio_on_frame
-display_audio_on_frame_audio_not_found_message = "Audio not found"
+display_audio_getter_results_audio_not_found_message = "Audio not found"
 
 # choose files
 choose_media_dir_message = "Choose downloading media directory"

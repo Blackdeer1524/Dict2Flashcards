@@ -125,8 +125,8 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
         object.__setattr__(self, "user_tags_field_placeholder", source_module.user_tags_field_placeholder)
 
         # display_audio_on_frame
-        object.__setattr__(self, "display_audio_on_frame_audio_not_found_message",
-                           source_module.display_audio_on_frame_audio_not_found_message)
+        object.__setattr__(self, "display_audio_getter_results_audio_not_found_message",
+                           source_module.display_audio_getter_results_audio_not_found_message)
 
         # choose files
         object.__setattr__(self, "choose_media_dir_message", source_module.choose_media_dir_message)

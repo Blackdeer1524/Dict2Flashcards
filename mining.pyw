@@ -191,12 +191,12 @@ class App(Tk):
         main_menu.add_command(label=self.lang_pack.search_inside_deck_menu_label, command=self.find_dialog)
         main_menu.add_command(label=self.lang_pack.statistics_menu_label, command=self.statistics_dialog)
 
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def settings_dialog():
             settings_window = self.Toplevel(self)
             settings_window.title(self.lang_pack.settings_menu_label)
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def change_theme(name: str):
                 self.configurations["app"]["theme"] = name
                 messagebox.showinfo(message=self.lang_pack.restart_app_text)
@@ -210,7 +210,7 @@ class App(Tk):
                                                              change_theme(theme_name))
             theme_option_menu.grid(row=0, column=1, sticky="news")
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def change_language(name: str):
                 self.configurations["app"]["language_package"] = name
                 self.lang_pack = loaded_plugins.get_language_package(self.configurations["app"]["language_package"])
@@ -225,11 +225,11 @@ class App(Tk):
                                                                 change_language(language))
             language_option_menu.grid(row=1, column=1, sticky="news")
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def anki_dialog():
                 anki_window = self.Toplevel(settings_window)
 
-                @error_handler(self.show_errors)
+                @error_handler(self.show_exception_logs)
                 def save_anki_settings_command():
                     self.configurations["anki"]["deck"] = anki_deck_entry.get().strip()
                     self.configurations["anki"]["field"] = anki_field_entry.get().strip()
@@ -311,7 +311,7 @@ saving_image_height
     no scaling if null
 """
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def get_image_search_conf() -> Config:
                 image_search_conf = copy.deepcopy(self.configurations["image_search"])
                 image_search_conf.pop("starting_position", None)
@@ -320,7 +320,7 @@ saving_image_height
                               initial_value=image_search_conf)
                 return conf
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def save_image_search_conf(config):
                 for key, value in config.items():
                     self.configurations["image_search"][key] = value
@@ -341,7 +341,7 @@ saving_image_height
                                               text=self.lang_pack.settings_card_processor_label_text)
             card_processor_label.grid(row=3, column=0, sticky="news")
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def choose_card_processor(name: str):
                 self.configurations["deck"]["card_processor"] = name
                 self.card_processor = loaded_plugins.get_card_processor(name)
@@ -356,7 +356,7 @@ saving_image_height
                                                 text=self.lang_pack.settings_format_processor_label_text)
             format_processor_label.grid(row=4, column=0, sticky="news")
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def choose_format_processor(name: str):
                 self.configurations["deck"]["saving_format"] = name
                 self.deck_saver = loaded_plugins.get_deck_saving_formats(name)
@@ -371,7 +371,7 @@ saving_image_height
                                               text=self.lang_pack.settings_audio_autopick_label_text)
             audio_autopick_label.grid(row=5, column=0, sticky="news")
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def save_audio_autochoose_option(option: str):
                 if option == self.lang_pack.settings_audio_autopick_off:
                     raw_option = "off"
@@ -431,7 +431,7 @@ saving_image_height
 
         main_menu.add_command(label=self.lang_pack.settings_menu_label, command=settings_dialog)
 
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def chain_dialog():
             chain_type_window: Toplevel = self.Toplevel(self)
             chain_type_window.grid_columnconfigure(0, weight=1)
@@ -443,7 +443,7 @@ saving_image_height
                                 self.lang_pack.chain_management_image_parsers_option    : "image_parsers",
                                 self.lang_pack.chain_management_audio_getters_option    : "audio_getters"}
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def select_chain_type(picked_value: str) -> None:
                 close_chain_type_selection_button["state"] = call_chain_building_button["state"] = "normal"
                 existing_chains_treeview.delete(*existing_chains_treeview.get_children())
@@ -481,7 +481,7 @@ saving_image_height
             existing_chains_treeview.column("#1", anchor="center", stretch=True)
             existing_chains_treeview.column("#2", anchor="center", stretch=True)
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def recreate_option_menus(chosen_parser_type: str):
                 if chosen_parser_type == "word_parsers":
                     self.word_parser_option_menu.destroy()
@@ -552,18 +552,18 @@ saving_image_height
                 else:
                     raise NotImplementedError(f"Unknown chosen parser type: {chosen_parser_type}")
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def remove_option(option: str):
                 chosen_parser_type = chaining_options[chain_type_option_menu["text"]]
                 self.chaining_data[chosen_parser_type].pop(option)
                 recreate_option_menus(chosen_parser_type)
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def do_popup(event):
                 if not existing_chains_treeview.focus():
                     return
 
-                @error_handler(self.show_errors)
+                @error_handler(self.show_exception_logs)
                 def edit_selected_chain():
                     selected_item_index = existing_chains_treeview.focus()
                     if not selected_item_index:
@@ -575,7 +575,7 @@ saving_image_height
                                 initial_chain=chain_data["chain"],
                                 edit_mode=True)
 
-                @error_handler(self.show_errors)
+                @error_handler(self.show_exception_logs)
                 def remove_selected_chain():
                     selected_item_index = existing_chains_treeview.focus()
                     if not selected_item_index:
@@ -590,7 +590,7 @@ saving_image_height
                 m.add_command(label=self.lang_pack.chain_management_pop_up_menu_remove_label,
                               command=remove_selected_chain)
 
-                @error_handler(self.show_errors)
+                @error_handler(self.show_exception_logs)
                 def popup_FocusOut():
                     m.grab_release()
                     m.destroy()
@@ -607,7 +607,7 @@ saving_image_height
             command_panel: Frame = self.Frame(chain_type_window)
             command_panel.grid(row=3, column=0, sticky="we")
 
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def build_chain(chain_name: str,
                             initial_chain: list[str],
                             edit_mode: bool = False):
@@ -618,14 +618,14 @@ saving_image_height
                 ChoosingData = namedtuple("ChoosingData", ("name", "label", "select_button"))
                 ChainData = namedtuple("ChainData", ("name", "label", "up_button", "deselect_button", "down_button"))
 
-                @error_handler(self.show_errors)
+                @error_handler(self.show_exception_logs)
                 def add_to_chain(placing_name: str):
                     new_chain_ind = len(chain_data) * 3
                     a = self.Label(built_chain_inner_frame, text=placing_name, justify='center',
                                    relief="ridge", borderwidth=2)
                     built_chain_main_frame.bind_scroll_wheel(a)
 
-                    @error_handler(self.show_errors)
+                    @error_handler(self.show_exception_logs)
                     def place_widget_to_chain(item: ChainData, next_3i: int):
                         item.label.grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
                         item.up_button.grid(row=next_3i, column=1, sticky="news", pady=(pady, 0))
@@ -649,7 +649,7 @@ saving_image_height
                                 command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
                                                                         direction=1))
 
-                    @error_handler(self.show_errors)
+                    @error_handler(self.show_exception_logs)
                     def swap_places(current_ind: int, direction: int):
                         current = chain_data[current_ind]
                         operand = chain_data[current_ind + direction]
@@ -664,7 +664,7 @@ saving_image_height
                         place_widget_to_chain(operand, old_3)
                         chain_data[old_3 // 3], chain_data[new_3 // 3] = chain_data[new_3 // 3], chain_data[old_3 // 3]
 
-                    @error_handler(self.show_errors)
+                    @error_handler(self.show_exception_logs)
                     def remove_from_chain(ind: int):
                         for i in range(1, len(chain_data[ind])):
                             chain_data[ind][i].destroy()
@@ -772,7 +772,7 @@ saving_image_height
                 command_frame: Frame = self.Frame(chaining_window, height=30)
                 command_frame.grid(row=2, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 10))
 
-                @error_handler(self.show_errors)
+                @error_handler(self.show_exception_logs)
                 def save_chain_sequence():
                     new_chain_name = chain_name_entry.get().strip()
                     if not new_chain_name:
@@ -950,11 +950,26 @@ saving_image_height
                                        else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
                                                              self.audio_getter.name)
 
+        @error_handler(self.show_exception_logs)
+        def display_audio_getter_results():
+            assert self.audio_getter is not None, \
+                "display_audio_getter_results cannot be called because self.audio_getter is None"
+
+            parser_results = self.get_audio_from_audio_getter()
+            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
+
+            if not parser_results:
+                messagebox.showerror(
+                    title=self.audio_getter.name if audio_getter_type == parser_types.WEB
+                                                 else f"[{audio_getter_type}] {self.audio_getter.name}",
+                    message=self.lang_pack.display_audio_getter_results_audio_not_found_message)
+                return
+
+            self.display_audio_on_frame(word=self.word, parser_results=parser_results)
+
         self.fetch_audio_data_button = self.Button(self,
                                                    text=self.lang_pack.fetch_audio_data_button_text,
-                                                   command=lambda: self.display_audio_on_frame(
-                                                       word=self.word,
-                                                       parser_results=self.get_audio_from_audio_getter()))
+                                                   command=display_audio_getter_results)
 
         if typed_audio_getter == "default":
             self.fetch_audio_data_button["state"] = "disabled"
@@ -1123,7 +1138,7 @@ saving_image_height
                      action=lambda: self.define_word(word_query=self.clipboard_get(), additional_query="")
                      )
 
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def paste_in_sentence_field():
             clipboard_text = self.clipboard_get()
             self.add_sentence_field(source="<Control + c + Alt>", sentence=clipboard_text)
@@ -1136,15 +1151,12 @@ saving_image_height
 
         AUTOSAVE_INTERVAL = 300_000  # time in milliseconds
 
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def autosave():
             self.save_files()
             self.after(AUTOSAVE_INTERVAL, autosave)
 
         self.after(AUTOSAVE_INTERVAL, autosave)
-
-        self.update()
-        # resize_text_widgets_frame()
         self.refresh()
 
     def show_window(self, title: str, text: str) -> Toplevel:
@@ -1155,19 +1167,19 @@ saving_image_height
         message_display_text["state"] = "disabled"
         message_display_text.pack(expand=1, fill="both")
         message_display_text.update()
-        text_window.config(width=min(1000, message_display_text.winfo_width()),
-                             height=min(500, message_display_text.winfo_height()))
+        text_window.config(width=min(self.winfo_screenwidth() // 3, message_display_text.winfo_width()),
+                           height=min(self.winfo_screenheight() // 3, message_display_text.winfo_height()))
         text_window.bind("<Escape>", lambda event: text_window.destroy())
         return text_window
 
-    def show_errors(self, *args, **kwargs) -> None:
+    def show_exception_logs(self, *args, **kwargs) -> None:
         error_log = create_exception_message()
         self.clipboard_clear()
         self.clipboard_append(error_log)
         error_window = self.show_window(title=self.lang_pack.error_title, text=error_log)
         error_window.grab_set()
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def load_conf_file(self) -> tuple[LoadableConfig, LanguagePackageContainer, bool]:
         validation_scheme = \
         {
@@ -1266,7 +1278,7 @@ saving_image_height
                 history_json = json.load(f)
         return history_json
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def load_chaining_data(self) -> LoadableConfig:
         validation_scheme = \
         {
@@ -1284,34 +1296,32 @@ saving_image_height
                                        _config_file_name=chaining_data_file_name)
         return chaining_data
 
-    @error_handler(show_errors)
-    def get_audio_from_audio_getter(self) -> dict[str, tuple[str, AudioData]]:
+    @error_handler(show_exception_logs)
+    def get_audio_from_audio_getter(self) -> list[tuple[tuple[str, str], AudioData]]:
         assert self.audio_getter is not None, \
             "get_audio_from_audio_getter shouldn't be called if self.audio_getter is None"
 
         word = self.word
         audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-        parser_results: dict[str, tuple[str, AudioData]] = {}
-        # if self.audio_getter is not None:
+        parser_results: list[tuple[tuple[str, str], AudioData]] = []
         if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
             typed_audio_getter_name = "[{}] {}".format(audio_getter_type,
                                                        self.configurations["scrappers"]["audio"]["name"])
             audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
-            parser_results[f"{typed_audio_getter_name}: {word}"] = (audio_getter_type, audio_data)
+            parser_results.append(((f"{typed_audio_getter_name}: {word}", audio_getter_type), audio_data))
         elif audio_getter_type == parser_types.CHAIN:
             parser_results = self.audio_getter.get_audios(word, self.dict_card_data)
         else:
             raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
-
         return parser_results
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def display_audio_on_frame(self,
                                word: str,
-                               parser_results: dict[str, tuple[str, AudioData]]):
-        @error_handler(self.show_errors)
+                               parser_results: list[tuple[tuple[str, str], AudioData]]):
+        @error_handler(self.show_exception_logs)
         def playsound_in_another_thread(audio_path: str):
-            @error_handler(self.show_errors)
+            @error_handler(self.show_exception_logs)
             def quite_playsound(_audio_path: str):
                 try:
                     playsound(_audio_path)
@@ -1321,7 +1331,7 @@ saving_image_height
             # cross-platform analog of playsound with block=False
             Thread(target=lambda: quite_playsound(audio_path)).start()
 
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def web_playsound(src: str):
             audio_name = self.card_processor.get_save_audio_name(word,
                                                                  self.typed_word_parser_name,
@@ -1345,7 +1355,7 @@ saving_image_height
                 playsound_in_another_thread(temp_audio_path)
 
         error_messages: list[tuple[str, str]] = []
-        for typed_audio_getter_name, (audio_getter_type, ((audio_sources, additional_info), error_message)) in parser_results.items():
+        for (typed_audio_getter_name, audio_getter_type), ((audio_sources, additional_info), error_message) in parser_results:
             if error_message:
                 error_messages.append((typed_audio_getter_name, error_message))
 
@@ -1393,21 +1403,22 @@ saving_image_height
                 info_label.grid(row=0, column=2, sticky="news")
                 self.sound_sf.bind_scroll_wheel(info_label)
 
+
     @property
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def word(self):
         return self.word_text.get(1.0, "end").strip()
 
     @property
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def definition(self):
         return self.definition_text.get(1.0, "end").rstrip()
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def get_sentence(self, n: int):
         return self.sentence_texts[n].get(1.0, "end").rstrip()
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def change_file(self):
         new_file_path = askopenfilename(title=self.lang_pack.choose_deck_file_message,
                                    filetypes=(("JSON", ".json"),),
@@ -1434,9 +1445,9 @@ saving_image_height
         self.saved_cards_data = SavedDataDeck()
         self.refresh()
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def create_file_dialog(self):
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def create_file():
             def foo():
                 skip_var.set(True)
@@ -1517,7 +1528,7 @@ saving_image_height
         create_file_win.bind("<Escape>", lambda event: create_file_win.destroy())
         create_file_win.bind("<Return>", lambda event: create_file())
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def save_files(self):
         self.configurations["app"]["main_window_geometry"] = self.geometry()
         self.configurations["deck"]["tags_hierarchical_pref"] = self.tag_prefix_field.get().strip()
@@ -1547,13 +1558,13 @@ saving_image_height
                                self.card_processor.get_card_image_name,
                                self.card_processor.get_card_audio_name)
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def help_command(self):
         mes = self.lang_pack.buttons_hotkeys_help_message
         self.show_window(title=self.lang_pack.buttons_hotkeys_help_window_title,
                          text=mes)
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def get_query_language_help(self):
         standard_fields = f"""
 {FIELDS.word}: {self.lang_pack.word_field_help}
@@ -1572,7 +1583,7 @@ saving_image_height
                          f"{self.lang_pack.current_scheme_label}:\n{current_scheme}\n"
                          f"{self.lang_pack.query_language_label}:\n{lang_docs}")
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def download_audio(self, choose_file=False, closing=False):
         if choose_file:
             self.save_files()
@@ -1604,7 +1615,7 @@ saving_image_height
         audio_downloader.grab_set()
         audio_downloader.download_audio(audio_links_list)
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def change_media_dir(self):
         media_dir =  askdirectory(title=self.lang_pack.choose_media_dir_message,
                                   mustexist=True,
@@ -1612,12 +1623,12 @@ saving_image_height
         if media_dir:
             self.configurations["directories"]["media_dir"] = media_dir
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def save_button(self):
         self.save_files()
         messagebox.showinfo(message=self.lang_pack.save_files_message)
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def define_word(self, word_query: str, additional_query: str) -> bool:
         try:
             exact_pattern = re.compile(r"\b{}\b".format(word_query), re.IGNORECASE)
@@ -1634,16 +1645,16 @@ saving_image_height
                                           additional_filter=additional_filter):
                 self.refresh()
                 return False
-            messagebox.showerror(title=self.lang_pack.error_title,
+            messagebox.showerror(title=self.card_generator.name,
                                  message=self.lang_pack.define_word_word_not_found_message)
         except ParsingException as e:
             messagebox.showerror(title=self.lang_pack.error_title,
                                  message=str(e))
         return True
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def add_word_dialog(self):
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def get_word():
             clean_word = add_word_entry.get().strip()
             additional_query = additional_filter_entry.get(1.0, "end").strip()
@@ -1682,9 +1693,9 @@ saving_image_height
         add_word_window.resizable(False, False)
         add_word_window.grab_set()
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def find_dialog(self):
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def go_to():
             find_query = find_text.get(1.0, "end").strip()
             if not find_query:
@@ -1711,7 +1722,7 @@ saving_image_height
                 return
 
             if (move_list := self.deck.find_card(searching_func=searching_filter)):
-                @error_handler(self.show_errors)
+                @error_handler(self.show_exception_logs)
                 def rotate(n: int):
                     nonlocal move_list, found_item_number
 
@@ -1778,7 +1789,7 @@ saving_image_height
         find_window.resizable(False, False)
         find_window.grab_set()
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def statistics_dialog(self):
         statistics_window = self.Toplevel(self)
         statistics_window.withdraw()
@@ -1820,7 +1831,7 @@ saving_image_height
         statistics_window.resizable(False, False)
         statistics_window.grab_set()
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def on_closing(self):
         if messagebox.askokcancel(title=self.lang_pack.on_closing_message_title,
                                   message=self.lang_pack.on_closing_message):
@@ -1828,7 +1839,7 @@ saving_image_height
             self.gb.stop()
             self.download_audio(closing=True)
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def web_search_command(self):
         search_term = self.word
         definition_search_query = search_term + " definition"
@@ -1836,7 +1847,7 @@ saving_image_height
         sentence_search_query = search_term + " sentence examples"
         webbrowser.open_new_tab(f"https://www.google.com/search?q={sentence_search_query}")
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def call_configuration_window(self,
                                   plugin_name: str,
                                   plugin_config: Config,
@@ -1876,7 +1887,7 @@ saving_image_height
 
         text_pane_win.add(docs_pane_win, stretch="always")
 
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def restore_defaults():
             plugin_config.restore_defaults()
             conf_text.clear()
@@ -1897,7 +1908,7 @@ saving_image_height
             command=conf_window.destroy)
         configuration_window_cancel_button.pack(side="right")
 
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def done():
             new_config = conf_text.get(1.0, "end")
             try:
@@ -1959,7 +1970,7 @@ saving_image_height
                                desired_window_width=self.winfo_width())
         conf_window.grab_set()
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def change_word_parser(self, typed_parser: str):
         if typed_parser.startswith(parser_types.WEB_PREF):
             self.configurations["scrappers"]["word"]["type"] = parser_types.WEB
@@ -1981,7 +1992,7 @@ saving_image_height
         self.typed_word_parser_name = typed_parser
         self.deck.update_card_generator(self.card_generator)
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def change_audio_getter(self, typed_getter: str):
         if typed_getter == "default":
             self.audio_getter = None
@@ -2019,7 +2030,7 @@ saving_image_height
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save())
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def change_image_parser(self, given_image_parser_name: str):
         if not given_image_parser_name.startswith(f"[{parser_types.CHAIN}]"):
             self.configurations["scrappers"]["image"]["type"] = parser_types.WEB
@@ -2034,7 +2045,7 @@ saving_image_height
         self.image_parser = ImageParsersChain(name=given_image_parser_name,
                                               chain_data=chain_data)
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def change_sentence_parser(self, given_sentence_parser_name: str):
         if given_sentence_parser_name.startswith(f"[{parser_types.CHAIN}]"):
             self.configurations["scrappers"]["sentence"]["type"] = parser_types.CHAIN
@@ -2048,7 +2059,7 @@ saving_image_height
         self.external_sentence_fetcher = ExternalSentenceFetcher(sent_fetcher=self.sentence_parser.get_sentences)
         self.configurations["scrappers"]["sentence"]["name"] = given_sentence_parser_name
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def choose_sentence(self, sentence_number: int):
         if sentence_number >= len(self.sentence_texts):
             return
@@ -2072,7 +2083,7 @@ saving_image_height
         if user_tags:
             additional[SavedDataDeck.USER_TAGS] = user_tags
 
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def add_audio_data_to_card(getter_name: str, getter_type: str, audio_links: list[str], add_type_prefix: bool):
             if not audio_links:
                 return
@@ -2158,21 +2169,21 @@ saving_image_height
             self.deck.append(Card(self.dict_card_data))
         self.refresh()
     
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def skip_command(self):
         if self.deck.get_n_cards_left():
             self.saved_cards_data.append(CardStatus.SKIP)
         self.refresh()
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def replace_decks_pointers(self, n: int):
         self.saved_cards_data.move(min(n, self.deck.get_n_cards_left()))
         self.deck.move(n - 1)
         self.refresh()
     
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def open_anki_browser(self):
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def invoke(action, **params):
             def request_anki(action, **params):
                 return {'action': action, 'params': params, 'version': 6}
@@ -2183,18 +2194,17 @@ saving_image_height
                 res = requests.get("http://localhost:8765", data=request_json, timeout=1)
                 res.raise_for_status()
             except requests.ConnectionError:
-                messagebox.showerror(title=self.lang_pack.error_title,
+                messagebox.showerror(title="Anki",
                                      message=self.lang_pack.request_anki_connection_error_message)
                 return
             except requests.RequestException as e:
-                messagebox.showerror(title=self.lang_pack.error_title,
+                messagebox.showerror(title="Anki",
                                      message=f"{self.lang_pack.request_anki_general_request_error_message_prefix}: {e}")
                 return
 
             response = res.json()
             if response['error'] is not None:
-                messagebox.showerror(title=self.lang_pack.error_title,
-                                     message=response['error'])
+                messagebox.showerror(title="Anki", message=response['error'])
             return response['result']
 
         word = self.word_text.get(1.0, "end").strip()
@@ -2209,7 +2219,7 @@ saving_image_height
         result_query = " and ".join(query_list)
         invoke('guiBrowse', query=result_query)
     
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def bury_command(self):
         self.saved_cards_data.append(status=CardStatus.BURY, card_data=self.dict_card_data)
         self.refresh()
@@ -2253,16 +2263,20 @@ saving_image_height
 
         self.sentence_texts.append(sentence_text)
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def add_external_sentences(self, batch_size: int = 5) -> None:
         try:
             sent_batch, error_message = self.external_sentence_fetcher.get_sentences(self.word, batch_size)
         except StopIteration:
             return
 
-        typed_sentence_parser = self.sentence_parser.name if self.configurations["scrappers"]["sentence"]["type"] == "web" \
-                                                 else "[{}] {}".format(self.configurations["scrappers"]["sentence"]["type"],
-                                                                       self.sentence_parser.name)
+        sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
+        if sentence_parser_type == parser_types.WEB:
+            typed_sentence_parser = self.sentence_parser.name
+        elif sentence_parser_type == parser_types.CHAIN:
+            typed_sentence_parser = "[{}] {}".format(sentence_parser_type, self.sentence_parser.name)
+        else:
+            raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
 
         for sentence in sent_batch:
             self.add_sentence_field(
@@ -2270,11 +2284,11 @@ saving_image_height
                 sentence=sentence)
 
         if error_message:
-            messagebox.showerror(title=self.lang_pack.error_title, message=error_message)
+            messagebox.showerror(title=self.sentence_parser.name, message=error_message)
 
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def refresh(self) -> bool:
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def fill_additional_dict_data(widget: Text, text: str):
             widget["state"] = "normal"
             widget.clear()
@@ -2312,7 +2326,7 @@ saving_image_height
 
         if (audio_sources := self.dict_card_data.get(FIELDS.audio_links)) is not None and audio_sources:
             additional_info = ("" for _ in range(len(audio_sources)))
-            parser_results = {"": (parser_types.WEB, ((audio_sources, additional_info), ""))}
+            parser_results = [(("", parser_types.WEB), ((audio_sources, additional_info), ""))]
             self.display_audio_on_frame(word=self.word, parser_results=parser_results)
 
         self.external_sentence_fetcher(self.word)
@@ -2333,9 +2347,9 @@ saving_image_height
             self.find_image_button["text"] = self.lang_pack.find_image_button_normal_text
         return True
     
-    @error_handler(show_errors)
+    @error_handler(show_exception_logs)
     def start_image_search(self):
-        @error_handler(self.show_errors)
+        @error_handler(self.show_exception_logs)
         def connect_images_to_card(instance: ImageSearch):
             nonlocal word
 

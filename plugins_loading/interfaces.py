@@ -40,7 +40,6 @@ class LanguagePackageInterface(Protocol):
     settings_audio_autopick_first_available_audio: str
     settings_audio_autopick_first_available_audio_source: str
     settings_audio_autopick_all: str
-
     settings_configure_anki_button_text: str
 
     chain_management_menu_label: str
@@ -77,7 +76,7 @@ class LanguagePackageInterface(Protocol):
     user_tags_field_placeholder: str
 
     # display_audio_on_frame
-    display_audio_on_frame_audio_not_found_message: str
+    display_audio_getter_results_audio_not_found_message: str
 
     # choose files
     choose_media_dir_message: str

@@ -5,7 +5,7 @@ Credits:
 
 
 import requests.utils
-
+import re
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import AudioGenerator
 from .consts import _PLUGIN_NAME, _PLUGIN_LOCATION
@@ -32,6 +32,11 @@ config = LoadableConfig(config_location=_PLUGIN_LOCATION,
 
 CACHED_RESULT = {}
 
+REMOVE_SPACES_PATTERN = re.compile(r"\s+", re.MULTILINE)
+
+
+def remove_spaces(string: str) -> str:
+    return re.sub(REMOVE_SPACES_PATTERN, " ", string.strip())
 
 def get_audios(word: str, card_data: dict) -> AudioGenerator:
     global CACHED_RESULT
@@ -60,8 +65,11 @@ def get_audios(word: str, card_data: dict) -> AudioGenerator:
     for li in audioListLis:
         if (r := li.find("div")) is not None and (onclick := r.get("onclick")) is not None:
             audio_links.append(get_audio_link(onclick))
-            additional_info.append(li.get("class", ""))
-
+            by_whom_data = li.find("span", {"class": "info"})
+            by_whom_data = remove_spaces(by_whom_data.text) if by_whom_data is not None else ""
+            from_data = li.find("span", {"class": "from"})
+            from_data = remove_spaces(from_data.text) if from_data is not None else ""
+            additional_info.append(f"{by_whom_data}\n{from_data}") if from_data is not None else ""
             if len(audio_links) == batch_size:
                 batch_size = yield ((audio_links, additional_info), "")
                 audio_links = []

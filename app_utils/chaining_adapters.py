@@ -120,7 +120,7 @@ class SentenceParsersChain:
                  name: str,
                  chain_data: dict[str, str | list[str]]):
         self.name = name
-        self.enum_name2get_sentences_functions: dict[str, Callable[[str], SentenceGenerator]] = {}
+        self.enum_name2get_sentences_functions: dict[str, Callable[[str, dict], SentenceGenerator]] = {}
         parser_configs = []
         for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
             plugin_container = loaded_plugins.get_sentence_parser(parser_name)
@@ -131,11 +131,11 @@ class SentenceParsersChain:
                                   name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
 
-    def get_sentences(self, word: str) -> SentenceGenerator:
+    def get_sentences(self, word: str, card_data: dict) -> SentenceGenerator:
         batch_size = yield
         for enum_name, get_sentences_f in self.enum_name2get_sentences_functions.items():
             self.config.update_config(enum_name)
-            sent_generator = get_sentences_f(word)
+            sent_generator = get_sentences_f(word, card_data)
             try:
                 next(sent_generator)
             except StopIteration as e:

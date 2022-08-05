@@ -1103,6 +1103,8 @@ n_sentences_per_batch:
                     batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
                 if parser_results is None:
                     return
+                parser_results = [((f"{typed_audio_getter_name}: {word}", audio_getter_type), audio_data) for
+                                  (typed_audio_getter_name, audio_getter_type), audio_data in parser_results]
             else:
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 

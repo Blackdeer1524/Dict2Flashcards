@@ -5,7 +5,6 @@ from typing import Optional, Callable
 
 from app_utils.cards import Card, CardGenerator
 from consts import parser_types
-from consts.card_fields import FIELDS
 from consts.paths import *
 from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig
@@ -234,8 +233,6 @@ error_verbosity:
         results = []
         batch_size = yield
         for enum_name, (parser_type, get_audio_generator) in self.enum_name2parsers_data.items():
-            typed_name_with_word_postfix = f"{enum_name}: {word}"
-
             self.config.update_config(enum_name)
 
             audio_data_generator = get_audio_generator(word, card_data)
@@ -247,7 +244,7 @@ error_verbosity:
                     error_message = ""
 
                 if error_message and self.config["error_verbosity"] == "all":
-                    results.append(((typed_name_with_word_postfix, parser_type), (([], []), error_message)))
+                    results.append(((enum_name, parser_type), (([], []), error_message)))
                 continue
 
             while True:
@@ -257,7 +254,7 @@ error_verbosity:
                         error_message = ""
 
                     if audios or self.config["error_verbosity"] == "all" and error_message:
-                        results.append(((typed_name_with_word_postfix, parser_type),
+                        results.append(((enum_name, parser_type),
                                         ((audios, additional_info), error_message)))
                         batch_size -= len(audios)
                         if batch_size <= 0:
@@ -270,7 +267,7 @@ error_verbosity:
                         error_message = ""
 
                     if audios or self.config["error_verbosity"] == "all" and error_message:
-                        results.append(((typed_name_with_word_postfix, parser_type),
+                        results.append(((enum_name, parser_type),
                                         ((audios, additional_info), error_message)))
                         batch_size -= len(audios)
                         if batch_size <= 0:

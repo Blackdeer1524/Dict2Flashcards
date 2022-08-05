@@ -2272,10 +2272,10 @@ n_sentences_per_batch:
 
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
             if (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
-                add_audio_data_to_card(getter_name=self.card_generator.name,
+                add_audio_data_to_card(getter_name=self.typed_word_parser_name,
                                        getter_type=parser_types.WEB,
                                        audio_links=web_audios[:choosing_slice],
-                                       add_type_prefix=True)
+                                       add_type_prefix=False)
 
             if self.audio_getter is not None and (audio_autochoose_mode == "all" or not web_audios and audio_autochoose_mode in ("first_available_audio", "first_available_audio_source")):
                 if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
@@ -2298,7 +2298,7 @@ n_sentences_per_batch:
                         if audio_autochoose_mode in ("first_available_audio", "first_available_audio_source"):
                             ((getter_name, getter_type), ((audio_links, additional_info), error_message)) = next(audio_gen)
                             add_audio_data_to_card(
-                                getter_name=getter_name,
+                                getter_name=f"extern_{getter_name}",
                                 getter_type=getter_type,
                                 audio_links=audio_links[:choosing_slice],
                                 add_type_prefix=False
@@ -2306,7 +2306,7 @@ n_sentences_per_batch:
                         elif audio_autochoose_mode == "all":
                             for ((getter_name, getter_type), ((audio_links, additional_info), error_message)) in audio_gen:
                                 add_audio_data_to_card(
-                                    getter_name=getter_name,
+                                    getter_name=f"extern_{getter_name}",
                                     getter_type=getter_type,
                                     audio_links=audio_links,
                                     add_type_prefix=False

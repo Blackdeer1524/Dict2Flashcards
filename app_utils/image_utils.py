@@ -345,8 +345,17 @@ class ImageSearch(Toplevel):
         url_batch = self._img_urls.popleft(batch_size)
         button_images_batch = []
         image_fetching_futures = self._schedule_batch_fetching(url_batch)
-        while image_fetching_futures:
-            fetching_status, content, url = image_fetching_futures.pop(0).result()
+
+        def place_on_future_completion():
+            if not image_fetching_futures:
+                self._place_buttons(button_images_batch)
+                return
+            current_future = image_fetching_futures[0]
+            if current_future.running():
+                self.after(100, place_on_future_completion)
+                return
+            image_fetching_futures.pop(0)
+            fetching_status, content, url = current_future.result()
             if fetching_status == ImageSearch.StatusCodes.NORMAL:
                 processing_status, button_img, img = self.process_bin_data(content)
                 if processing_status == ImageSearch.StatusCodes.NORMAL:
@@ -360,7 +369,10 @@ class ImageSearch(Toplevel):
                 add_fetching_to_queue()
             else:
                 add_fetching_to_queue()
-        self._place_buttons(button_images_batch)
+            self.after(100, place_on_future_completion)
+
+        place_on_future_completion()
+
 
     def _show_more(self):
         self.update()

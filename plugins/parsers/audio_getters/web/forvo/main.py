@@ -41,7 +41,9 @@ def remove_spaces(string: str) -> str:
 def get_audios(word: str, card_data: dict) -> AudioGenerator:
     global CACHED_RESULT
 
-    if (audioListLis := CACHED_RESULT.get(word)) is None:
+    word_with_lang_code = "{} {}".format(word, config["language_code"])
+
+    if (audioListLis := CACHED_RESULT.get(word_with_lang_code)) is None:
         wordEncoded = requests.utils.requote_uri(word)
         forvoPage, error_message = get_forvo_page("https://forvo.com/word/" + wordEncoded, timeout=config["timeout"])
         if error_message:
@@ -56,8 +58,8 @@ def get_audios(word: str, card_data: dict) -> AudioGenerator:
         if(config["language_code"] == "en"):
             audioListLis = forvoPage.select("li[class*=en_]")
         else:
-            audioListLis = audioListUl.find_all("li", attrs={'class': None})
-        CACHED_RESULT[word] = audioListLis
+            audioListLis = audioListUl.find_all("li")
+        CACHED_RESULT[word_with_lang_code] = audioListLis
 
     audio_links = []
     additional_info = []

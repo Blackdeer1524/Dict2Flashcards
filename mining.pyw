@@ -2438,33 +2438,48 @@ n_sentences_per_batch:
 
     @error_handler(show_exception_logs)
     def add_external_sentences(self) -> None:
-        try:
-            sentence_data = self.external_sentence_fetcher.get(
-                word=self.word,
-                card_data=self.dict_card_data,
-                batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
-            if sentence_data is None:
+        sentence_data = ([], "")
+
+        def schedule_sentence_fetcher():
+            nonlocal sentence_data
+
+            try:
+                sentence_data = self.external_sentence_fetcher.get(
+                    word=self.word,
+                    card_data=self.dict_card_data,
+                    batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
+                if sentence_data is None:
+                    sentence_data = ([], "")
+                    return
+            except StopIteration:
+                sentence_data = ([], "")
                 return
-        except StopIteration:
-            return
 
-        sent_batch, error_message = sentence_data
-        sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-        if sentence_parser_type == parser_types.WEB:
-            typed_sentence_parser = self.sentence_parser.name
-        elif sentence_parser_type == parser_types.CHAIN:
-            typed_sentence_parser = "[{}] {}".format(sentence_parser_type, self.sentence_parser.name)
-        else:
-            raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
+        def wait_sentence_fetcher(thread: Thread):
+            if thread.is_alive():
+                self.after(100, lambda: wait_sentence_fetcher(thread))
+            else:
+                sent_batch, error_message = sentence_data
+                sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
+                if sentence_parser_type == parser_types.WEB:
+                    typed_sentence_parser = self.sentence_parser.name
+                elif sentence_parser_type == parser_types.CHAIN:
+                    typed_sentence_parser = "[{}] {}".format(sentence_parser_type, self.sentence_parser.name)
+                else:
+                    raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
 
-        for sentence in sent_batch:
-            self.add_sentence_field(
-                source=f"{typed_sentence_parser}: {self.word}",
-                sentence=sentence)
+                for sentence in sent_batch:
+                    self.add_sentence_field(
+                        source=f"{typed_sentence_parser}: {self.word}",
+                        sentence=sentence)
 
-        if error_message:
-            messagebox.showerror(title=self.sentence_parser.name, message=error_message)
+                if error_message:
+                    messagebox.showerror(title=self.sentence_parser.name, message=error_message)
 
+        place_sentences_thread = Thread(target=schedule_sentence_fetcher)
+        place_sentences_thread.start()
+        wait_sentence_fetcher(place_sentences_thread)
+        
     @error_handler(show_exception_logs)
     def refresh(self) -> bool:
         @error_handler(self.show_exception_logs)

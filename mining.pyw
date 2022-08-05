@@ -305,43 +305,48 @@ saving_image_height
                                                             )
             image_search_configuration_button.grid(row=2, column=1, sticky="news")
 
-            web_audio_player_configuration_label = self.Label(
+            web_audio_downloader_configuration_label = self.Label(
                 settings_window,
-                text=self.lang_pack.setting_web_audio_player_configuration_label_text)
-            web_audio_player_configuration_label.grid(row=3, column=0, sticky="news")
+                text=self.lang_pack.setting_web_audio_downloader_configuration_label_text)
+            web_audio_downloader_configuration_label.grid(row=3, column=0, sticky="news")
 
-            web_audio_player_conf_validation_scheme = copy.deepcopy(self.configurations.validation_scheme["web_audio_player"])
-            web_audio_player_conf_docs = """
+            web_audio_downloader_conf_validation_scheme = copy.deepcopy(self.configurations.validation_scheme["web_audio_downloader"])
+            web_audio_downloader_conf_docs = """
 timeout:
     Audio file request timeout
     type: integer    
-    default value: 1
+    default: 1
+    
+request_delay:
+    [Bulk donwload only] Delay between each request in milliseconds
+    type: integer
+    default: 3000
 """
 
             @error_handler(self.show_exception_logs)
-            def get_web_audio_player_conf():
-                web_audio_player_conf = copy.deepcopy(self.configurations["web_audio_player"])
-                conf = Config(validation_scheme=web_audio_player_conf_validation_scheme,  # type: ignore
-                              docs=web_audio_player_conf_docs,
-                              initial_value=web_audio_player_conf)
+            def get_web_audio_downloader_conf():
+                web_audio_downloader_conf = copy.deepcopy(self.configurations["web_audio_downloader"])
+                conf = Config(validation_scheme=web_audio_downloader_conf_validation_scheme,  # type: ignore
+                              docs=web_audio_downloader_conf_docs,
+                              initial_value=web_audio_downloader_conf)
                 return conf
 
             @error_handler(self.show_exception_logs)
-            def save_web_audio_player_conf(config):
+            def save_web_audio_downloader_conf(config):
                 for key, value in config.items():
-                    self.configurations["web_audio_player"][key] = value
+                    self.configurations["web_audio_downloader"][key] = value
 
-            web_audio_player_configuration_button = self.Button(
+            web_audio_downloader_configuration_button = self.Button(
                 settings_window,
                 text="</>",
                 command=lambda: self.call_configuration_window(
-                    plugin_name=self.lang_pack.setting_web_audio_player_configuration_label_text,
-                    plugin_config=get_web_audio_player_conf(),
+                    plugin_name=self.lang_pack.setting_web_audio_downloader_configuration_label_text,
+                    plugin_config=get_web_audio_downloader_conf(),
                     plugin_load_function=lambda conf: None,
                     saving_action=lambda config:
-                    save_web_audio_player_conf(config))
+                    save_web_audio_downloader_conf(config))
                 )
-            web_audio_player_configuration_button.grid(row=3, column=1, sticky="news")
+            web_audio_downloader_configuration_button.grid(row=3, column=1, sticky="news")
 
             extern_audio_placer_configuration_label = self.Label(
                 settings_window,
@@ -354,7 +359,7 @@ timeout:
 n_audios_per_batch:
     A number of external-source audios that would be placed per button click
     type: integer    
-    default value: 5
+    default: 5
 """
 
             @error_handler(self.show_exception_logs)
@@ -392,7 +397,7 @@ n_audios_per_batch:
 n_sentences_per_batch:
     A number of external-source sentences that would be placed per button click
     type: integer    
-    default value: 5
+    default: 5
 """
             @error_handler(self.show_exception_logs)
             def get_extern_sentence_placer_conf():
@@ -1387,8 +1392,9 @@ n_sentences_per_batch:
                 "n_audios_per_batch": (5, [int], [])
             }
             ,
-            "web_audio_player": {
-                "timeout": (1, [int], [])
+            "web_audio_downloader": {
+                "timeout": (1, [int], []),
+                "request_delay": (3000, [int], [])
             },
             "deck": {
                 "tags_hierarchical_pref": ("", [str], []),
@@ -1487,7 +1493,7 @@ n_sentences_per_batch:
 
             success = AudioDownloader.fetch_audio(url=src,
                                                   save_path=temp_audio_path,
-                                                  timeout=self.configurations["web_audio_player"]["timeout"],
+                                                  timeout=self.configurations["web_audio_downloader"]["timeout"],
                                                   headers=self.headers,
                                                   exception_action=lambda exc: show_download_error(exc))
             if success:
@@ -1741,8 +1747,8 @@ n_sentences_per_batch:
             audio_links_list = self.saved_cards_data.get_audio_data(CardStatus.ADD)
         audio_downloader = AudioDownloader(master=self,
                                            headers=self.headers,
-                                           timeout=1,
-                                           request_delay=3_000,
+                                           timeout=self.configurations["web_audio_downloader"]["timeout"],
+                                           request_delay=self.configurations["web_audio_downloader"]["request_delay"],
                                            temp_dir=TEMP_DIR,
                                            saving_dir=self.configurations["directories"]["media_dir"],
                                            toplevel_cfg=self.theme.toplevel_cfg,

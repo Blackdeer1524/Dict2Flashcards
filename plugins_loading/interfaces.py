@@ -31,7 +31,7 @@ class LanguagePackageInterface(Protocol):
     settings_themes_label_text: str
     settings_language_label_text: str
     settings_image_search_configuration_label_text: str
-    setting_web_audio_player_configuration_label_text: str
+    setting_web_audio_downloader_configuration_label_text: str
     settings_extern_audio_placer_configuration_label_text: str
     settings_extern_sentence_placer_configuration_label: str
     settings_card_processor_label_text: str

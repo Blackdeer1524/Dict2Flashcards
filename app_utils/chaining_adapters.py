@@ -213,14 +213,19 @@ class AudioGettersChain:
             self.enum_name2parsers_data[enum_name] = (parser_type, getter.get_audios)
             parser_configs.append(getter.config)
 
-        get_all_configuration = {"get_all": (False, [bool], [True, False])}
+        get_all_configuration = {"get_all": (False, [bool], [True, False]),
+                                 "error_verbosity": ("silent", [str], ["silent", "if_found_audio", "all"])}
         get_all_docs = """
 get_all:
     Get audios from all sources
     type: bool
     default: False
+    
+error_verbosity:
+    silent - doesn't save any errors
+    if_found_audio - saves errors ONLY IF found audios
+    all - saves all errors
 """
-
         self.config = ChainConfig(config_dir=CHAIN_AUDIO_GETTERS_DATA_DIR,
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(parser_name, config) for parser_name, config
@@ -228,14 +233,17 @@ get_all:
                                   additional_val_scheme=get_all_configuration,
                                   additional_docs=get_all_docs)
                 
-    def get_audios(self, word: str, card_data: dict) -> dict[str, tuple[str, AudioData]]:
-        result = {}
+    def get_audios(self, word: str, card_data: dict) -> list[tuple[tuple[str, str], AudioData]]:
+        result = []
         for enum_name, (parser_type, audio_getting_function) in self.enum_name2parsers_data.items():
             self.config.update_config(enum_name)
-            (audios, additional_info), error_message = audio_getting_function(word, card_data)
+            ((audios, additional_info), error_message) = audio_getting_function(word, card_data)
 
-            if audios:
-                result[f"{enum_name}: {word}"] = (parser_type, ((audios, additional_info), error_message))
+            if self.config["error_verbosity"] == "silent":
+                error_message = ""
+
+            if audios or self.config["error_verbosity"] == "all" and error_message:
+                result.append(((f"{enum_name}: {word}", parser_type), ((audios, additional_info), error_message)))
                 if not self.config["get_all"]:
                     break
         return result

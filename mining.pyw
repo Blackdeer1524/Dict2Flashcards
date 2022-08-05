@@ -1543,6 +1543,10 @@ n_sentences_per_batch:
                 info_label.grid(row=0, column=2, sticky="news")
                 self.sound_sf.bind_scroll_wheel(info_label)
 
+        if error_messages:
+            self.show_window(title=self.lang_pack.error_title,
+                             text="\n\n".join([f"{parser_name}\n{error}" for parser_name, error in error_messages]))
+
     @property
     @error_handler(show_exception_logs)
     def word(self):

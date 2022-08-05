@@ -1462,14 +1462,7 @@ n_sentences_per_batch:
             if thread.is_alive():
                 self.after(100, lambda: display_audio_if_done(thread))
             else:
-                self.display_audio_on_frame(word=self.word, parser_results=parser_results)
-                if show_errors and not parser_results:
-                    audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-                    messagebox.showerror(
-                        title=self.audio_getter.name if audio_getter_type == parser_types.WEB
-                                                     else f"[{audio_getter_type}] {self.audio_getter.name}",
-                        message=self.lang_pack.display_audio_getter_results_audio_not_found_message
-                    )
+                self.display_audio_on_frame(word=self.word, parser_results=parser_results, show_errors=show_errors)
 
         th = Thread(target=fill_parser_results)
         th.start()
@@ -1478,7 +1471,8 @@ n_sentences_per_batch:
     @error_handler(show_exception_logs)
     def display_audio_on_frame(self,
                                word: str,
-                               parser_results: list[tuple[tuple[str, str], AudioData]]):
+                               parser_results: list[tuple[tuple[str, str], AudioData]],
+                               show_errors: bool):
         @error_handler(self.show_exception_logs)
         def playsound_in_another_thread(audio_path: str):
             @error_handler(self.show_exception_logs)
@@ -1513,6 +1507,14 @@ n_sentences_per_batch:
                                                   exception_action=lambda exc: show_download_error(exc))
             if success:
                 playsound_in_another_thread(temp_audio_path)
+
+        if show_errors and not parser_results:
+            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
+            messagebox.showerror(
+                title=self.audio_getter.name if audio_getter_type == parser_types.WEB
+                else f"[{audio_getter_type}] {self.audio_getter.name}",
+                message=self.lang_pack.display_audio_getter_results_audio_not_found_message
+            )
 
         error_messages: list[tuple[str, str]] = []
         for (typed_audio_getter_name, audio_getter_type), ((audio_sources, additional_info), error_message) in parser_results:
@@ -1564,7 +1566,7 @@ n_sentences_per_batch:
                 info_label.grid(row=0, column=2, sticky="news")
                 self.sound_sf.bind_scroll_wheel(info_label)
 
-        if error_messages:
+        if show_errors and error_messages:
             self.show_window(title=self.lang_pack.error_title,
                              text="\n\n".join([f"{parser_name}\n{error}" for parser_name, error in error_messages]))
 
@@ -2525,7 +2527,7 @@ n_sentences_per_batch:
         if (audio_sources := self.dict_card_data.get(FIELDS.audio_links)) is not None and audio_sources:
             additional_info = ("" for _ in range(len(audio_sources)))
             parser_results = [(("", parser_types.WEB), ((audio_sources, additional_info), ""))]
-            self.display_audio_on_frame(word=self.word, parser_results=parser_results)
+            self.display_audio_on_frame(word=self.word, parser_results=parser_results, show_errors=False)
 
         dict_sentences = self.dict_card_data.get(FIELDS.sentences, [""])
         for sentence in dict_sentences:

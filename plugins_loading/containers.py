@@ -54,6 +54,12 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
         object.__setattr__(self, "settings_configure_anki_button_text", source_module.settings_configure_anki_button_text)
         object.__setattr__(self, "settings_menu_label", source_module.settings_menu_label)
         object.__setattr__(self, "settings_image_search_configuration_label_text", source_module.settings_image_search_configuration_label_text)
+        object.__setattr__(self, "setting_web_audio_player_configuration_label_text",
+                           source_module.setting_web_audio_player_configuration_label_text)
+        object.__setattr__(self, "settings_extern_audio_placer_configuration_label_text",
+                           source_module.settings_extern_audio_placer_configuration_label_text)
+        object.__setattr__(self, "settings_extern_sentence_placer_configuration_label",
+                           source_module.settings_extern_sentence_placer_configuration_label)
         object.__setattr__(self, "settings_card_processor_label_text",
                            source_module.settings_card_processor_label_text)
         object.__setattr__(self, "settings_format_processor_label_text",

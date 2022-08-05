@@ -232,26 +232,26 @@ class App(Tk):
                                                                    .settings_image_search_configuration_label_text)
             image_search_configuration_label.grid(row=2, column=0, sticky="news")
 
-            validation_scheme = copy.deepcopy(self.configurations.validation_scheme["image_search"])
-            validation_scheme.pop("starting_position", None)  # type: ignore
-            docs = """
+            image_search_conf_validation_scheme = copy.deepcopy(self.configurations.validation_scheme["image_search"])
+            image_search_conf_validation_scheme.pop("starting_position", None)  # type: ignore
+            image_search_conf_docs = """
 timeout
     Image request timeout
     type: integer | float
     default: 1
     
 max_request_tries
-    Max image request retries per one <Show more> rotation
+    Max image request retries per <Show more> rotation
     type: integer
     default: 5
     
 n_images_in_row
-    Maximum images in one row per one <Show more> rotation
+    Maximum images in one row per <Show more> rotation
     type: integer
     default: 3
     
 n_rows
-    Maximum number of rows per one <Show more> rotation
+    Maximum number of rows per <Show more> rotation
     type: integer
     default: 2
     
@@ -282,8 +282,8 @@ saving_image_height
             def get_image_search_conf() -> Config:
                 image_search_conf = copy.deepcopy(self.configurations["image_search"])
                 image_search_conf.pop("starting_position", None)
-                conf = Config(validation_scheme=validation_scheme,  # type: ignore
-                              docs=docs,
+                conf = Config(validation_scheme=image_search_conf_validation_scheme,  # type: ignore
+                              docs=image_search_conf_docs,
                               initial_value=image_search_conf)
                 return conf
 
@@ -291,7 +291,7 @@ saving_image_height
             def save_image_search_conf(config):
                 for key, value in config.items():
                     self.configurations["image_search"][key] = value
-
+            
             image_search_configuration_button = self.Button(settings_window,
                                                             text="</>",
                                                             command=lambda: self.call_configuration_window(
@@ -304,9 +304,123 @@ saving_image_height
                                                             )
             image_search_configuration_button.grid(row=2, column=1, sticky="news")
 
+            web_audio_player_configuration_label = self.Label(
+                settings_window,
+                text=self.lang_pack.setting_web_audio_player_configuration_label_text)
+            web_audio_player_configuration_label.grid(row=3, column=0, sticky="news")
+
+            web_audio_player_conf_validation_scheme = copy.deepcopy(self.configurations.validation_scheme["web_audio_player"])
+            web_audio_player_conf_docs = """
+timeout:
+    Audio file request timeout
+    type: integer    
+    default value: 1
+"""
+
+            @error_handler(self.show_exception_logs)
+            def get_web_audio_player_conf():
+                web_audio_player_conf = copy.deepcopy(self.configurations["web_audio_player"])
+                conf = Config(validation_scheme=web_audio_player_conf_validation_scheme,  # type: ignore
+                              docs=web_audio_player_conf_docs,
+                              initial_value=web_audio_player_conf)
+                return conf
+
+            @error_handler(self.show_exception_logs)
+            def save_web_audio_player_conf(config):
+                for key, value in config.items():
+                    self.configurations["web_audio_player"][key] = value
+
+            web_audio_player_configuration_button = self.Button(
+                settings_window,
+                text="</>",
+                command=lambda: self.call_configuration_window(
+                    plugin_name=self.lang_pack.setting_web_audio_player_configuration_label_text,
+                    plugin_config=get_web_audio_player_conf(),
+                    plugin_load_function=lambda conf: None,
+                    saving_action=lambda config:
+                    save_web_audio_player_conf(config))
+                )
+            web_audio_player_configuration_button.grid(row=3, column=1, sticky="news")
+
+            extern_audio_placer_configuration_label = self.Label(
+                settings_window,
+                text=self.lang_pack.settings_extern_audio_placer_configuration_label_text)
+            extern_audio_placer_configuration_label.grid(row=4, column=0, sticky="news")
+
+            extern_audio_placer_conf_validation_scheme = copy.deepcopy(
+                self.configurations.validation_scheme["extern_audio_placer"])
+            extern_audio_placer_conf_docs = """
+n_audios_per_batch:
+    A number of external-source audios that would be placed per button click
+    type: integer    
+    default value: 5
+"""
+
+            @error_handler(self.show_exception_logs)
+            def get_extern_audio_placer_conf():
+                extern_audio_placer_conf = copy.deepcopy(self.configurations["extern_audio_placer"])
+                conf = Config(validation_scheme=extern_audio_placer_conf_validation_scheme,  # type: ignore
+                              docs=extern_audio_placer_conf_docs,
+                              initial_value=extern_audio_placer_conf)
+                return conf
+
+            @error_handler(self.show_exception_logs)
+            def save_extern_audio_placer_conf(config):
+                for key, value in config.items():
+                    self.configurations["extern_audio_placer"][key] = value
+
+            extern_audio_placer_configuration_button = self.Button(
+                settings_window,
+                text="</>",
+                command=lambda: self.call_configuration_window(
+                    plugin_name=self.lang_pack.settings_extern_audio_placer_configuration_label_text,
+                    plugin_config=get_extern_audio_placer_conf(),
+                    plugin_load_function=lambda conf: None,
+                    saving_action=lambda config:
+                    save_extern_audio_placer_conf(config))
+            )
+            extern_audio_placer_configuration_button.grid(row=4, column=1, sticky="news")
+
+            extern_sentence_placer_configuration_label = self.Label(
+                settings_window,
+                text=self.lang_pack.settings_extern_sentence_placer_configuration_label)
+            extern_sentence_placer_configuration_label.grid(row=5, column=0, sticky="news")
+
+            extern_sentence_placer_conf_validation_scheme = copy.deepcopy(self.configurations.validation_scheme["extern_sentence_placer"])
+            extern_sentence_placer_conf_docs = """
+n_sentences_per_batch:
+    A number of external-source sentences that would be placed per button click
+    type: integer    
+    default value: 5
+"""
+            @error_handler(self.show_exception_logs)
+            def get_extern_sentence_placer_conf():
+                extern_sentence_placer_conf = copy.deepcopy(self.configurations["extern_sentence_placer"])
+                conf = Config(validation_scheme=extern_sentence_placer_conf_validation_scheme,  # type: ignore
+                              docs=extern_sentence_placer_conf_docs,
+                              initial_value=extern_sentence_placer_conf)
+                return conf
+            
+            @error_handler(self.show_exception_logs)
+            def save_extern_sentence_placer_conf(config):
+                for key, value in config.items():
+                    self.configurations["extern_sentence_placer"][key] = value
+                    
+            extern_sentence_placer_configuration_button = self.Button(
+                settings_window,
+                text="</>",
+                command=lambda: self.call_configuration_window(
+                    plugin_name=self.lang_pack.settings_extern_sentence_placer_configuration_label,
+                    plugin_config=get_extern_sentence_placer_conf(),
+                    plugin_load_function=lambda conf: None,
+                    saving_action=lambda config:
+                        save_extern_sentence_placer_conf(config))
+            )
+            extern_sentence_placer_configuration_button.grid(row=5, column=1, sticky="news")
+
             card_processor_label = self.Label(settings_window,
                                               text=self.lang_pack.settings_card_processor_label_text)
-            card_processor_label.grid(row=3, column=0, sticky="news")
+            card_processor_label.grid(row=6, column=0, sticky="news")
 
             @error_handler(self.show_exception_logs)
             def choose_card_processor(name: str):
@@ -317,11 +431,11 @@ saving_image_height
                                                          init_text=self.card_processor.name,
                                                          values=loaded_plugins.card_processors.loaded,
                                                          command=lambda processor: choose_card_processor(processor))
-            card_processor_option.grid(row=3, column=1, sticky="news")
+            card_processor_option.grid(row=6, column=1, sticky="news")
 
             format_processor_label = self.Label(settings_window,
                                                 text=self.lang_pack.settings_format_processor_label_text)
-            format_processor_label.grid(row=4, column=0, sticky="news")
+            format_processor_label.grid(row=7, column=0, sticky="news")
 
             @error_handler(self.show_exception_logs)
             def choose_format_processor(name: str):
@@ -332,11 +446,11 @@ saving_image_height
                                                            init_text=self.deck_saver.name,
                                                            values=loaded_plugins.deck_saving_formats.loaded,
                                                            command=lambda format: choose_format_processor(format))
-            format_processor_option.grid(row=4, column=1, sticky="news")
+            format_processor_option.grid(row=7, column=1, sticky="news")
 
             audio_autopick_label = self.Label(settings_window,
                                               text=self.lang_pack.settings_audio_autopick_label_text)
-            audio_autopick_label.grid(row=5, column=0, sticky="news")
+            audio_autopick_label.grid(row=8, column=0, sticky="news")
 
             @error_handler(self.show_exception_logs)
             def save_audio_autochoose_option(option: str):
@@ -383,7 +497,7 @@ saving_image_height
                         self.lang_pack.settings_audio_autopick_all],
                 command=save_audio_autochoose_option
             )
-            audio_autochoose_option_menu.grid(row=5, column=1, sticky="news")
+            audio_autochoose_option_menu.grid(row=8, column=1, sticky="news")
 
             @error_handler(self.show_exception_logs)
             def anki_dialog():
@@ -423,7 +537,7 @@ saving_image_height
             configure_anki_button = self.Button(settings_window,
                                                 text=self.lang_pack.settings_configure_anki_button_text,
                                                 command=anki_dialog)
-            configure_anki_button.grid(row=6, column=0, columnspan=2, sticky="news")
+            configure_anki_button.grid(row=9, column=0, columnspan=2, sticky="news")
 
             spawn_window_in_center(self, settings_window)
             settings_window.resizable(False, False)
@@ -969,21 +1083,20 @@ saving_image_height
             if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
                 typed_audio_getter_name = "[{}] {}".format(audio_getter_type,
                                                            self.configurations["scrappers"]["audio"]["name"])
-                audio_data = self.external_audio_generator.get(word=word,
-                                                               card_data=self.dict_card_data,
-                                                               batch_size=5)
+                audio_data = self.external_audio_generator.get(
+                    word=word,
+                    card_data=self.dict_card_data,
+                    batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
                 if audio_data is None:
                     return
-
                 parser_results = [((f"{typed_audio_getter_name}: {word}", audio_getter_type), audio_data)]
             elif audio_getter_type == parser_types.CHAIN:
-                parser_results = self.external_audio_generator.get(word=word,
-                                                                   card_data=self.dict_card_data,
-                                                                   batch_size=5)
-
+                parser_results = self.external_audio_generator.get(
+                    word=word,
+                    card_data=self.dict_card_data,
+                    batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
                 if parser_results is None:
                     return
-
             else:
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 
@@ -1266,6 +1379,16 @@ saving_image_height
                 "n_images_in_row":     (3, [int], []),
                 "n_rows":              (2, [int], [])
             },
+            "extern_sentence_placer": {
+                "n_sentences_per_batch": (5, [int], [])
+            },
+            "extern_audio_placer": {
+                "n_audios_per_batch": (5, [int], [])
+            }
+            ,
+            "web_audio_player": {
+                "timeout": (1, [int], [])
+            },
             "deck": {
                 "tags_hierarchical_pref": ("", [str], []),
                 "saving_format":          ("csv", [str], []),
@@ -1363,7 +1486,7 @@ saving_image_height
 
             success = AudioDownloader.fetch_audio(url=src,
                                                   save_path=temp_audio_path,
-                                                  timeout=1,
+                                                  timeout=self.configurations["web_audio_player"]["timeout"],
                                                   headers=self.headers,
                                                   exception_action=lambda exc: show_download_error(exc))
             if success:
@@ -2288,11 +2411,12 @@ saving_image_height
         self.sentence_texts.append(sentence_text)
 
     @error_handler(show_exception_logs)
-    def add_external_sentences(self, batch_size: int = 5) -> None:
+    def add_external_sentences(self) -> None:
         try:
-            sentence_data = self.external_sentence_fetcher.get(word=self.word,
-                                                               card_data=self.dict_card_data,
-                                                               batch_size=batch_size)
+            sentence_data = self.external_sentence_fetcher.get(
+                word=self.word,
+                card_data=self.dict_card_data,
+                batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
             if sentence_data is None:
                 return
         except StopIteration:

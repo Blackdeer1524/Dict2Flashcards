@@ -7,7 +7,7 @@ Credits:
 import requests.utils
 
 from plugins_management.config_management import LoadableConfig
-from plugins_management.parsers_return_types import AudioData
+from plugins_management.parsers_return_types import AudioGenerator
 from .consts import _PLUGIN_NAME, _PLUGIN_LOCATION
 from .page_processing import get_forvo_page, get_audio_link
 
@@ -33,33 +33,37 @@ config = LoadableConfig(config_location=_PLUGIN_LOCATION,
 CACHED_RESULT = {}
 
 
-def get_audios(word: str, card_data: dict) -> AudioData:
+def get_audios(word: str, card_data: dict) -> AudioGenerator:
     global CACHED_RESULT
 
-    if (audio_data := CACHED_RESULT.get(word)) is not None:
-        return audio_data
+    if (audioListLis := CACHED_RESULT.get(word)) is None:
+        wordEncoded = requests.utils.requote_uri(word)
+        forvoPage, error_message = get_forvo_page("https://forvo.com/word/" + wordEncoded, timeout=config["timeout"])
+        if error_message:
+            return ([], []), error_message
+        speachSections = forvoPage.select("div#language-container-" + config["language_code"])
+        if not len(speachSections):
+            return ([], []), f"[{_PLUGIN_NAME}] Word not found (Language Container does not exist!)"
+        speachSections = forvoPage.select_one("div#language-container-" + config["language_code"])
+        audioListUl = speachSections.select_one("ul")
+        if audioListUl is None or not len(audioListUl.findChildren(recursive=False)):
+            return ([], []), f"[{_PLUGIN_NAME}] Word not found (Language Container exists, but audio not found)"
+        if(config["language_code"] == "en"):
+            audioListLis = forvoPage.select("li[class*=en_]")
+        else:
+            audioListLis = audioListUl.find_all("li", attrs={'class': None})
+        CACHED_RESULT[word] = audioListLis
 
     audio_links = []
     additional_info = []
-    wordEncoded = requests.utils.requote_uri(word)
-    forvoPage, error_message = get_forvo_page("https://forvo.com/word/" + wordEncoded, timeout=config["timeout"])
-    if error_message:
-        return ([], []), error_message
-    speachSections = forvoPage.select("div#language-container-" + config["language_code"])
-    if not len(speachSections):
-        return ([], []), f"[{_PLUGIN_NAME}] Word not found (Language Container does not exist!)"
-    speachSections = forvoPage.select_one("div#language-container-" + config["language_code"])
-    audioListUl = speachSections.select_one("ul")
-    if audioListUl is None or not len(audioListUl.findChildren(recursive=False)):
-        return ([], []), f"[{_PLUGIN_NAME}] Word not found (Language Container exists, but audio not found)"
-    if(config["language_code"] == "en"):
-        audioListLis = forvoPage.select("li[class*=en_]")
-    else:
-        audioListLis = audioListUl.find_all("li", attrs={'class': None})
+    batch_size = yield
     for li in audioListLis:
         if (r := li.find("div")) is not None and (onclick := r.get("onclick")) is not None:
             audio_links.append(get_audio_link(onclick))
             additional_info.append(li.get("class", ""))
 
-    CACHED_RESULT = {word: ((audio_links, additional_info), "")}
-    return CACHED_RESULT[word]
+            if len(audio_links) == batch_size:
+                batch_size = yield ((audio_links, additional_info), "")
+                audio_links = []
+                additional_info = []
+    return ((audio_links, additional_info), "")

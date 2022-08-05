@@ -14,7 +14,7 @@ from plugins_loading.interfaces import WebAudioGetterInterface
 from plugins_loading.interfaces import WebSentenceParserInterface
 from plugins_loading.interfaces import WebWordParserInterface
 from plugins_management.config_management import LoadableConfig
-from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioData
+from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False)
@@ -375,7 +375,7 @@ class DeckSavingFormatContainer(_PluginContainer):
 
 class LocalAudioGetterContainer(_PluginContainer):
     config: LoadableConfig
-    get_audios: Callable[[str, dict], AudioData]
+    get_audios: Callable[[str, dict], AudioGenerator]
 
     def __init__(self, name: str, source_module: LocalAudioGetterInterface):
         super(LocalAudioGetterContainer, self).__init__(name)
@@ -385,7 +385,7 @@ class LocalAudioGetterContainer(_PluginContainer):
 
 class WebAudioGetterContainer(_PluginContainer):
     config: LoadableConfig
-    get_audios: Callable[[str, dict], AudioData]
+    get_audios: Callable[[str, dict], AudioGenerator]
 
     def __init__(self, name: str, source_module: WebAudioGetterInterface):
         super(WebAudioGetterContainer, self).__init__(name)

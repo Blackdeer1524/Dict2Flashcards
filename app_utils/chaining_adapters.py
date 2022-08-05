@@ -9,7 +9,8 @@ from consts.card_fields import FIELDS
 from consts.paths import *
 from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig
-from plugins_management.parsers_return_types import ImageGenerator, SentenceGenerator, AudioData
+from plugins_management.parsers_return_types import ImageGenerator, SentenceGenerator, AudioData, AudioGenerator
+from typing import Generator
 
 
 def get_enumerated_names(names: Iterable[str]) -> list[str]:
@@ -132,7 +133,6 @@ class SentenceParsersChain:
 
     def get_sentences(self, word: str) -> SentenceGenerator:
         batch_size = yield
-        yielded_once = False
         for enum_name, get_sentences_f in self.enum_name2get_sentences_functions.items():
             self.config.update_config(enum_name)
             sent_generator = get_sentences_f(word)
@@ -140,9 +140,9 @@ class SentenceParsersChain:
                 next(sent_generator)
             except StopIteration as e:
                 sentence_list, error_message = e.value
-                if sentence_list:
+                if sentence_list or error_message:
                     yield sentence_list, error_message
-                    continue
+                continue
 
             while True:
                 try:
@@ -150,12 +150,9 @@ class SentenceParsersChain:
                     if not sentence_list:
                         break
                     batch_size = yield sentence_list, error_message
-                    yielded_once = True
                 except StopIteration:
                     break
-
-        if not yielded_once:
-            return [], ""
+        return [], ""
 
 
 class ImageParsersChain:
@@ -182,8 +179,12 @@ class ImageParsersChain:
             url_generator = url_getting_function(word)
             try:
                 next(url_generator)
-            except StopIteration:
+            except StopIteration as e:
+                url_batch, error_message = e.value
+                if url_batch or error_message:
+                    yield url_batch, error_message
                 continue
+
             while True:
                 try:
                     batch_size = yield url_generator.send(batch_size)
@@ -197,7 +198,7 @@ class AudioGettersChain:
                  name: str,
                  chain_data: dict[str, str | list[str]]):
         self.name = name
-        self.enum_name2parsers_data: dict[str, tuple[str, Callable[[str, dict], AudioData] | None]] = {}
+        self.enum_name2parsers_data: dict[str, tuple[str, Callable[[str, dict], AudioGenerator] | None]] = {}
         names = []
         parser_configs = []
         for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
@@ -213,14 +214,8 @@ class AudioGettersChain:
             self.enum_name2parsers_data[enum_name] = (parser_type, getter.get_audios)
             parser_configs.append(getter.config)
 
-        get_all_configuration = {"get_all": (False, [bool], [True, False]),
-                                 "error_verbosity": ("silent", [str], ["silent", "if_found_audio", "all"])}
+        get_all_configuration = {"error_verbosity": ("silent", [str], ["silent", "if_found_audio", "all"])}
         get_all_docs = """
-get_all:
-    Get audios from all sources
-    type: bool
-    default: False
-    
 error_verbosity:
     silent - doesn't save any errors
     if_found_audio - saves errors ONLY IF found audios
@@ -233,17 +228,53 @@ error_verbosity:
                                   additional_val_scheme=get_all_configuration,
                                   additional_docs=get_all_docs)
                 
-    def get_audios(self, word: str, card_data: dict) -> list[tuple[tuple[str, str], AudioData]]:
-        result = []
-        for enum_name, (parser_type, audio_getting_function) in self.enum_name2parsers_data.items():
+    def get_audios(self, word: str, card_data: dict) -> \
+            Generator[list[tuple[tuple[str, str], AudioData]], int, list[tuple[tuple[str, str], AudioData]]]:
+
+        results = []
+        batch_size = yield
+        for enum_name, (parser_type, get_audio_generator) in self.enum_name2parsers_data.items():
+            typed_name_with_word_postfix = f"{enum_name}: {word}"
+
             self.config.update_config(enum_name)
-            ((audios, additional_info), error_message) = audio_getting_function(word, card_data)
 
-            if self.config["error_verbosity"] == "silent":
-                error_message = ""
+            audio_data_generator = get_audio_generator(word, card_data)
+            try:
+                next(audio_data_generator)
+            except StopIteration as e:
+                _, error_message = e.value
+                if self.config["error_verbosity"] == "silent":
+                    error_message = ""
 
-            if audios or self.config["error_verbosity"] == "all" and error_message:
-                result.append(((f"{enum_name}: {word}", parser_type), ((audios, additional_info), error_message)))
-                if not self.config["get_all"]:
+                if error_message and self.config["error_verbosity"] == "all":
+                    results.append(((typed_name_with_word_postfix, parser_type), (([], []), error_message)))
+                continue
+
+            while True:
+                try:
+                    ((audios, additional_info), error_message) = audio_data_generator.send(batch_size)
+                    if self.config["error_verbosity"] == "silent":
+                        error_message = ""
+
+                    if audios or self.config["error_verbosity"] == "all" and error_message:
+                        results.append(((typed_name_with_word_postfix, parser_type),
+                                        ((audios, additional_info), error_message)))
+                        batch_size -= len(audios)
+                        if batch_size <= 0:
+                            batch_size = yield results
+                            results = []
+
+                except StopIteration as e:
+                    ((audios, additional_info), error_message) = e.value
+                    if self.config["error_verbosity"] == "silent":
+                        error_message = ""
+
+                    if audios or self.config["error_verbosity"] == "all" and error_message:
+                        results.append(((typed_name_with_word_postfix, parser_type),
+                                        ((audios, additional_info), error_message)))
+                        batch_size -= len(audios)
+                        if batch_size <= 0:
+                            batch_size = yield results
+                            results = []
                     break
-        return result
+        return results

@@ -2,7 +2,7 @@ from typing import Protocol, Callable
 
 from app_utils.cards import SavedDataDeck, CardStatus
 from plugins_management.config_management import LoadableConfig
-from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator
+from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator
 
 
 class LanguagePackageInterface(Protocol):
@@ -290,7 +290,7 @@ class LocalAudioGetterInterface(Protocol):
     AUDIO_FOLDER: str
 
     @staticmethod
-    def get_audios(word: str, card_data: dict) -> list[str]:
+    def get_audios(word: str, card_data: dict) -> AudioGenerator:
         ...
 
 
@@ -298,6 +298,6 @@ class WebAudioGetterInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def get_audios(word: str, card_data: dict) -> tuple[tuple[list[str], list[str]], str]:
+    def get_audios(word: str, card_data: dict) -> AudioGenerator:
         """returns ((<audio urls>, <additional information>), <error_message>)"""
         ...

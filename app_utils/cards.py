@@ -8,7 +8,6 @@ from app_utils.storages import FrozenDictJSONEncoder
 from app_utils.storages import PointerList, FrozenDict
 from consts.card_fields import FIELDS
 from plugins_management.config_management import LoadableConfig
-from plugins_management.parsers_return_types import SentenceGenerator
 
 
 class Card(FrozenDict):
@@ -279,56 +278,3 @@ class SavedDataDeck(PointerList):
                 continue
             saving_object.append(card_page[SavedDataDeck.CARD_DATA])
         return saving_object
-
-
-class ExternalSentenceFetcher:
-    def __init__(self,
-                 sent_fetcher: Callable[[str], SentenceGenerator]):
-        self._word: str = ""
-        self._sentences: list[str] = []
-        self._sentence_fetcher: Callable[[str], SentenceGenerator] = sent_fetcher
-        self._update_status: bool = False
-        self._start()
-
-    def _start(self):
-        self._sent_batch_generator: SentenceGenerator = self._get_sent_batch_generator()
-        next(self._sent_batch_generator)
-
-    def __call__(self, base_word):
-        self._word = base_word
-        self._start()
-        self._update_status = False
-
-    def update_word(self, new_word: str):
-        if self._word != new_word:
-            self._word = new_word
-            self._start()
-            self._update_status = True
-
-    def _get_sent_batch_generator(self) -> SentenceGenerator:
-        """
-        Yields: Sentence_batch, error_message
-        """
-        batch_size = yield
-
-        sentence_generator = self._sentence_fetcher(self._word)
-        try:
-            next(sentence_generator)
-        except StopIteration as e:
-            yield e.value
-            return
-
-        self._update_status = False
-        while True:
-            try:
-                sentence_batch, error_message = sentence_generator.send(batch_size)
-                batch_size = yield sentence_batch, error_message
-                if self._update_status or error_message:
-                    break
-            except StopIteration:
-                break
-
-    def get_sentences(self, word: str, batch_size: int) -> tuple[list[str], str]:
-        self.update_word(word)
-        sentences, error_message = self._sent_batch_generator.send(batch_size)
-        return sentences, error_message

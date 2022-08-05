@@ -47,13 +47,14 @@ def get_audios(word, card_data: dict) -> AudioData:
 
     pos = card_data.get(FIELDS.dict_tags, {}).get("pos", "")
     clear_pos = remove_special_chars(pos.lower(), '-', _AUDIO_NAME_SPEC_CHARS)
-    
+
+    batch_size = yield
     if clear_pos:
         given_pos_dir = os.path.join(search_root, clear_pos)
         pos_audio_file_path = os.path.join(given_pos_dir, filename_with_extension)
         if os.path.isfile(pos_audio_file_path):
             return ([pos_audio_file_path], [f"[{pos}] {filename_without_extension}"]), ""
-        
+
         pos_named_dir = os.path.join(given_pos_dir, filename_without_extension)
         if os.path.isdir(pos_named_dir):
             file_paths = []
@@ -62,6 +63,11 @@ def get_audios(word, card_data: dict) -> AudioData:
                 if os.path.isfile(file_path := os.path.join(pos_named_dir, item)):
                     file_paths.append(file_path)
                     additional_info.append(f"[{pos}] {os.path.splitext(item)[0]}")
+
+                    if len(file_paths) == batch_size:
+                        batch_size = yield (file_paths, additional_info), ""
+                        file_paths = []
+                        additional_info = []
             return (file_paths, additional_info), ""
     
     if config["pos_only"]:
@@ -70,16 +76,6 @@ def get_audios(word, card_data: dict) -> AudioData:
     no_pos_audio_file_path = os.path.join(search_root, filename_with_extension)
     if os.path.isfile(no_pos_audio_file_path):
         return ([no_pos_audio_file_path], [filename_without_extension]), ""
-
-    no_pos_audio_file_dir = os.path.join(search_root, filename_without_extension)
-    if os.path.isdir(no_pos_audio_file_dir):
-        file_paths = []
-        additional_info = []
-        for item in os.listdir(no_pos_audio_file_dir):
-            if os.path.isfile((file_path := os.path.join(no_pos_audio_file_dir, item))):
-                file_paths.append(file_path)
-                additional_info.append(os.path.splitext(item)[0])
-        return (file_paths, additional_info), ""
     
     pos_dirs = [(directory_path, directory) for directory in os.listdir(search_root)
                 if os.path.isdir(directory_path := os.path.join(search_root, directory))]
@@ -107,6 +103,12 @@ def get_audios(word, card_data: dict) -> AudioData:
                 if os.path.isfile((file_path := os.path.join(directory, item))):
                     file_paths.append(file_path)
                     additional_info.append(f"[{pos}/{filename_without_extension}] {os.path.splitext(item)[0]}")
+
+                    if len(file_paths) == batch_size:
+                        batch_size = yield (file_paths, additional_info), ""
+                        file_paths = []
+                        additional_info = []
+
             return (file_paths, additional_info), ""
     return ([], []), ""
 

@@ -27,21 +27,18 @@ from playsound import playsound
 from tkinterdnd2 import Tk
 
 from app_utils.audio_utils import AudioDownloader
-from app_utils.cards import Card
-from app_utils.cards import Deck, ExternalSentenceFetcher, SavedDataDeck, CardStatus
+from app_utils.cards import Card, Deck, SavedDataDeck, CardStatus
 from app_utils.chaining_adapters import ImageParsersChain, CardGeneratorsChain, SentenceParsersChain, AudioGettersChain
-from app_utils.error_handling import create_exception_message
-from app_utils.error_handling import error_handler
+from app_utils.plugin_wrappers import ExternalDataFetcherWrapper
+from app_utils.error_handling import create_exception_message, error_handler
 from app_utils.global_bindings import Binder
 from app_utils.image_utils import ImageSearch
-from app_utils.search_checker import ParsingException
-from app_utils.search_checker import get_card_filter
+from app_utils.search_checker import ParsingException, get_card_filter
 from app_utils.string_utils import remove_special_chars
+from app_utils.widgets import TextWithPlaceholder as Text
 from app_utils.widgets import EntryWithPlaceholder as Entry
 from app_utils.widgets import ScrolledFrame
-from app_utils.widgets import TextWithPlaceholder as Text
-from app_utils.window_utils import get_option_menu
-from app_utils.window_utils import spawn_window_in_center
+from app_utils.window_utils import get_option_menu, spawn_window_in_center
 from consts import parser_types
 from consts.card_fields import FIELDS
 from consts.paths import *
@@ -139,7 +136,7 @@ class App(Tk):
                 name=self.configurations["scrappers"]["sentence"]["name"],
                 chain_data=self.chaining_data["sentence_parsers"][self.configurations["scrappers"]["sentence"]["name"]])
 
-        self.external_sentence_fetcher = ExternalSentenceFetcher(sent_fetcher=self.sentence_parser.get_sentences)
+        self.external_sentence_fetcher = ExternalDataFetcherWrapper(data_fetcher=self.sentence_parser.get_sentences)
 
         if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
             self.image_parser = loaded_plugins.get_image_parser(self.configurations["scrappers"]["image"]["name"])
@@ -151,17 +148,22 @@ class App(Tk):
         if (audio_getter_name := self.configurations["scrappers"]["audio"]["name"]):
             if self.configurations["scrappers"]["audio"]["type"] == parser_types.LOCAL:
                 self.audio_getter = loaded_plugins.get_local_audio_getter(audio_getter_name)
+                self.external_audio_generator = ExternalDataFetcherWrapper(data_fetcher=self.audio_getter.get_audios)
             elif self.configurations["scrappers"]["audio"]["type"] == parser_types.WEB:
                 self.audio_getter = loaded_plugins.get_web_audio_getter(audio_getter_name)
+                self.external_audio_generator = ExternalDataFetcherWrapper(data_fetcher=self.audio_getter.get_audios)
             elif self.configurations["scrappers"]["audio"]["type"] == parser_types.CHAIN:
                 self.audio_getter = AudioGettersChain(name=audio_getter_name,
                                                       chain_data=self.chaining_data["audio_getters"][audio_getter_name])
+                self.external_audio_generator = ExternalDataFetcherWrapper(data_fetcher=self.audio_getter.get_audios)
             else:
                 self.configurations["scrappers"]["audio"]["type"] = "default"
                 self.configurations["scrappers"]["audio"]["name"] = ""
                 self.audio_getter = None
+                self.external_audio_generator = None
         else:
             self.audio_getter = None
+            self.external_audio_generator = None
 
         self.saved_cards_data = SavedDataDeck()
         self.deck_saver = loaded_plugins.get_deck_saving_formats(self.configurations["deck"]["saving_format"])
@@ -818,10 +820,14 @@ saving_image_height
                             if self.audio_getter is not None:
                                 if chain_name == self.audio_getter.name:
                                     old_get_all_val = self.audio_getter.config["get_all"]
+                                    old_error_verbosity_val = self.audio_getter.config["error_verbosity"]
                                     self.audio_getter = AudioGettersChain(
                                         name=new_chain_name,
                                         chain_data=chosen_chain_config)
+                                    self.external_audio_generator = ExternalDataFetcherWrapper(
+                                        data_fetcher=self.audio_getter.get_audios)
                                     self.audio_getter.config["get_all"] = old_get_all_val
+                                    self.audio_getter.config["error_verbosity"] = old_error_verbosity_val
                                     self.configurations["scrappers"]["audio"]["name"] = new_chain_name
                         else:
                             raise NotImplementedError(f"Unknown chosen parser type: {chain_type}")
@@ -955,7 +961,30 @@ saving_image_height
             assert self.audio_getter is not None, \
                 "display_audio_getter_results cannot be called because self.audio_getter is None"
 
-            parser_results = self.get_audio_from_audio_getter()
+            word = self.word
+            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
+            parser_results: list[tuple[tuple[str, str], AudioData]]
+            if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
+                typed_audio_getter_name = "[{}] {}".format(audio_getter_type,
+                                                           self.configurations["scrappers"]["audio"]["name"])
+                audio_data = self.external_audio_generator.get(word=word,
+                                                               card_data=self.dict_card_data,
+                                                               batch_size=5)
+                if audio_data is None:
+                    return
+
+                parser_results = [((f"{typed_audio_getter_name}: {word}", audio_getter_type), audio_data)]
+            elif audio_getter_type == parser_types.CHAIN:
+                parser_results = self.external_audio_generator.get(word=word,
+                                                                   card_data=self.dict_card_data,
+                                                                   batch_size=5)
+
+                if parser_results is None:
+                    return
+
+            else:
+                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
+
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
 
             if not parser_results:
@@ -1011,7 +1040,8 @@ saving_image_height
                                    padx=self.text_padx, pady=(0, self.text_pady))
 
         self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
-        self.sound_inner_frame.grid_propagate(False)
+        self.sound_inner_frame.last_source = None
+        self.sound_inner_frame.source_display_frame = None
 
         if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
             typed_sentence_parser_name = self.sentence_parser.name
@@ -1079,7 +1109,7 @@ saving_image_height
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
         self.text_widgets_frame.grid_columnconfigure(0, weight=1)
         self.text_widgets_frame.last_source = None
-        self.text_widgets_frame.sentence_source_display_frame = None
+        self.text_widgets_frame.source_display_frame = None
 
         # ======
         self.anki_button = self.Button(self,
@@ -1297,25 +1327,6 @@ saving_image_height
         return chaining_data
 
     @error_handler(show_exception_logs)
-    def get_audio_from_audio_getter(self) -> list[tuple[tuple[str, str], AudioData]]:
-        assert self.audio_getter is not None, \
-            "get_audio_from_audio_getter shouldn't be called if self.audio_getter is None"
-
-        word = self.word
-        audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-        parser_results: list[tuple[tuple[str, str], AudioData]] = []
-        if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
-            typed_audio_getter_name = "[{}] {}".format(audio_getter_type,
-                                                       self.configurations["scrappers"]["audio"]["name"])
-            audio_data = self.audio_getter.get_audios(word, self.dict_card_data)
-            parser_results.append(((f"{typed_audio_getter_name}: {word}", audio_getter_type), audio_data))
-        elif audio_getter_type == parser_types.CHAIN:
-            parser_results = self.audio_getter.get_audios(word, self.dict_card_data)
-        else:
-            raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
-        return parser_results
-
-    @error_handler(show_exception_logs)
     def display_audio_on_frame(self,
                                word: str,
                                parser_results: list[tuple[tuple[str, str], AudioData]]):
@@ -1358,17 +1369,18 @@ saving_image_height
         for (typed_audio_getter_name, audio_getter_type), ((audio_sources, additional_info), error_message) in parser_results:
             if error_message:
                 error_messages.append((typed_audio_getter_name, error_message))
-
             if not audio_sources:
                 continue
 
-            audio_getter_frame = LabelFrame(self.sound_inner_frame,
-                                            text=typed_audio_getter_name,
-                                            fg=self.theme.button_cfg.get("foreground"),
-                                            **self.theme.frame_cfg)
-            self.sound_sf.bind_scroll_wheel(audio_getter_frame)
-            audio_getter_frame.grid_propagate(False)
-            audio_getter_frame.pack(side="top", fill="x", expand=True)
+            if self.sound_inner_frame.last_source != typed_audio_getter_name:
+                self.sound_inner_frame.last_source = typed_audio_getter_name
+                self.sound_inner_frame.source_display_frame = LabelFrame(self.sound_inner_frame,
+                                                                         text=typed_audio_getter_name,
+                                                                         fg=self.theme.button_cfg.get("foreground"),
+                                                                         **self.theme.frame_cfg)
+                self.sound_sf.bind_scroll_wheel(self.sound_inner_frame.source_display_frame)
+                self.sound_inner_frame.source_display_frame.grid_propagate(False)
+                self.sound_inner_frame.source_display_frame.pack(side="top", fill="x", expand=True)
 
             if audio_getter_type == parser_types.WEB:
                 play_sound_button_cmd = web_playsound
@@ -1378,7 +1390,7 @@ saving_image_height
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 
             for audio, info in zip(audio_sources, additional_info):
-                audio_info_frame = self.Frame(audio_getter_frame)
+                audio_info_frame = self.Frame(self.sound_inner_frame.source_display_frame)
                 audio_info_frame.pack(side="top", fill="x", expand=True)
                 audio_info_frame.columnconfigure(2, weight=1)
 
@@ -1402,7 +1414,6 @@ saving_image_height
                 info_label = self.Label(audio_info_frame, text=info, relief="ridge")
                 info_label.grid(row=0, column=2, sticky="news")
                 self.sound_sf.bind_scroll_wheel(info_label)
-
 
     @property
     @error_handler(show_exception_logs)
@@ -1996,6 +2007,7 @@ saving_image_height
     def change_audio_getter(self, typed_getter: str):
         if typed_getter == "default":
             self.audio_getter = None
+            self.external_audio_generator = None
             self.configurations["scrappers"]["audio"]["type"] = "default"
             self.configurations["scrappers"]["audio"]["name"] = ""
             self.fetch_audio_data_button["state"] = "disabled"
@@ -2018,8 +2030,8 @@ saving_image_height
         else:
             raise NotImplementedError(f"Audio getter with unknown type: {typed_getter}")
 
+        self.external_audio_generator = ExternalDataFetcherWrapper(data_fetcher=self.audio_getter.get_audios)
         self.configurations["scrappers"]["audio"]["name"] = raw_name
-
         self.fetch_audio_data_button["state"] = "normal"
 
         self.configure_audio_getter_button["state"] = "normal"
@@ -2056,7 +2068,7 @@ saving_image_height
         else:
             self.configurations["scrappers"]["sentence"]["type"] = parser_types.WEB
             self.sentence_parser = loaded_plugins.get_sentence_parser(given_sentence_parser_name)
-        self.external_sentence_fetcher = ExternalSentenceFetcher(sent_fetcher=self.sentence_parser.get_sentences)
+        self.external_sentence_fetcher = ExternalDataFetcherWrapper(data_fetcher=self.sentence_parser.get_sentences)
         self.configurations["scrappers"]["sentence"]["name"] = given_sentence_parser_name
 
     @error_handler(show_exception_logs)
@@ -2113,10 +2125,10 @@ saving_image_height
                                            add_type_prefix=False)
 
         if not chosen_smth and (audio_autochoose_mode := self.configurations["app"]["audio_autochoose_mode"]) != "off":
-            if audio_autochoose_mode == ("first_default_audio", "first_available_audio"):
-                choosing_slice = slice(0, 1)
+            if audio_autochoose_mode in ("first_default_audio", "first_available_audio"):
+                choosing_slice = 1
             elif audio_autochoose_mode in ("all_default_audios", "first_available_audio_source", "all"):
-                choosing_slice = slice(None, None, 1)
+                choosing_slice = 999
             else:
                 raise NotImplementedError(f"Unknown audio autochoose mode: {audio_autochoose_mode}")
 
@@ -2124,37 +2136,45 @@ saving_image_height
             if (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
                 add_audio_data_to_card(getter_name=self.card_generator.name,
                                        getter_type=parser_types.WEB,
-                                       audio_links=web_audios[choosing_slice],
+                                       audio_links=web_audios[:choosing_slice],
                                        add_type_prefix=True)
 
             if self.audio_getter is not None and (audio_autochoose_mode == "all" or not web_audios and audio_autochoose_mode in ("first_available_audio", "first_available_audio_source")):
                 if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
-                    ((audio_links, additional_info), error_message) = self.audio_getter.get_audios(word, self.dict_card_data)
-                    add_audio_data_to_card(getter_name=self.audio_getter.name,
-                                           getter_type=audio_getter_type,
-                                           audio_links=audio_links[choosing_slice],
-                                           add_type_prefix=True)
+                    audio_data_pack = \
+                        self.external_audio_generator.get(word=word,
+                                                          card_data=self.dict_card_data,
+                                                          batch_size=choosing_slice)
+                    if audio_data_pack is not None:
+                        ((audio_links, additional_info), error_message) = audio_data_pack
+                        add_audio_data_to_card(getter_name=self.audio_getter.name,
+                                               getter_type=audio_getter_type,
+                                               audio_links=audio_links,
+                                               add_type_prefix=True)
                 elif audio_getter_type == parser_types.CHAIN:
-                    audio_data_dict = self.audio_getter.get_audios(word, self.dict_card_data)
-                    audio_gen = (i for i in audio_data_dict.items())
-                    if audio_autochoose_mode in ("first_available_audio", "first_available_audio_source"):
-                        getter_name, (getter_type, ((audio_links, additional_info), error_message)) = next(audio_gen)
-                        add_audio_data_to_card(
-                            getter_name=getter_name,
-                            getter_type=getter_type,
-                            audio_links=audio_links[choosing_slice],
-                            add_type_prefix=False
-                        )
-                    elif audio_autochoose_mode == "all":
-                        for getter_name, (getter_type, ((audio_links, additional_info), error_message)) in audio_gen:
+                    audio_data_pack = self.external_audio_generator.get(word=word,
+                                                                        card_data=self.dict_card_data,
+                                                                        batch_size=choosing_slice)
+                    if audio_data_pack is not None:
+                        audio_gen = (i for i in audio_data_pack)
+                        if audio_autochoose_mode in ("first_available_audio", "first_available_audio_source"):
+                            ((getter_name, getter_type), ((audio_links, additional_info), error_message)) = next(audio_gen)
                             add_audio_data_to_card(
                                 getter_name=getter_name,
                                 getter_type=getter_type,
-                                audio_links=audio_links,
+                                audio_links=audio_links[:choosing_slice],
                                 add_type_prefix=False
                             )
-                    else:
-                        raise NotImplementedError(f"Unreachable audio_autochoose_mode: {audio_autochoose_mode}")
+                        elif audio_autochoose_mode == "all":
+                            for ((getter_name, getter_type), ((audio_links, additional_info), error_message)) in audio_gen:
+                                add_audio_data_to_card(
+                                    getter_name=getter_name,
+                                    getter_type=getter_type,
+                                    audio_links=audio_links,
+                                    add_type_prefix=False
+                                )
+                        else:
+                            raise NotImplementedError(f"Unreachable audio_autochoose_mode: {audio_autochoose_mode}")
                 else:
                     raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 
@@ -2231,15 +2251,15 @@ saving_image_height
 
         if self.text_widgets_frame.last_source != source:
             self.text_widgets_frame.last_source = source
-            self.text_widgets_frame.sentence_source_display_frame = LabelFrame(self.text_widgets_frame,
+            self.text_widgets_frame.source_display_frame = LabelFrame(self.text_widgets_frame,
                                                                                text=source,
                                                                                fg=self.theme.button_cfg.get("foreground"),
                                                                                **self.theme.frame_cfg)
-            self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame.sentence_source_display_frame)
-            self.text_widgets_frame.sentence_source_display_frame.grid_columnconfigure(0, weight=1)
-            self.text_widgets_frame.sentence_source_display_frame.pack(side="top", fill="both")
+            self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame.source_display_frame)
+            self.text_widgets_frame.source_display_frame.grid_columnconfigure(0, weight=1)
+            self.text_widgets_frame.source_display_frame.pack(side="top", fill="both")
 
-        choose_frame = self.Frame(self.text_widgets_frame.sentence_source_display_frame, height=OPTIMAL_TEXT_HEIGHT)
+        choose_frame = self.Frame(self.text_widgets_frame.source_display_frame, height=OPTIMAL_TEXT_HEIGHT)
         choose_frame.grid(row=len(self.sentence_texts), column=0, sticky="we", pady=(0, self.text_pady))
         self.text_widgets_sf.bind_scroll_wheel(choose_frame)
         
@@ -2266,10 +2286,15 @@ saving_image_height
     @error_handler(show_exception_logs)
     def add_external_sentences(self, batch_size: int = 5) -> None:
         try:
-            sent_batch, error_message = self.external_sentence_fetcher.get_sentences(self.word, batch_size)
+            sentence_data = self.external_sentence_fetcher.get(word=self.word,
+                                                               card_data=self.dict_card_data,
+                                                               batch_size=batch_size)
+            if sentence_data is None:
+                return
         except StopIteration:
             return
 
+        sent_batch, error_message = sentence_data
         sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
         if sentence_parser_type == parser_types.WEB:
             typed_sentence_parser = self.sentence_parser.name
@@ -2300,13 +2325,15 @@ saving_image_height
         self.card_processor.process_card(self.dict_card_data)
 
         self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
+        self.sound_inner_frame.last_source = None
+        self.sound_inner_frame.source_display_frame = None
 
         self.sentence_texts.clear()
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
         self.text_widgets_frame.grid_columnconfigure(0, weight=1)
         self.text_widgets_frame.last_source = None
-        self.text_widgets_frame.sentence_source_display_frame = None
+        self.text_widgets_frame.source_display_frame = None
 
         self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() + 1 \
                                              else "disabled"
@@ -2328,8 +2355,6 @@ saving_image_height
             additional_info = ("" for _ in range(len(audio_sources)))
             parser_results = [(("", parser_types.WEB), ((audio_sources, additional_info), ""))]
             self.display_audio_on_frame(word=self.word, parser_results=parser_results)
-
-        self.external_sentence_fetcher(self.word)
 
         dict_sentences = self.dict_card_data.get(FIELDS.sentences, [""])
         for sentence in dict_sentences:

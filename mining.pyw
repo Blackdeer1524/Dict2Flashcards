@@ -196,6 +196,7 @@ class App(Tk):
         @error_handler(self.show_exception_logs)
         def settings_dialog():
             settings_window = self.Toplevel(self)
+            settings_window.grid_columnconfigure(1, weight=1)
             settings_window.title(self.lang_pack.settings_menu_label)
 
             @error_handler(self.show_exception_logs)
@@ -539,7 +540,7 @@ n_sentences_per_batch:
                                                 command=anki_dialog)
             configure_anki_button.grid(row=9, column=0, columnspan=2, sticky="news")
 
-            spawn_window_in_center(self, settings_window)
+            spawn_window_in_center(self, settings_window, desired_window_width=self.winfo_width())
             settings_window.resizable(False, False)
             settings_window.grab_set()
             settings_window.bind("<Escape>", lambda event: settings_window.destroy())

@@ -1078,50 +1078,9 @@ n_sentences_per_batch:
                                        else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
                                                              self.audio_getter.name)
 
-        @error_handler(self.show_exception_logs)
-        def display_audio_getter_results():
-            assert self.audio_getter is not None, \
-                "display_audio_getter_results cannot be called because self.audio_getter is None"
-
-            word = self.word
-            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-            parser_results: list[tuple[tuple[str, str], AudioData]]
-            if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
-                typed_audio_getter_name = "[{}] {}".format(audio_getter_type,
-                                                           self.configurations["scrappers"]["audio"]["name"])
-                audio_data = self.external_audio_generator.get(
-                    word=word,
-                    card_data=self.dict_card_data,
-                    batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
-                if audio_data is None:
-                    return
-                parser_results = [((f"{typed_audio_getter_name}: {word}", audio_getter_type), audio_data)]
-            elif audio_getter_type == parser_types.CHAIN:
-                parser_results = self.external_audio_generator.get(
-                    word=word,
-                    card_data=self.dict_card_data,
-                    batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
-                if parser_results is None:
-                    return
-                parser_results = [((f"{typed_audio_getter_name}: {word}", audio_getter_type), audio_data) for
-                                  (typed_audio_getter_name, audio_getter_type), audio_data in parser_results]
-            else:
-                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
-
-            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-
-            if not parser_results:
-                messagebox.showerror(
-                    title=self.audio_getter.name if audio_getter_type == parser_types.WEB
-                                                 else f"[{audio_getter_type}] {self.audio_getter.name}",
-                    message=self.lang_pack.display_audio_getter_results_audio_not_found_message)
-                return
-
-            self.display_audio_on_frame(word=self.word, parser_results=parser_results)
-
         self.fetch_audio_data_button = self.Button(self,
                                                    text=self.lang_pack.fetch_audio_data_button_text,
-                                                   command=display_audio_getter_results)
+                                                   command=lambda: self.display_audio_getter_results(show_errors=True))
 
         if typed_audio_getter == "default":
             self.fetch_audio_data_button["state"] = "disabled"
@@ -1461,6 +1420,60 @@ n_sentences_per_batch:
                                        config_location=chaining_data_file_dir,
                                        _config_file_name=chaining_data_file_name)
         return chaining_data
+
+    @error_handler(show_exception_logs)
+    def display_audio_getter_results(self, show_errors: bool):
+        parser_results: list[tuple[tuple[str, str], AudioData]] = []
+
+        def fill_parser_results() -> None:
+            nonlocal parser_results
+
+            assert self.audio_getter is not None, \
+                "display_audio_getter_results cannot be called because self.audio_getter is None"
+
+            word = self.word
+            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
+
+            if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
+                typed_audio_getter_name = "[{}] {}".format(audio_getter_type,
+                                                           self.configurations["scrappers"]["audio"]["name"])
+                audio_data = self.external_audio_generator.get(
+                    word=word,
+                    card_data=self.dict_card_data,
+                    batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
+                if audio_data is None:
+                    parser_results = []
+                    return
+                parser_results = [((f"{typed_audio_getter_name}: {word}", audio_getter_type), audio_data)]
+            elif audio_getter_type == parser_types.CHAIN:
+                parser_results = self.external_audio_generator.get(
+                    word=word,
+                    card_data=self.dict_card_data,
+                    batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
+                if parser_results is None:
+                    parser_results = []
+                    return
+                parser_results = [((f"{typed_audio_getter_name}: {word}", audio_getter_type), audio_data) for
+                                  (typed_audio_getter_name, audio_getter_type), audio_data in parser_results]
+            else:
+                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
+
+        def display_audio_if_done(thread: Thread):
+            if thread.is_alive():
+                self.after(100, lambda: display_audio_if_done(thread))
+            else:
+                self.display_audio_on_frame(word=self.word, parser_results=parser_results)
+                if show_errors and not parser_results:
+                    audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
+                    messagebox.showerror(
+                        title=self.audio_getter.name if audio_getter_type == parser_types.WEB
+                                                     else f"[{audio_getter_type}] {self.audio_getter.name}",
+                        message=self.lang_pack.display_audio_getter_results_audio_not_found_message
+                    )
+
+        th = Thread(target=fill_parser_results)
+        th.start()
+        display_audio_if_done(th)
 
     @error_handler(show_exception_logs)
     def display_audio_on_frame(self,
@@ -2481,9 +2494,11 @@ n_sentences_per_batch:
 
         self.title(f"{self.lang_pack.main_window_title_prefix}: {self.deck.get_n_cards_left()}")
 
-        self.word_text.clear()
-        self.word_text.insert(1.0, self.dict_card_data.get(FIELDS.word, ""))
         self.word_text.focus()
+        self.word_text.clear()
+        if (word_data := self.dict_card_data.get(FIELDS.word, "")):
+            self.word_text.insert(1.0, word_data)
+            self.display_audio_getter_results(show_errors=False)
 
         fill_additional_dict_data(self.dict_tags_field, Card.get_str_dict_tags(self.dict_card_data))
         fill_additional_dict_data(self.special_field, " ".join(self.dict_card_data.get(FIELDS.special, [])))

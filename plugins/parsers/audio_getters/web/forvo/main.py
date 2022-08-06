@@ -59,7 +59,9 @@ def get_audios(word: str, card_data: dict) -> AudioGenerator:
             audioListLis = forvoPage.select("li[class*=en_]")
         else:
             audioListLis = audioListUl.find_all("li")
-        CACHED_RESULT[word_with_lang_code] = audioListLis
+
+        if audioListLis:
+            CACHED_RESULT[word_with_lang_code] = audioListLis
 
     audio_links = []
     additional_info = []

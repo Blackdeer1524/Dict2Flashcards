@@ -1492,7 +1492,7 @@ n_sentences_per_batch:
                                                                  "0",
                                                                  self.dict_card_data)
 
-            temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name)
+            temp_audio_path = os.path.join(TEMP_DIR, audio_name)
             if os.path.exists(temp_audio_path):
                 # you need to remove old file because Windows will raise permission denied error
                 os.remove(temp_audio_path)

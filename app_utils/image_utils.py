@@ -121,23 +121,28 @@ class ImageSearch(Toplevel):
         self.button_list: list[Button] = []
 
         self.title(self.lang_pack.image_search_title)
-        self._search_field = Entry(self, justify="center", **self._entry_params)
+        self._frame_params = kwargs.get("frame_params", {})
+
+        search_frame = Frame(self, **self._frame_params)
+        search_frame.grid(row=0, column=0, sticky="news",
+                          padx=self._button_padx, pady=self._button_pady)
+        search_frame.columnconfigure(0, weight=1)
+        search_frame.columnconfigure(1, weight=1)
+
+        self._search_field = Entry(search_frame, justify="center", **self._entry_params)
         self._search_field.insert(0, self.search_term)
-        self._start_search_button = Button(self,
+        self._search_field.grid(row=0, column=0, sticky="news")
+
+        self._start_search_button = Button(search_frame,
                                            text=self.lang_pack.image_search_start_search_button_text,
                                            command=self._restart_search,
                                            **self._command_button_params)
-
-        self._search_field.grid(row=0, column=0, sticky="news",
-                                 padx=(self._button_padx, 0), pady=self._button_pady)
-        self._start_search_button.grid(row=0, column=1, sticky="news",
-                                        padx=(0, self._button_padx), pady=self._button_pady)
+        self._start_search_button.grid(row=0, column=1, sticky="news")
         self._start_search_button["state"] = "normal" if self._url_scrapper else "disabled"
 
         self._sf = ScrolledFrame(self, scrollbars="both")
-        self._sf.grid(row=1, column=0, columnspan=2)
+        self._sf.grid(row=1, column=0)
         self._sf.bind_scroll_wheel(self)
-        self._frame_params = kwargs.get("frame_params", {})
         self._inner_frame = self._sf.display_widget(partial(Frame, **self._frame_params))
 
         window_width_limit = kwargs.get("window_width_limit")
@@ -148,15 +153,27 @@ class ImageSearch(Toplevel):
             master.winfo_screenheight() * 2 // 3
 
         self._show_more_gen = self._show_more()
-        self._show_more_button = Button(master=self,
+        command_frame = Frame(self, **self._frame_params)
+        command_frame.columnconfigure(0, weight=1)
+        command_frame.columnconfigure(2, weight=1)
+        command_frame.grid(row=3, column=0, sticky="news")
+
+        self._show_more_button = Button(master=command_frame,
                                         text=self.lang_pack.image_search_show_more_button_text,
                                         command=lambda x=self._show_more_gen: next(x), **self._command_button_params)
-        self._save_button = Button(master=self,
+        self._show_more_button.grid(row=0, column=0, sticky="news")
+
+        from tkinter import Label
+        self.aaaaaa = Label(master=command_frame,
+                            text="",
+                            width=5)
+        self.aaaaaa.grid(row=0, column=1, sticky="ns")
+
+        self._save_button = Button(master=command_frame,
                                    text=self.lang_pack.image_search_save_button_text,
                                    command=lambda: self.destroy(),
                                    **self._command_button_params)
-        self._show_more_button.grid(row=3, column=0, sticky="news")
-        self._save_button.grid(row=3, column=1, sticky="news")
+        self._save_button.grid(row=0, column=2, sticky="news")
 
         self._on_closing_action = kwargs.get("on_closing_action")
 
@@ -325,6 +342,7 @@ class ImageSearch(Toplevel):
             self.working_state.append(False)
             self.button_list.append(b)
 
+        self.aaaaaa["bg"] = "green"
         self._inner_frame.update()
         self._resize_window()
 
@@ -389,11 +407,15 @@ class ImageSearch(Toplevel):
         self.update()
         self._show_more_button["state"] = "normal"
         while True:
+            self.aaaaaa["bg"] = "red"
+            self.aaaaaa.update()
             self._process_batch(self._n_images_per_cycle - len(self.working_state) % self._n_images_in_row)
             if self._scrapper_stop_flag and not len(self._img_urls):
                 break
             yield
         self._show_more_button["state"] = "disabled"
+        self.aaaaaa["bg"] = "red"
+        self.aaaaaa.update()
         yield
 
     def _process_single_image(self, img: Image.Image, img_src: str):

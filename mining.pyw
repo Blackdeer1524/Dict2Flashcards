@@ -1150,7 +1150,7 @@ n_sentences_per_batch:
             a.columnconfigure(i, weight=1)
 
         self.prev_button = self.Button(a,
-                                       text="🡰",
+                                       text="<",
                                        command=lambda x=-1: self.replace_decks_pointers(x),
                                        font=Font(weight="bold"),
                                        state="disabled")
@@ -1162,7 +1162,7 @@ n_sentences_per_batch:
         self.bury_button.grid(row=0, column=1, sticky="news")
 
         self.skip_button = self.Button(a,
-                                       text="🡲",
+                                       text=">",
                                        command=self.skip_command,
                                        font=Font(weight="bold"))
         self.skip_button.grid(row=0, column=2, sticky="news")
@@ -1925,12 +1925,12 @@ n_sentences_per_batch:
                 rotate_window = self.Toplevel(self)
                 rotate_window.title(f"{found_item_number}/{len(move_list) + 1}")
 
-                left = self.Button(rotate_window, text="🡰", command=lambda: rotate(-1),
+                left = self.Button(rotate_window, text="<", command=lambda: rotate(-1),
                                    font=Font(weight="bold"))
                 left["state"] = "disabled"
                 left.grid(row=0, column=0, sticky="we")
 
-                right = self.Button(rotate_window, text="🡲", command=lambda: rotate(1),
+                right = self.Button(rotate_window, text=">", command=lambda: rotate(1),
                                     font=Font(weight="bold"))
                 right.grid(row=0, column=2, sticky="we")
 

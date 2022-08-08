@@ -1815,7 +1815,7 @@ n_sentences_per_batch:
                                           additional_filter=additional_filter):
                 self.refresh()
                 return False
-            messagebox.showerror(title=self.card_generator.name,
+            messagebox.showerror(title=self.typed_word_parser_name,
                                  message=self.lang_pack.define_word_word_not_found_message)
         except ParsingException as e:
             messagebox.showerror(title=self.lang_pack.error_title,
@@ -2480,7 +2480,8 @@ n_sentences_per_batch:
                         sentence=sentence)
 
                 if error_message:
-                    messagebox.showerror(title=self.sentence_parser.name, message=error_message)
+                    messagebox.showerror(title=f"[{sentence_parser_type}] {self.sentence_parser.name}",
+                                         message=error_message)
 
         place_sentences_thread = Thread(target=schedule_sentence_fetcher)
         place_sentences_thread.start()

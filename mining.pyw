@@ -1271,6 +1271,10 @@ n_sentences_per_batch:
             self.after(AUTOSAVE_INTERVAL, autosave)
 
         self.after(AUTOSAVE_INTERVAL, autosave)
+
+        self.tried_to_display_audio_getters_on_refresh = False
+        self.already_waiting = False
+        self.last_refresh_call_time = 0
         self.refresh()
 
     def show_window(self, title: str, text: str) -> Toplevel:
@@ -1492,7 +1496,7 @@ n_sentences_per_batch:
                                                                  "0",
                                                                  self.dict_card_data)
 
-            temp_audio_path = os.path.join(TEMP_DIR, audio_name)
+            temp_audio_path = os.path.join(os.getcwd(), "temp", audio_name)
             if os.path.exists(temp_audio_path):
                 # you need to remove old file because Windows will raise permission denied error
                 os.remove(temp_audio_path)
@@ -2481,7 +2485,7 @@ n_sentences_per_batch:
         place_sentences_thread = Thread(target=schedule_sentence_fetcher)
         place_sentences_thread.start()
         wait_sentence_fetcher(place_sentences_thread)
-        
+
     @error_handler(show_exception_logs)
     def refresh(self) -> bool:
         @error_handler(self.show_exception_logs)
@@ -2495,14 +2499,18 @@ n_sentences_per_batch:
         self.dict_card_data = self.deck.get_card().to_dict()
         self.card_processor.process_card(self.dict_card_data)
 
-        self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
+        for child in self.sound_inner_frame.winfo_children():
+            child.destroy()
+        # self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
         self.sound_inner_frame.last_source = None
         self.sound_inner_frame.source_display_frame = None
 
         self.sentence_texts.clear()
-        self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
-        self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
-        self.text_widgets_frame.grid_columnconfigure(0, weight=1)
+        for child in self.text_widgets_frame.winfo_children():
+            child.destroy()
+        # self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
+        # self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
+        # self.text_widgets_frame.grid_columnconfigure(0, weight=1)
         self.text_widgets_frame.last_source = None
         self.text_widgets_frame.source_display_frame = None
 
@@ -2515,7 +2523,6 @@ n_sentences_per_batch:
         self.word_text.clear()
         if (word_data := self.dict_card_data.get(FIELDS.word, "")):
             self.word_text.insert(1.0, word_data)
-            self.display_audio_getter_results(show_errors=False)
 
         fill_additional_dict_data(self.dict_tags_field, Card.get_str_dict_tags(self.dict_card_data))
         fill_additional_dict_data(self.special_field, " ".join(self.dict_card_data.get(FIELDS.special, [])))
@@ -2529,10 +2536,6 @@ n_sentences_per_batch:
             parser_results = [(("", parser_types.WEB), ((audio_sources, additional_info), ""))]
             self.display_audio_on_frame(word=self.word, parser_results=parser_results, show_errors=False)
 
-        dict_sentences = self.dict_card_data.get(FIELDS.sentences, [""])
-        for sentence in dict_sentences:
-            self.add_sentence_field(source="", sentence=sentence)
-
         if not self.dict_card_data:
             # normal
             self.find_image_button["text"] = self.lang_pack.find_image_button_normal_text
@@ -2543,6 +2546,32 @@ n_sentences_per_batch:
                                              self.lang_pack.find_image_button_image_link_encountered_postfix
         else:
             self.find_image_button["text"] = self.lang_pack.find_image_button_normal_text
+
+        self.already_waiting = False
+        self.tried_to_display_audio_getters_on_refresh = False
+        self.last_refresh_call_time = time.time()
+
+        def display_audio_getters_results_on_refresh():
+            if self.tried_to_display_audio_getters_on_refresh:
+                return
+
+            if (time.time() - self.last_refresh_call_time) > 0.1:
+                self.display_audio_getter_results(show_errors=False)
+                self.tried_to_display_audio_getters_on_refresh = True
+                self.already_waiting = False
+            else:
+                if self.already_waiting:
+                    return
+
+                dict_sentences = self.dict_card_data.get(FIELDS.sentences, [""])
+                for sentence in dict_sentences:
+                    self.add_sentence_field(source="", sentence=sentence)
+
+                self.after(300, display_audio_getters_results_on_refresh)
+                self.already_waiting = True
+        
+        if word_data:
+            display_audio_getters_results_on_refresh()
         return True
     
     @error_handler(show_exception_logs)

@@ -1,3 +1,4 @@
+import os.path
 from dataclasses import dataclass
 from typing import Callable
 
@@ -15,6 +16,8 @@ from plugins_loading.interfaces import WebSentenceParserInterface
 from plugins_loading.interfaces import WebWordParserInterface
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator
+from plugins_loading.exceptions import LoaderError
+from consts.paths import LOCAL_MEDIA_DIR
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False)
@@ -329,9 +332,12 @@ class LocalWordParserContainer(_PluginContainer):
 
     def __init__(self, name: str, source_module: LocalWordParserInterface):
         super(LocalWordParserContainer, self).__init__(name)
+        if not os.path.exists(os.path.join(LOCAL_MEDIA_DIR, source_module.DICTIONARY_PATH + ".json")):
+            raise LoaderError(f"Local dictionary doesn't exists!")
+
+        object.__setattr__(self, "local_dict_name", source_module.DICTIONARY_PATH)
         object.__setattr__(self, "scheme_docs", source_module.SCHEME_DOCS)
         object.__setattr__(self, "config", source_module.config)
-        object.__setattr__(self, "local_dict_name", source_module.DICTIONARY_PATH)
         object.__setattr__(self, "translate", source_module.translate)
 
 

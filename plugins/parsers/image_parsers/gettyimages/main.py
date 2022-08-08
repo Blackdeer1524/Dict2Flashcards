@@ -7,7 +7,7 @@ import requests
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import ImageGenerator
 
-FILE_PATH = os.path.basename(__file__)
+PLUGIN_NAME = os.path.split(os.path.dirname(__file__))[-1]
 
 _CONF_VALIDATION_SCHEME = {
     "timeout": (1, [int, float], [])
@@ -34,12 +34,12 @@ def get_image_links(word: str) -> ImageGenerator:
         r = requests.get(link, headers=headers, timeout=config["timeout"])
         r.raise_for_status()
     except Exception:
-        return [], f"{FILE_PATH} couldn't get a web page!"
+        return [], f"[{PLUGIN_NAME}]: Couldn't get a web page!"
 
     soup = bs4.BeautifulSoup(r.content, "html.parser")
     gallery = soup.find("div", {"class": re.compile("GalleryItems-module__searchContent")})
     if gallery is None:
-        return [], f"{FILE_PATH} couldn't parse a web page!"
+        return [], f"[{PLUGIN_NAME}] Couldn't parse a web page!"
 
     images = [] if gallery is None else gallery.find_all("div",
                                                          {"class": re.compile("MosaicAsset-module__galleryMosaicAsset")})

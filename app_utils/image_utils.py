@@ -208,7 +208,7 @@ class ImageSearch(Toplevel):
                 self._scrapper_stop_flag = True
             self._img_urls.extend(url_batch)
             if error_message:
-                messagebox.showerror(error_message)
+                messagebox.showerror(message=error_message)
 
     def start(self):
         if SYSTEM == "Linux":

@@ -63,7 +63,7 @@ class PluginLoader(Generic[PluginContainer]):
                  module: ModuleType,
                  configurable: bool,
                  container_type: PluginContainer,
-                 error_callback: Callable[[Exception, str], None] = lambda *_: None):
+                 error_callback: Callable[[Exception, str, str], None] = lambda *_: None):
         if (module_name := module.__name__) in PluginLoader._already_initialized:
             raise LoaderError(f"{module_name} loader was created earlier!")
         PluginLoader._already_initialized.add(module_name)
@@ -75,8 +75,8 @@ class PluginLoader(Generic[PluginContainer]):
         for name, module in namespace_parsed_results.items():
             try:
                 _loaded_plugin_data[name] = container_type(name, module)
-            except AttributeError as e:
-                error_callback(e, name)
+            except Exception as e:
+                error_callback(e, plugin_type, name)
                 not_loaded.append(name)
         object.__setattr__(self, "_loaded_plugin_data", _loaded_plugin_data)
         object.__setattr__(self, "not_loaded", tuple(not_loaded))

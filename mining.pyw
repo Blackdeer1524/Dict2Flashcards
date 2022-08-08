@@ -1004,11 +1004,22 @@ n_sentences_per_batch:
             self.grid_columnconfigure(i, weight=1)
         self.grid_rowconfigure(9, weight=1)
 
-        self.browse_button = self.Button(self,
+        additional_search_frame = self.Frame(self)
+        additional_search_frame.grid_propagate(False)
+        additional_search_frame.columnconfigure(0, weight=1)
+        additional_search_frame.columnconfigure(1, weight=1)
+        additional_search_frame.grid(row=0, column=0, sticky="news", columnspan=3,
+                                padx=(self.text_padx, 0), pady=(self.text_pady, 0))
+
+        self.anki_button = self.Button(additional_search_frame,
+                                       text=self.lang_pack.anki_button_text,
+                                       command=self.open_anki_browser)
+        self.anki_button.grid(row=0, column=0, sticky="news")
+
+        self.browse_button = self.Button(additional_search_frame,
                                          text=self.lang_pack.browse_button_text,
                                          command=self.web_search_command)
-        self.browse_button.grid(row=0, column=0, sticky="news", columnspan=3,
-                                padx=(self.text_padx, 0), pady=(self.text_pady, 0))
+        self.browse_button.grid(row=0, column=1, sticky="news")
 
         self.word_parser_option_menu = self.get_option_menu(
             self,
@@ -1197,10 +1208,6 @@ n_sentences_per_batch:
         self.text_widgets_frame.source_display_frame = None
 
         # ======
-        self.anki_button = self.Button(self,
-                                       text=self.lang_pack.anki_button_text,
-                                       command=self.open_anki_browser)
-        # self.anki_button.grid(row=9, column=7, padx=self.text_padx, pady=self.text_pady, sticky="ns")
 
         self.user_tags_field = self.Entry(self, placeholder=self.lang_pack.user_tags_field_placeholder)
         self.user_tags_field.fill_placeholder()

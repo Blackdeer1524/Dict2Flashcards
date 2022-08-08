@@ -1122,6 +1122,7 @@ n_sentences_per_batch:
                                    padx=self.text_padx, pady=(0, self.text_pady))
 
         self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
+        self.sound_sf.bind_scroll_wheel(self.sound_inner_frame)
         self.sound_inner_frame.last_source = None
         self.sound_inner_frame.source_display_frame = None
 
@@ -1191,7 +1192,7 @@ n_sentences_per_batch:
 
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
-        self.text_widgets_frame.grid_columnconfigure(0, weight=1)
+        # self.text_widgets_frame.grid_columnconfigure(0, weight=1)
         self.text_widgets_frame.last_source = None
         self.text_widgets_frame.source_display_frame = None
 
@@ -2500,17 +2501,16 @@ n_sentences_per_batch:
         self.dict_card_data = self.deck.get_card().to_dict()
         self.card_processor.process_card(self.dict_card_data)
 
-        for child in self.sound_inner_frame.winfo_children():
-            child.destroy()
-        # self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
+        self.sound_inner_frame.destroy()
+        self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
+        self.sound_sf.bind_scroll_wheel(self.sound_inner_frame)
         self.sound_inner_frame.last_source = None
         self.sound_inner_frame.source_display_frame = None
 
         self.sentence_texts.clear()
-        for child in self.text_widgets_frame.winfo_children():
-            child.destroy()
-        # self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
-        # self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
+        self.text_widgets_frame.destroy()
+        self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
+        self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
         # self.text_widgets_frame.grid_columnconfigure(0, weight=1)
         self.text_widgets_frame.last_source = None
         self.text_widgets_frame.source_display_frame = None
@@ -2524,6 +2524,10 @@ n_sentences_per_batch:
         self.word_text.clear()
         if (word_data := self.dict_card_data.get(FIELDS.word, "")):
             self.word_text.insert(1.0, word_data)
+
+        dict_sentences = self.dict_card_data.get(FIELDS.sentences, [""])
+        for sentence in dict_sentences:
+            self.add_sentence_field(source="", sentence=sentence)
 
         fill_additional_dict_data(self.dict_tags_field, Card.get_str_dict_tags(self.dict_card_data))
         fill_additional_dict_data(self.special_field, " ".join(self.dict_card_data.get(FIELDS.special, [])))
@@ -2563,10 +2567,6 @@ n_sentences_per_batch:
             else:
                 if self.already_waiting:
                     return
-
-                dict_sentences = self.dict_card_data.get(FIELDS.sentences, [""])
-                for sentence in dict_sentences:
-                    self.add_sentence_field(source="", sentence=sentence)
 
                 self.after(300, display_audio_getters_results_on_refresh)
                 self.already_waiting = True

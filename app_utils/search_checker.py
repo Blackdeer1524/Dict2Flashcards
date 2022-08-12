@@ -719,7 +719,7 @@ class EvaluationTree:
             logic_start = start_index
             while logic_start < len(self._expressions) - 2:
                 operator = self._expressions[logic_start]
-                if not isinstance(operator, Token):
+                if not isinstance(operator, Token):  # Can be of "Method" type
                     logic_start += 1
                     continue
 
@@ -741,11 +741,12 @@ class EvaluationTree:
                     logic_start += 1
                     continue
 
-                operand = self._expressions[logic_start + 1]
-                if isinstance(operand, Token) and operator.t_type == Token_T.END:
-                    break
-
                 self._expressions.pop(logic_start)
+                if self._expressions[logic_start].type == Token_T.L_PARENTHESIS:
+                    build_logic(logic_start)
+                else:
+                    build_expression(logic_start)  # guaranteed that STRING
+
                 operand = self._expressions.pop(logic_start)
                 self._expressions.insert(logic_start, EvalNode(left=operand, operator=operator.value))
 
@@ -764,6 +765,7 @@ class EvaluationTree:
                                                                        operator=operator.value))
                     else:
                         logic_start += 2
+
             if self._expressions[start_index + 1].t_type == Token_T.R_PARENTHESIS:
                 self._expressions.pop(start_index + 1)
 

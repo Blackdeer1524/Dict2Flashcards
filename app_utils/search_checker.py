@@ -742,7 +742,7 @@ class EvaluationTree:
                     continue
 
                 self._expressions.pop(logic_start)
-                if self._expressions[logic_start].type == Token_T.L_PARENTHESIS:
+                if self._expressions[logic_start].t_type == Token_T.L_PARENTHESIS:
                     build_logic(logic_start)
                 else:
                     build_expression(logic_start)  # guaranteed that STRING

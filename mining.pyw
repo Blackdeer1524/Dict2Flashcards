@@ -1809,7 +1809,7 @@ n_sentences_per_batch:
     @error_handler(show_exception_logs)
     def define_word(self, word_query: str, additional_query: str) -> bool:
         try:
-            exact_pattern = re.compile(r"\b{}\b".format(word_query), re.IGNORECASE)
+            exact_pattern = re.compile(r"\b{}\b".format(word_query.strip()), re.IGNORECASE)
         except re.error:
             messagebox.showerror(title=self.lang_pack.error_title,
                                  message=self.lang_pack.define_word_wrong_regex_message)

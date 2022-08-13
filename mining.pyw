@@ -1923,7 +1923,7 @@ n_sentences_per_batch:
 
                 found_item_number = 1
                 rotate_window = self.Toplevel(self)
-                rotate_window.title()
+                rotate_window.title("")
                 rotate_window.columnconfigure(0, weight=1)
 
                 current_rotation_index_label = self.Label(rotate_window,

@@ -24,6 +24,7 @@ from tkinter.ttk import Treeview
 from typing import Callable
 
 from playsound import playsound
+from setuptools.command.rotate import rotate
 from tkinterdnd2 import Tk
 
 from app_utils.audio_utils import AudioDownloader
@@ -1902,11 +1903,10 @@ n_sentences_per_batch:
             if (move_list := self.deck.find_card(searching_func=searching_filter)):
                 @error_handler(self.show_exception_logs)
                 def rotate(n: int):
-                    nonlocal move_list, found_item_number
+                    nonlocal move_list, found_item_number, current_rotation_index_label
 
                     found_item_number += n
-                    rotate_window.title(f"{found_item_number}/{len(move_list) + 1}")
-
+                    current_rotation_index_label["text"] = f"{found_item_number}/{len(move_list) + 1}"
                     if n > 0:
                         current_offset = move_list.get_pointed_item()
                         move_list.move(n)
@@ -1923,18 +1923,27 @@ n_sentences_per_batch:
 
                 found_item_number = 1
                 rotate_window = self.Toplevel(self)
-                rotate_window.title(f"{found_item_number}/{len(move_list) + 1}")
+                rotate_window.title()
+                rotate_window.columnconfigure(0, weight=1)
 
-                left = self.Button(rotate_window, text="<", command=lambda: rotate(-1),
+                current_rotation_index_label = self.Label(rotate_window,
+                                                          text=f"{found_item_number}/{len(move_list) + 1}")
+                current_rotation_index_label.grid(row=0, column=0, sticky="news")
+
+                rotation_buttons_frame = self.Frame(rotate_window)
+                rotation_buttons_frame.grid(row=1, column=0)
+                rotation_buttons_frame.columnconfigure(1, weight=1)
+
+                left = self.Button(rotation_buttons_frame, text="<", command=lambda: rotate(-1),
                                    font=Font(weight="bold"))
                 left["state"] = "disabled"
                 left.grid(row=0, column=0, sticky="we")
 
-                right = self.Button(rotate_window, text=">", command=lambda: rotate(1),
+                right = self.Button(rotation_buttons_frame, text=">", command=lambda: rotate(1),
                                     font=Font(weight="bold"))
                 right.grid(row=0, column=2, sticky="we")
 
-                end_rotation_button = self.Button(rotate_window,
+                end_rotation_button = self.Button(rotation_buttons_frame,
                                                text=self.lang_pack.find_dialog_end_rotation_button_text,
                                                command=lambda: rotate_window.destroy())
                 end_rotation_button.grid(row=0, column=1, sticky="we")

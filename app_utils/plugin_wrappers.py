@@ -19,12 +19,11 @@ class ExternalDataFetcherWrapper(Generic[GeneratorYieldType]):
         self._data_generator: ExternalDataGenerator = self._get_data_generator()
         next(self._data_generator)
 
-    def _update(self, word: str, card_data: dict):
-        if self._word != word or self._card_data != card_data:
-            self._word = word
-            self._card_data = card_data
-            self._start()
-            self._update_status = True
+    def force_update(self, word: str, card_data: dict):
+        self._word = word
+        self._card_data = card_data
+        self._start()
+        self._update_status = True
 
     def _get_data_generator(self) -> ExternalDataGenerator:
         """
@@ -50,7 +49,9 @@ class ExternalDataFetcherWrapper(Generic[GeneratorYieldType]):
                 return
 
     def get(self, word: str, card_data:dict, batch_size: int) -> Optional[GeneratorYieldType]:
-        self._update(word=word, card_data=card_data)
+        if self._word != word or self._card_data != card_data:
+            self.force_update(word, card_data)
+
         try:
             return self._data_generator.send(batch_size)
         except StopIteration:

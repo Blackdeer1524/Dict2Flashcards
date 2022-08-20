@@ -24,7 +24,6 @@ from tkinter.ttk import Treeview
 from typing import Callable
 
 from playsound import playsound
-from setuptools.command.rotate import rotate
 from tkinterdnd2 import Tk
 
 from app_utils.audio_utils import AudioDownloader
@@ -2316,6 +2315,8 @@ n_sentences_per_batch:
                                        add_type_prefix=False)
 
             if self.audio_getter is not None and (audio_autochoose_mode == "all" or not web_audios and audio_autochoose_mode in ("first_available_audio", "first_available_audio_source")):
+                self.external_audio_generator.force_update(word, self.dict_card_data)
+
                 if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
                     audio_data_pack = \
                         self.external_audio_generator.get(word=word,
@@ -2506,14 +2507,8 @@ n_sentences_per_batch:
 
     @error_handler(show_exception_logs)
     def refresh(self) -> bool:
-        @error_handler(self.show_exception_logs)
-        def fill_additional_dict_data(widget: Text, text: str):
-            widget["state"] = "normal"
-            widget.clear()
-            widget.insert(1.0, text)
-            widget["state"] = "disabled"
+        self.last_refresh_call_time = time.time()
 
-        self.sentence_buffer = []
         self.dict_card_data = self.deck.get_card().to_dict()
         self.card_processor.process_card(self.dict_card_data)
 
@@ -2541,9 +2536,17 @@ n_sentences_per_batch:
         if (word_data := self.dict_card_data.get(FIELDS.word, "")):
             self.word_text.insert(1.0, word_data)
 
+        self.external_sentence_fetcher.force_update(word_data, self.dict_card_data)
         dict_sentences = self.dict_card_data.get(FIELDS.sentences, [""])
         for sentence in dict_sentences:
             self.add_sentence_field(source="", sentence=sentence)
+
+        @error_handler(self.show_exception_logs)
+        def fill_additional_dict_data(widget: Text, text: str):
+            widget["state"] = "normal"
+            widget.clear()
+            widget.insert(1.0, text)
+            widget["state"] = "disabled"
 
         fill_additional_dict_data(self.dict_tags_field, Card.get_str_dict_tags(self.dict_card_data))
         fill_additional_dict_data(self.special_field, " ".join(self.dict_card_data.get(FIELDS.special, [])))
@@ -2570,7 +2573,6 @@ n_sentences_per_batch:
 
         self.already_waiting = False
         self.tried_to_display_audio_getters_on_refresh = False
-        self.last_refresh_call_time = time.time()
 
         def display_audio_getters_results_on_refresh():
             if self.tried_to_display_audio_getters_on_refresh:
@@ -2588,6 +2590,7 @@ n_sentences_per_batch:
                 self.already_waiting = True
         
         if word_data:
+            self.external_audio_generator.force_update(word_data, self.dict_card_data)
             display_audio_getters_results_on_refresh()
         return True
     

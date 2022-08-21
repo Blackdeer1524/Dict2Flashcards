@@ -1,18 +1,23 @@
-from typing import Callable, Any, Generator, TypeVar, Generic, Optional
+from typing import Callable, Generator, TypeVar, Generic, Optional
+from plugins_management.config_management import LoadableConfig
+from dataclasses import dataclass, field
 
 
 GeneratorYieldType = TypeVar("GeneratorYieldType")
 ExternalDataGenerator = Generator[GeneratorYieldType, int, GeneratorYieldType]
 
 
+@dataclass(slots=True)
 class ExternalDataGeneratorWrapper(Generic[GeneratorYieldType]):
-    def __init__(self,
-                 data_fetcher: Callable[[str, dict], ExternalDataGenerator]):
-        self._word: str = ""
-        self._card_data: dict = {}
-        self._sentences: list[str] = []
-        self._data_fetcher: Callable[[str, dict], Any] = data_fetcher
-        self._update_status: bool = False
+    name: str
+    config: LoadableConfig
+    data_fetcher: Callable[[str, dict], ExternalDataGenerator]
+
+    _word: str = field(init=False, default="")
+    _card_data: dict = field(init=False, default_factory=dict)
+    _update_status: bool = field(init=False, default=False)
+
+    def __post_init__(self):
         self._start()
 
     def _start(self):
@@ -22,8 +27,8 @@ class ExternalDataGeneratorWrapper(Generic[GeneratorYieldType]):
     def force_update(self, word: str, card_data: dict):
         self._word = word
         self._card_data = card_data
-        self._start()
         self._update_status = True
+        self._start()
 
     def _get_data_generator(self) -> ExternalDataGenerator:
         """
@@ -31,7 +36,7 @@ class ExternalDataGeneratorWrapper(Generic[GeneratorYieldType]):
         """
         batch_size = yield
 
-        data_generator = self._data_fetcher(self._word, self._card_data)
+        data_generator = self.data_fetcher(self._word, self._card_data)
         try:
             next(data_generator)
         except StopIteration as e:

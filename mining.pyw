@@ -1361,7 +1361,7 @@ n_sentences_per_batch:
                 "timeout":             (1, [int, float], []),
                 "show_image_width":    (250, [int, type(None)], []),
                 "show_image_height":   (None, [int, type(None)], []),
-                "n_images_in_row":     (2, [int], []),
+                "n_images_in_row":     (3, [int], []),
                 "n_rows":              (2, [int], [])
             },
             "extern_sentence_placer": {

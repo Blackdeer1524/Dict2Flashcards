@@ -2601,7 +2601,7 @@ n_sentences_per_batch:
                 self.after(300, display_audio_getters_results_on_refresh)
                 self.already_waiting = True
         
-        if word_data:
+        if self.external_audio_generator is not None and word_data:
             self.external_audio_generator.force_update(word_data, self.dict_card_data)
             display_audio_getters_results_on_refresh()
         return True

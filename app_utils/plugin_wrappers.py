@@ -9,19 +9,18 @@ ExternalDataGenerator = Generator[GeneratorYieldType, int, GeneratorYieldType]
 
 @dataclass(slots=True)
 class ExternalDataGeneratorWrapper(Generic[GeneratorYieldType]):
-    name: str
-    config: LoadableConfig
     data_fetcher: Callable[[str, dict], ExternalDataGenerator]
 
     _word: str = field(init=False, default="")
     _card_data: dict = field(init=False, default_factory=dict)
     _update_status: bool = field(init=False, default=False)
+    _data_generator: ExternalDataGenerator = field(init=False)
 
     def __post_init__(self):
         self._start()
 
     def _start(self):
-        self._data_generator: ExternalDataGenerator = self._get_data_generator()
+        self._data_generator = self._get_data_generator()
         next(self._data_generator)
 
     def force_update(self, word: str, card_data: dict):

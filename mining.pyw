@@ -29,7 +29,7 @@ from tkinterdnd2 import Tk
 from app_utils.audio_utils import AudioDownloader
 from app_utils.cards import Card, Deck, SavedDataDeck, CardStatus
 from app_utils.chaining_adapters import ImageParsersChain, CardGeneratorsChain, SentenceParsersChain, AudioGettersChain
-from app_utils.plugin_wrappers import ExternalDataFetcherWrapper
+from app_utils.plugin_wrappers import ExternalDataGeneratorWrapper
 from app_utils.error_handling import create_exception_message, error_handler
 from app_utils.global_bindings import Binder
 from app_utils.image_utils import ImageSearch
@@ -136,7 +136,7 @@ class App(Tk):
                 name=self.configurations["scrappers"]["sentence"]["name"],
                 chain_data=self.chaining_data["sentence_parsers"][self.configurations["scrappers"]["sentence"]["name"]])
 
-        self.external_sentence_fetcher = ExternalDataFetcherWrapper(data_fetcher=self.sentence_parser.get_sentences)
+        self.external_sentence_fetcher = ExternalDataGeneratorWrapper(data_fetcher=self.sentence_parser.get_sentences)
 
         if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
             self.image_parser = loaded_plugins.get_image_parser(self.configurations["scrappers"]["image"]["name"])
@@ -148,14 +148,14 @@ class App(Tk):
         if (audio_getter_name := self.configurations["scrappers"]["audio"]["name"]):
             if self.configurations["scrappers"]["audio"]["type"] == parser_types.LOCAL:
                 self.audio_getter = loaded_plugins.get_local_audio_getter(audio_getter_name)
-                self.external_audio_generator = ExternalDataFetcherWrapper(data_fetcher=self.audio_getter.get_audios)
+                self.external_audio_generator = ExternalDataGeneratorWrapper(data_fetcher=self.audio_getter.get_audios)
             elif self.configurations["scrappers"]["audio"]["type"] == parser_types.WEB:
                 self.audio_getter = loaded_plugins.get_web_audio_getter(audio_getter_name)
-                self.external_audio_generator = ExternalDataFetcherWrapper(data_fetcher=self.audio_getter.get_audios)
+                self.external_audio_generator = ExternalDataGeneratorWrapper(data_fetcher=self.audio_getter.get_audios)
             elif self.configurations["scrappers"]["audio"]["type"] == parser_types.CHAIN:
                 self.audio_getter = AudioGettersChain(name=audio_getter_name,
                                                       chain_data=self.chaining_data["audio_getters"][audio_getter_name])
-                self.external_audio_generator = ExternalDataFetcherWrapper(data_fetcher=self.audio_getter.get_audios)
+                self.external_audio_generator = ExternalDataGeneratorWrapper(data_fetcher=self.audio_getter.get_audios)
             else:
                 self.configurations["scrappers"]["audio"]["type"] = "default"
                 self.configurations["scrappers"]["audio"]["name"] = ""
@@ -944,7 +944,7 @@ n_sentences_per_batch:
                                     self.audio_getter = AudioGettersChain(
                                         name=new_chain_name,
                                         chain_data=chosen_chain_config)
-                                    self.external_audio_generator = ExternalDataFetcherWrapper(
+                                    self.external_audio_generator = ExternalDataGeneratorWrapper(
                                         data_fetcher=self.audio_getter.get_audios)
                                     self.audio_getter.config["get_all"] = old_get_all_val
                                     self.audio_getter.config["error_verbosity"] = old_error_verbosity_val
@@ -2205,7 +2205,7 @@ n_sentences_per_batch:
         else:
             raise NotImplementedError(f"Audio getter with unknown type: {typed_getter}")
 
-        self.external_audio_generator = ExternalDataFetcherWrapper(data_fetcher=self.audio_getter.get_audios)
+        self.external_audio_generator = ExternalDataGeneratorWrapper(data_fetcher=self.audio_getter.get_audios)
         self.configurations["scrappers"]["audio"]["name"] = raw_name
         self.fetch_audio_data_button["state"] = "normal"
 
@@ -2243,7 +2243,7 @@ n_sentences_per_batch:
         else:
             self.configurations["scrappers"]["sentence"]["type"] = parser_types.WEB
             self.sentence_parser = loaded_plugins.get_sentence_parser(given_sentence_parser_name)
-        self.external_sentence_fetcher = ExternalDataFetcherWrapper(data_fetcher=self.sentence_parser.get_sentences)
+        self.external_sentence_fetcher = ExternalDataGeneratorWrapper(data_fetcher=self.sentence_parser.get_sentences)
         self.configurations["scrappers"]["sentence"]["name"] = given_sentence_parser_name
 
     @error_handler(show_exception_logs)
@@ -2308,40 +2308,44 @@ n_sentences_per_batch:
                 raise NotImplementedError(f"Unknown audio autochoose mode: {audio_autochoose_mode}")
 
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-            if (web_audios := self.dict_card_data.get(FIELDS.audio_links, [])):
+            if (dictionary_audio_links := self.dict_card_data.get(FIELDS.audio_links, [])):
                 add_audio_data_to_card(getter_name=self.typed_word_parser_name,
                                        getter_type=parser_types.WEB,
-                                       audio_links=web_audios[:choosing_slice],
+                                       audio_links=dictionary_audio_links[:choosing_slice],
                                        add_type_prefix=False)
 
-            if self.audio_getter is not None and (audio_autochoose_mode == "all" or not web_audios and audio_autochoose_mode in ("first_available_audio", "first_available_audio_source")):
+            if self.audio_getter is not None and \
+                    (audio_autochoose_mode == "all" or
+                     not dictionary_audio_links and
+                     audio_autochoose_mode in ("first_available_audio", "first_available_audio_source")):
+
                 self.external_audio_generator.force_update(word, self.dict_card_data)
+                audio_data_pack = self.external_audio_generator.get(word=word,
+                                                                    card_data=self.dict_card_data,
+                                                                    batch_size=choosing_slice)
 
                 if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
-                    audio_data_pack = \
-                        self.external_audio_generator.get(word=word,
-                                                          card_data=self.dict_card_data,
-                                                          batch_size=choosing_slice)
                     if audio_data_pack is not None:
                         ((audio_links, additional_info), error_message) = audio_data_pack
-                        add_audio_data_to_card(getter_name=self.audio_getter.name,
+                        add_audio_data_to_card(getter_name=f"extern_{self.audio_getter.name}",
                                                getter_type=audio_getter_type,
                                                audio_links=audio_links,
                                                add_type_prefix=True)
                 elif audio_getter_type == parser_types.CHAIN:
-                    audio_data_pack = self.external_audio_generator.get(word=word,
-                                                                        card_data=self.dict_card_data,
-                                                                        batch_size=choosing_slice)
                     if audio_data_pack is not None:
                         audio_gen = (i for i in audio_data_pack)
+
                         if audio_autochoose_mode in ("first_available_audio", "first_available_audio_source"):
-                            ((getter_name, getter_type), ((audio_links, additional_info), error_message)) = next(audio_gen)
-                            add_audio_data_to_card(
-                                getter_name=f"extern_{getter_name}",
-                                getter_type=getter_type,
-                                audio_links=audio_links[:choosing_slice],
-                                add_type_prefix=False
-                            )
+                            try:
+                                ((getter_name, getter_type), ((audio_links, additional_info), error_message)) = next(audio_gen)
+                                add_audio_data_to_card(
+                                    getter_name=f"extern_{getter_name}",
+                                    getter_type=getter_type,
+                                    audio_links=audio_links[:choosing_slice],
+                                    add_type_prefix=False
+                                )
+                            except StopIteration:
+                                pass
                         elif audio_autochoose_mode == "all":
                             for ((getter_name, getter_type), ((audio_links, additional_info), error_message)) in audio_gen:
                                 add_audio_data_to_card(

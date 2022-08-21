@@ -5,7 +5,7 @@ GeneratorYieldType = TypeVar("GeneratorYieldType")
 ExternalDataGenerator = Generator[GeneratorYieldType, int, GeneratorYieldType]
 
 
-class ExternalDataFetcherWrapper(Generic[GeneratorYieldType]):
+class ExternalDataGeneratorWrapper(Generic[GeneratorYieldType]):
     def __init__(self,
                  data_fetcher: Callable[[str, dict], ExternalDataGenerator]):
         self._word: str = ""

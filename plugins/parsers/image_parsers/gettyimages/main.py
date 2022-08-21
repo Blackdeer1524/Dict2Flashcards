@@ -25,7 +25,7 @@ config = LoadableConfig(config_location=os.path.dirname(__file__),
                         docs=_CONF_DOCS)
 
 
-def get_image_links(word: str) -> ImageGenerator:
+def get(word: str) -> ImageGenerator:
     user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " \
                  "Chrome/70.0.3538.67 Safari/537.36"
     headers = {'User-Agent': user_agent}
@@ -63,7 +63,7 @@ def get_image_links(word: str) -> ImageGenerator:
 if __name__ == "__main__":
     from pprint import pprint
 
-    image_url_gen = get_image_links("do")
+    image_url_gen = get("do")
     try:
         next(image_url_gen)
         while True:

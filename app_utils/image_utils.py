@@ -461,7 +461,7 @@ class ImageSearch(Toplevel):
 
 if __name__ == "__main__":
     from tkinterdnd2 import Tk
-    from plugins.parsers.image_parsers.google.main import get_image_links
+    from plugins.parsers.image_parsers.google.main import get
     from pprint import pprint
     from plugins_loading.factory import loaded_plugins
 
@@ -474,7 +474,7 @@ if __name__ == "__main__":
 
     test_urls = ["https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png"]
 
-    # def get_image_links(search_term: None) -> list:
+    # def get(search_term: None) -> list:
     #     return ["https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png"]
 
     root = Tk()
@@ -496,6 +496,6 @@ if __name__ == "__main__":
 
     root.after(0, start_image_search("test", root,
                                      local_images=["/home/blackdeer/Desktop/conv_2.png"],
-                                     url_scrapper=get_image_links, show_image_width=300,
+                                     url_scrapper=get, show_image_width=300,
                                      on_closing_action=get_chosen_urls, timeout=0.2, max_request_tries=5))
     root.mainloop()

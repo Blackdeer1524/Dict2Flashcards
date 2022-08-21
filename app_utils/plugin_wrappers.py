@@ -1,5 +1,5 @@
-from typing import Callable, Generator, TypeVar, Generic, Optional
-from plugins_management.config_management import LoadableConfig
+from typing import Generator, TypeVar, Generic, Optional, Protocol
+from plugins_management.config_management import Config
 from dataclasses import dataclass, field
 
 
@@ -9,7 +9,14 @@ ExternalDataGenerator = Generator[GeneratorYieldType, int, GeneratorYieldType]
 
 @dataclass(slots=True)
 class ExternalDataGeneratorWrapper(Generic[GeneratorYieldType]):
-    data_fetcher: Callable[[str, dict], ExternalDataGenerator]
+    class DataGeneratorProtocol(Protocol):
+        name: str
+        config: Config
+
+        def get(self, word: str, card_data: dict) -> ExternalDataGenerator:
+            ...
+
+    data_generator: DataGeneratorProtocol
 
     _word: str = field(init=False, default="")
     _card_data: dict = field(init=False, default_factory=dict)
@@ -35,7 +42,7 @@ class ExternalDataGeneratorWrapper(Generic[GeneratorYieldType]):
         """
         batch_size = yield
 
-        data_generator = self.data_fetcher(self._word, self._card_data)
+        data_generator = self.data_generator.get(self._word, self._card_data)
         try:
             next(data_generator)
         except StopIteration as e:

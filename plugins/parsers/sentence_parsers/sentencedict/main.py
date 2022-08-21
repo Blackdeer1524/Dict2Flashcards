@@ -25,7 +25,7 @@ config = LoadableConfig(config_location=os.path.dirname(__file__),
                         docs=_CONF_DOCS)
 
 
-def get_sentences(word: str, card_data: dict) -> SentenceGenerator:
+def get(word: str, card_data: dict) -> SentenceGenerator:
     re_pattern = re.compile("^(.?\d+.? )")
 
     try:

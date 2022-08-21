@@ -164,14 +164,14 @@ To register a local dictionary, create a python file inside **./plugins/parsers/
 
 ### [Sentence parsers](#parsers)
 To create a sentence parser, create a python file inside **./plugins/parsers/sentence_parsers/** with the following protocol:
-  * get_sentences(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
+  * get(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
   sentences are needed. This function has to have 2 stages
     * initialization on first next() call
     * current step batch size initialization on \<gen>.send(batch_size) that returns sentence batch of \<batch_size>
 
 ### [Image parsers](#parsers)
 To create an image parser, create a python file inside **./plugins/parsers/image_parsers/** with the following protocol:
-  * get_image_links(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
+  * get(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
   images are needed. This function has to have 2 stages
     * initialization on first next() call
     * current step batch size initialization on <gen>.send(batch_size) that returns image links batch of \<batch_size>
@@ -179,14 +179,14 @@ To create an image parser, create a python file inside **./plugins/parsers/image
 ### [Audio getters](#parsers)
 #### [Web](#audio-getters)
 To register web audio getter, create a python file inside **./plugins/parsers/audio_getters/web/** with the following protocol:
-  * get_audios(word: str, card_data: dict) -> tuple\[tuple\[list\[str], list\[str]], str] function that takes 
+  * get(word: str, card_data: dict) -> tuple\[tuple\[list\[str], list\[str]], str] function that takes 
   word for which audio is needed and current card data for the additional info and returns a list of urls, list of associated to each url information,
   and error message.
 
 #### [Local](#audio-getters)
 To register folder with audio files, create a python file inside **./plugins/parsers/audio_getters/local/** with the following protocol:
   * AUDIO_FOLDER: str - relative path to the folder with audio files that is located inside ./media folder
-  * get_audios(word: str, card_data: dict) -> tuple\[tuple\[list\[str], list\[str]], str] function that takes 
+  * get(word: str, card_data: dict) -> tuple\[tuple\[list\[str], list\[str]], str] function that takes 
   word for which audio is needed and current card data for the additional info and returns a list of paths, list of associated to each path information,
   and error message.
 

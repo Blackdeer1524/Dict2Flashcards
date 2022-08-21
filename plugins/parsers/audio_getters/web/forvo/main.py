@@ -38,7 +38,7 @@ REMOVE_SPACES_PATTERN = re.compile(r"\s+", re.MULTILINE)
 def remove_spaces(string: str) -> str:
     return re.sub(REMOVE_SPACES_PATTERN, " ", string.strip())
 
-def get_audios(word: str, card_data: dict) -> AudioGenerator:
+def get(word: str, card_data: dict) -> AudioGenerator:
     global CACHED_RESULT
 
     word_with_lang_code = "{} {}".format(word, config["language_code"])

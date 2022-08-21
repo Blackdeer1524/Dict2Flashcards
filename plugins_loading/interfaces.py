@@ -238,7 +238,7 @@ class WebSentenceParserInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def get_sentences(word: str) -> SentenceGenerator:
+    def get(word: str, card_data: dict) -> SentenceGenerator:
         ...
 
 
@@ -246,7 +246,24 @@ class ImageParserInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def get_image_links(word: str) -> ImageGenerator:
+    def get(word: str) -> ImageGenerator:
+        ...
+
+
+class LocalAudioGetterInterface(Protocol):
+    config: LoadableConfig
+    AUDIO_FOLDER: str
+
+    @staticmethod
+    def get(word: str, card_data: dict) -> AudioGenerator:
+        ...
+
+
+class WebAudioGetterInterface(Protocol):
+    config: LoadableConfig
+
+    @staticmethod
+    def get(word: str, card_data: dict) -> AudioGenerator:
         ...
 
 
@@ -285,22 +302,4 @@ class DeckSavingFormatInterface(Protocol):
              saving_path: str,
              image_names_wrapper: Callable[[str], str],
              audio_names_wrapper: Callable[[str], str]):
-        ...
-
-
-class LocalAudioGetterInterface(Protocol):
-    config: LoadableConfig
-    AUDIO_FOLDER: str
-
-    @staticmethod
-    def get_audios(word: str, card_data: dict) -> AudioGenerator:
-        ...
-
-
-class WebAudioGetterInterface(Protocol):
-    config: LoadableConfig
-
-    @staticmethod
-    def get_audios(word: str, card_data: dict) -> AudioGenerator:
-        """returns ((<audio urls>, <additional information>), <error_message>)"""
         ...

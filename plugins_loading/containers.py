@@ -343,22 +343,22 @@ class LocalWordParserContainer(_PluginContainer):
 
 class WebSentenceParserContainer(_PluginContainer):
     config: LoadableConfig
-    get_sentences: Callable[[str], SentenceGenerator]
+    get: Callable[[str], SentenceGenerator]
 
     def __init__(self, name: str, source_module: WebSentenceParserInterface):
         super(WebSentenceParserContainer, self).__init__(name)
         object.__setattr__(self, "config", source_module.config)
-        object.__setattr__(self, "get_sentences", source_module.get_sentences)
+        object.__setattr__(self, "get", source_module.get)
 
 
 class ImageParserContainer(_PluginContainer):
     config: LoadableConfig
-    get_image_links: Callable[[str], ImageGenerator]
+    get: Callable[[str], ImageGenerator]
 
     def __init__(self, name: str, source_module: ImageParserInterface):
         super(ImageParserContainer, self).__init__(name)
         object.__setattr__(self, "config", source_module.config)
-        object.__setattr__(self, "get_image_links", source_module.get_image_links)
+        object.__setattr__(self, "get", source_module.get)
 
 
 class CardProcessorContainer(_PluginContainer):
@@ -387,19 +387,19 @@ class DeckSavingFormatContainer(_PluginContainer):
 
 class LocalAudioGetterContainer(_PluginContainer):
     config: LoadableConfig
-    get_audios: Callable[[str, dict], AudioGenerator]
+    get: Callable[[str, dict], AudioGenerator]
 
     def __init__(self, name: str, source_module: LocalAudioGetterInterface):
         super(LocalAudioGetterContainer, self).__init__(name)
         object.__setattr__(self, "config", source_module.config)
-        object.__setattr__(self, "get_audios", source_module.get_audios)
+        object.__setattr__(self, "get", source_module.get)
 
 
 class WebAudioGetterContainer(_PluginContainer):
     config: LoadableConfig
-    get_audios: Callable[[str, dict], AudioGenerator]
+    get: Callable[[str, dict], AudioGenerator]
 
     def __init__(self, name: str, source_module: WebAudioGetterInterface):
         super(WebAudioGetterContainer, self).__init__(name)
         object.__setattr__(self, "config", source_module.config)
-        object.__setattr__(self, "get_audios", source_module.get_audios)
+        object.__setattr__(self, "get", source_module.get)

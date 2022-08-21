@@ -32,7 +32,7 @@ _LETTERS = frozenset("abcdefghijklmnopqrstuvwxyz")
 _AUDIO_NAME_SPEC_CHARS = '/\\:*?\"<>| '
 
 
-def get_audios(word, card_data: dict) -> AudioData:
+def get(word, card_data: dict) -> AudioData:
     word = word.strip()
     if not word:
         return ([], []), ""

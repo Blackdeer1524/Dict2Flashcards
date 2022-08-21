@@ -129,14 +129,19 @@ class App(Tk):
         self.card_processor = loaded_plugins.get_card_processor("Anki")
         self.dict_card_data: dict = {}
 
-        if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
-            self.sentence_parser = loaded_plugins.get_sentence_parser(self.configurations["scrappers"]["sentence"]["name"])
-        elif self.configurations["scrappers"]["sentence"]["type"] == parser_types.CHAIN:
-            self.sentence_parser = SentenceParsersChain(
+        sent_parser_type = self.configurations["scrappers"]["sentence"]["type"]
+        if sent_parser_type == parser_types.WEB:
+            sentence_parser = \
+                loaded_plugins.get_sentence_parser(self.configurations["scrappers"]["sentence"]["name"])
+        elif sent_parser_type == parser_types.CHAIN:
+            sentence_parser = SentenceParsersChain(
                 name=self.configurations["scrappers"]["sentence"]["name"],
                 chain_data=self.chaining_data["sentence_parsers"][self.configurations["scrappers"]["sentence"]["name"]])
+        else:
+            raise NotImplementedError(f"Unknown sentence parser type: {sent_parser_type}")
 
-        self.external_sentence_fetcher = ExternalDataGeneratorWrapper(data_fetcher=self.sentence_parser.get_sentences)
+        self.external_sentence_fetcher = ExternalDataGeneratorWrapper(
+            data_generator=sentence_parser)
 
         if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
             self.image_parser = loaded_plugins.get_image_parser(self.configurations["scrappers"]["image"]["name"])
@@ -147,22 +152,20 @@ class App(Tk):
 
         if (audio_getter_name := self.configurations["scrappers"]["audio"]["name"]):
             if self.configurations["scrappers"]["audio"]["type"] == parser_types.LOCAL:
-                self.audio_getter = loaded_plugins.get_local_audio_getter(audio_getter_name)
-                self.external_audio_generator = ExternalDataGeneratorWrapper(data_fetcher=self.audio_getter.get_audios)
+                audio_getter = loaded_plugins.get_local_audio_getter(audio_getter_name)
+                self.external_audio_generator = ExternalDataGeneratorWrapper(data_generator=audio_getter)
             elif self.configurations["scrappers"]["audio"]["type"] == parser_types.WEB:
-                self.audio_getter = loaded_plugins.get_web_audio_getter(audio_getter_name)
-                self.external_audio_generator = ExternalDataGeneratorWrapper(data_fetcher=self.audio_getter.get_audios)
+                audio_getter = loaded_plugins.get_web_audio_getter(audio_getter_name)
+                self.external_audio_generator = ExternalDataGeneratorWrapper(data_generator=audio_getter)
             elif self.configurations["scrappers"]["audio"]["type"] == parser_types.CHAIN:
-                self.audio_getter = AudioGettersChain(name=audio_getter_name,
+                audio_getter = AudioGettersChain(name=audio_getter_name,
                                                       chain_data=self.chaining_data["audio_getters"][audio_getter_name])
-                self.external_audio_generator = ExternalDataGeneratorWrapper(data_fetcher=self.audio_getter.get_audios)
+                self.external_audio_generator = ExternalDataGeneratorWrapper(data_generator=audio_getter)
             else:
                 self.configurations["scrappers"]["audio"]["type"] = "default"
                 self.configurations["scrappers"]["audio"]["name"] = ""
-                self.audio_getter = None
                 self.external_audio_generator = None
         else:
-            self.audio_getter = None
             self.external_audio_generator = None
 
         self.saved_cards_data = SavedDataDeck()
@@ -621,9 +624,10 @@ n_sentences_per_batch:
                 elif chosen_parser_type == "sentence_parsers":
                     self.sentence_parser_option_menu.destroy()
                     if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
-                        typed_sentence_parser_name = self.sentence_parser.name
+                        typed_sentence_parser_name = self.external_sentence_fetcher.data_generator.name
                     else:
-                        typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.sentence_parser.name}"
+                        typed_sentence_parser_name = \
+                            f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
 
                     self.sentence_parser_option_menu = self.get_option_menu(self,
                                                                             init_text=typed_sentence_parser_name,
@@ -661,9 +665,9 @@ n_sentences_per_batch:
                     self.audio_getter_option_menu.destroy()
                     self.audio_getter_option_menu = self.get_option_menu(
                         self,
-                        init_text="default" if self.audio_getter is None
+                        init_text="default" if self.external_audio_generator is None
                                             else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                                                  self.audio_getter.name),
+                                                                  self.external_audio_generator.data_generator.name),
                         values=["default"] +
                                [f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
                                [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
@@ -923,32 +927,33 @@ n_sentences_per_batch:
                                 self.configurations["scrappers"]["word"]["name"] = new_chain_name
 
                         elif chain_type == "sentence_parsers":
-                            if chain_name == self.sentence_parser.name:
-                                self.sentence_parser = SentenceParsersChain(
+                            if chain_name == self.external_sentence_fetcher.data_generator.name:
+                                sentence_parser = SentenceParsersChain(
                                     name=new_chain_name,
                                     chain_data=chosen_chain_config)
+                                self.external_sentence_fetcher = \
+                                    ExternalDataGeneratorWrapper(data_generator=sentence_parser)
                                 self.configurations["scrappers"]["sentence"]["name"] = new_chain_name
 
                         elif chain_type == "image_parsers":
                             if chain_name == self.image_parser.name:
-                                self.sentence_parser = ImageParsersChain(
+                                self.image_parser = ImageParsersChain(
                                     name=new_chain_name,
                                     chain_data=chosen_chain_config)
                                 self.configurations["scrappers"]["image"]["name"] = new_chain_name
 
                         elif chain_type == "audio_getters":
-                            if self.audio_getter is not None:
-                                if chain_name == self.audio_getter.name:
-                                    old_get_all_val = self.audio_getter.config["get_all"]
-                                    old_error_verbosity_val = self.audio_getter.config["error_verbosity"]
-                                    self.audio_getter = AudioGettersChain(
+                            if self.external_audio_generator is not None and \
+                                    chain_name == self.external_audio_generator.data_generator.name:
+                                old_get_all_val = self.external_audio_generator.data_generator.config["get_all"]
+                                old_error_verbosity_val = self.external_audio_generator.data_generator.config["error_verbosity"]
+                                self.external_audio_generator = ExternalDataGeneratorWrapper(
+                                    data_generator=AudioGettersChain(
                                         name=new_chain_name,
-                                        chain_data=chosen_chain_config)
-                                    self.external_audio_generator = ExternalDataGeneratorWrapper(
-                                        data_fetcher=self.audio_getter.get_audios)
-                                    self.audio_getter.config["get_all"] = old_get_all_val
-                                    self.audio_getter.config["error_verbosity"] = old_error_verbosity_val
-                                    self.configurations["scrappers"]["audio"]["name"] = new_chain_name
+                                        chain_data=chosen_chain_config))
+                                self.external_audio_generator.data_generator.config["get_all"] = old_get_all_val
+                                self.external_audio_generator.data_generator.config["error_verbosity"] = old_error_verbosity_val
+                                self.configurations["scrappers"]["audio"]["name"] = new_chain_name
                         else:
                             raise NotImplementedError(f"Unknown chosen parser type: {chain_type}")
 
@@ -1085,9 +1090,9 @@ n_sentences_per_batch:
         self.definition_text.grid(row=4, column=0, columnspan=8, sticky="news", padx=self.text_padx)
 
         # ======
-        typed_audio_getter = "default" if self.audio_getter is None \
+        typed_audio_getter = "default" if self.external_audio_generator is None \
                                        else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                                             self.audio_getter.name)
+                                                             self.external_audio_generator.data_generator.name)
 
         self.fetch_audio_data_button = self.Button(self,
                                                    text=self.lang_pack.fetch_audio_data_button_text,
@@ -1113,9 +1118,9 @@ n_sentences_per_batch:
 
         self.configure_audio_getter_button = self.Button(self, text="</>")
 
-        if self.audio_getter is not None:
+        if self.external_audio_generator is not None:
             cmd = lambda: self.call_configuration_window(plugin_name=typed_audio_getter,
-                                                         plugin_config=self.audio_getter.config,
+                                                         plugin_config=self.external_audio_generator.data_generator.config,
                                                          plugin_load_function=lambda conf: conf.load(),
                                                          saving_action=lambda conf: conf.save())
             self.configure_audio_getter_button["command"] = cmd
@@ -1138,9 +1143,9 @@ n_sentences_per_batch:
         self.sound_inner_frame.source_display_frame = None
 
         if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
-            typed_sentence_parser_name = self.sentence_parser.name
+            typed_sentence_parser_name = self.external_sentence_fetcher.data_generator.name
         else:
-            typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.sentence_parser.name}"
+            typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
 
         # ======
         a = self.Frame(self)
@@ -1185,9 +1190,10 @@ n_sentences_per_batch:
             self,
             text="</>",
             command=lambda: self.call_configuration_window(
-                plugin_name=self.sentence_parser.name if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB
-                                                      else f"[{parser_types.CHAIN}] {self.sentence_parser.name}",
-                plugin_config=self.sentence_parser.config,
+                plugin_name=self.external_sentence_fetcher.data_generator.name
+                            if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB
+                            else f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}",
+                plugin_config=self.external_sentence_fetcher.data_generator.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()),
             width=6)
@@ -1440,8 +1446,8 @@ n_sentences_per_batch:
         def fill_parser_results() -> None:
             nonlocal parser_results
 
-            assert self.audio_getter is not None, \
-                "display_audio_getter_results cannot be called because self.audio_getter is None"
+            assert self.external_audio_generator is not None, \
+                "display_audio_getter_results cannot be called because self.external_audio_generator is None"
 
             word = self.word
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
@@ -1523,8 +1529,8 @@ n_sentences_per_batch:
         if show_errors and not parser_results:
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
             messagebox.showerror(
-                title=self.audio_getter.name if audio_getter_type == parser_types.WEB
-                else f"[{audio_getter_type}] {self.audio_getter.name}",
+                title=self.external_audio_generator.data_generator.name if audio_getter_type == parser_types.WEB
+                else f"[{audio_getter_type}] {self.external_audio_generator.data_generator.name}",
                 message=self.lang_pack.display_audio_getter_results_audio_not_found_message
             )
 
@@ -2181,7 +2187,6 @@ n_sentences_per_batch:
     @error_handler(show_exception_logs)
     def change_audio_getter(self, typed_getter: str):
         if typed_getter == "default":
-            self.audio_getter = None
             self.external_audio_generator = None
             self.configurations["scrappers"]["audio"]["type"] = "default"
             self.configurations["scrappers"]["audio"]["name"] = ""
@@ -2191,21 +2196,21 @@ n_sentences_per_batch:
 
         if typed_getter.startswith(parser_types.WEB_PREF):
             raw_name = typed_getter[len(parser_types.WEB_PREF) + 1:]
-            self.audio_getter = loaded_plugins.get_web_audio_getter(raw_name)
+            audio_getter = loaded_plugins.get_web_audio_getter(raw_name)
             self.configurations["scrappers"]["audio"]["type"] = parser_types.WEB
         elif typed_getter.startswith(parser_types.LOCAL_PREF):
             raw_name = typed_getter[len(parser_types.LOCAL_PREF) + 1:]
-            self.audio_getter = loaded_plugins.get_local_audio_getter(raw_name)
+            audio_getter = loaded_plugins.get_local_audio_getter(raw_name)
             self.configurations["scrappers"]["audio"]["type"] = parser_types.LOCAL
         elif typed_getter.startswith(parser_types.CHAIN_PREF):
             raw_name = typed_getter[len(parser_types.CHAIN_PREF) + 1:]
-            self.audio_getter = AudioGettersChain(name=raw_name,
-                                                  chain_data=self.chaining_data["audio_getters"][raw_name])
+            audio_getter = AudioGettersChain(name=raw_name,
+                                             chain_data=self.chaining_data["audio_getters"][raw_name])
             self.configurations["scrappers"]["audio"]["type"] = parser_types.CHAIN
         else:
             raise NotImplementedError(f"Audio getter with unknown type: {typed_getter}")
 
-        self.external_audio_generator = ExternalDataGeneratorWrapper(data_fetcher=self.audio_getter.get_audios)
+        self.external_audio_generator = ExternalDataGeneratorWrapper(data_generator=audio_getter)
         self.configurations["scrappers"]["audio"]["name"] = raw_name
         self.fetch_audio_data_button["state"] = "normal"
 
@@ -2213,7 +2218,7 @@ n_sentences_per_batch:
         self.configure_audio_getter_button["command"] = \
             lambda: self.call_configuration_window(
                 plugin_name=typed_getter,
-                plugin_config=self.audio_getter.config,
+                plugin_config=self.external_audio_generator.data_generator.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save())
 
@@ -2237,13 +2242,14 @@ n_sentences_per_batch:
         if given_sentence_parser_name.startswith(f"[{parser_types.CHAIN}]"):
             self.configurations["scrappers"]["sentence"]["type"] = parser_types.CHAIN
             given_sentence_parser_name = given_sentence_parser_name[8:]
-            self.sentence_parser = SentenceParsersChain(
+            sentence_parser = SentenceParsersChain(
                 name=given_sentence_parser_name,
                 chain_data=self.chaining_data["sentence_parsers"][given_sentence_parser_name])
         else:
             self.configurations["scrappers"]["sentence"]["type"] = parser_types.WEB
-            self.sentence_parser = loaded_plugins.get_sentence_parser(given_sentence_parser_name)
-        self.external_sentence_fetcher = ExternalDataGeneratorWrapper(data_fetcher=self.sentence_parser.get_sentences)
+            sentence_parser = loaded_plugins.get_sentence_parser(given_sentence_parser_name)
+        self.external_sentence_fetcher = \
+            ExternalDataGeneratorWrapper(data_generator=sentence_parser)
         self.configurations["scrappers"]["sentence"]["name"] = given_sentence_parser_name
 
     @error_handler(show_exception_logs)
@@ -2314,7 +2320,7 @@ n_sentences_per_batch:
                                        audio_links=dictionary_audio_links[:choosing_slice],
                                        add_type_prefix=False)
 
-            if self.audio_getter is not None and \
+            if self.external_audio_generator is not None and \
                     (audio_autochoose_mode == "all" or
                      not dictionary_audio_links and
                      audio_autochoose_mode in ("first_available_audio", "first_available_audio_source")):
@@ -2327,7 +2333,7 @@ n_sentences_per_batch:
                 if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
                     if audio_data_pack is not None:
                         ((audio_links, additional_info), error_message) = audio_data_pack
-                        add_audio_data_to_card(getter_name=f"extern_{self.audio_getter.name}",
+                        add_audio_data_to_card(getter_name=f"extern_{self.external_audio_generator.data_generator.name}",
                                                getter_type=audio_getter_type,
                                                audio_links=audio_links,
                                                add_type_prefix=True)
@@ -2490,9 +2496,10 @@ n_sentences_per_batch:
                 sent_batch, error_message = sentence_data
                 sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
                 if sentence_parser_type == parser_types.WEB:
-                    typed_sentence_parser = self.sentence_parser.name
+                    typed_sentence_parser = self.external_sentence_fetcher.data_generator.name
                 elif sentence_parser_type == parser_types.CHAIN:
-                    typed_sentence_parser = "[{}] {}".format(sentence_parser_type, self.sentence_parser.name)
+                    typed_sentence_parser = \
+                        "[{}] {}".format(sentence_parser_type, self.external_sentence_fetcher.data_generator.name)
                 else:
                     raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
 
@@ -2502,8 +2509,9 @@ n_sentences_per_batch:
                         sentence=sentence)
 
                 if error_message:
-                    messagebox.showerror(title=f"[{sentence_parser_type}] {self.sentence_parser.name}",
-                                         message=error_message)
+                    messagebox.showerror(
+                        title=f"[{sentence_parser_type}] {self.external_sentence_fetcher.data_generator.name}",
+                        message=error_message)
 
         place_sentences_thread = Thread(target=schedule_sentence_fetcher)
         place_sentences_thread.start()
@@ -2642,7 +2650,7 @@ n_sentences_per_batch:
                                    main_params=self.theme.toplevel_cfg,
                                    search_term=word,
                                    saving_dir=self.configurations["directories"]["media_dir"],
-                                   url_scrapper=self.image_parser.get_image_links,
+                                   url_scrapper=self.image_parser.get,
                                    init_urls=self.dict_card_data
                                                  .get(FIELDS.img_links, []),
                                    local_images=self.dict_card_data

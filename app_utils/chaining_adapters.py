@@ -123,14 +123,14 @@ class SentenceParsersChain:
         parser_configs = []
         for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
             plugin_container = loaded_plugins.get_sentence_parser(parser_name)
-            self.enum_name2get_sentences_functions[enum_name] = plugin_container.get_sentences
+            self.enum_name2get_sentences_functions[enum_name] = plugin_container.get
             parser_configs.append(plugin_container.config)
         self.config = ChainConfig(config_dir=CHAIN_SENTENCE_PARSERS_DATA_DIR,
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
 
-    def get_sentences(self, word: str, card_data: dict) -> SentenceGenerator:
+    def get(self, word: str, card_data: dict) -> SentenceGenerator:
         batch_size = yield
         for enum_name, get_sentences_f in self.enum_name2get_sentences_functions.items():
             self.config.update_config(enum_name)
@@ -163,7 +163,7 @@ class ImageParsersChain:
         parser_configs = []
         for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
             parser = loaded_plugins.get_image_parser(parser_name)
-            self.enum_name2url_getting_functions[enum_name] = parser.get_image_links
+            self.enum_name2url_getting_functions[enum_name] = parser.get
             parser_configs.append(parser.config)
 
         self.config = ChainConfig(config_dir=CHAIN_IMAGE_PARSERS_DATA_DIR,
@@ -171,7 +171,7 @@ class ImageParsersChain:
                                   name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
 
-    def get_image_links(self, word: str) -> ImageGenerator:
+    def get(self, word: str) -> ImageGenerator:
         batch_size = yield
         for enum_name, url_getting_function in self.enum_name2url_getting_functions.items():
             self.config.update_config(enum_name)
@@ -210,7 +210,7 @@ class AudioGettersChain:
                 getter = loaded_plugins.get_local_audio_getter(parser_name[3 + len(parser_types.LOCAL):])
             else:
                 raise NotImplementedError(f"Audio getter of unknown type: {parser_name}")
-            self.enum_name2parsers_data[enum_name] = (parser_type, getter.get_audios)
+            self.enum_name2parsers_data[enum_name] = (parser_type, getter.get)
             parser_configs.append(getter.config)
 
         get_all_configuration = {"error_verbosity": ("silent", [str], ["silent", "if_found_audio", "all"])}
@@ -227,7 +227,7 @@ error_verbosity:
                                   additional_val_scheme=get_all_configuration,
                                   additional_docs=get_all_docs)
                 
-    def get_audios(self, word: str, card_data: dict) -> \
+    def get(self, word: str, card_data: dict) -> \
             Generator[list[tuple[tuple[str, str], AudioData]], int, list[tuple[tuple[str, str], AudioData]]]:
 
         results = []

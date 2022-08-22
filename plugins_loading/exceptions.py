@@ -8,3 +8,7 @@ class UnknownPluginName(PluginError):
 
 class LoaderError(PluginError):
     pass
+
+
+class WrongPluginProtocol(PluginError):
+    pass

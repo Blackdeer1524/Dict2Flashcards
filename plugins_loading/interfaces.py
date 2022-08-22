@@ -1,10 +1,11 @@
-from typing import Protocol, Callable
+from typing import Protocol, runtime_checkable, Callable
 
 from app_utils.cards import SavedDataDeck, CardStatus
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator
 
 
+@runtime_checkable
 class LanguagePackageInterface(Protocol):
     # errors
     error_title: str
@@ -198,6 +199,7 @@ class LanguagePackageInterface(Protocol):
     image_search_empty_search_query_message: str
 
 
+@runtime_checkable
 class ThemeInterface(Protocol):
     label_cfg: dict
     button_cfg: dict
@@ -211,6 +213,7 @@ class ThemeInterface(Protocol):
     option_submenus_cfg: dict
 
 
+@runtime_checkable
 class WebWordParserInterface(Protocol):
     SCHEME_DOCS: str
     config: LoadableConfig
@@ -224,6 +227,7 @@ class WebWordParserInterface(Protocol):
         ...
 
 
+@runtime_checkable
 class LocalWordParserInterface(Protocol):
     SCHEME_DOCS: str
     config: LoadableConfig
@@ -234,6 +238,7 @@ class LocalWordParserInterface(Protocol):
         ...
 
 
+@runtime_checkable
 class WebSentenceParserInterface(Protocol):
     config: LoadableConfig
 
@@ -241,7 +246,7 @@ class WebSentenceParserInterface(Protocol):
     def get(word: str, card_data: dict) -> SentenceGenerator:
         ...
 
-
+@runtime_checkable
 class ImageParserInterface(Protocol):
     config: LoadableConfig
 
@@ -250,6 +255,7 @@ class ImageParserInterface(Protocol):
         ...
 
 
+@runtime_checkable
 class LocalAudioGetterInterface(Protocol):
     config: LoadableConfig
     AUDIO_FOLDER: str
@@ -259,6 +265,7 @@ class LocalAudioGetterInterface(Protocol):
         ...
 
 
+@runtime_checkable
 class WebAudioGetterInterface(Protocol):
     config: LoadableConfig
 
@@ -267,6 +274,7 @@ class WebAudioGetterInterface(Protocol):
         ...
 
 
+@runtime_checkable
 class CardProcessorInterface(Protocol):
     @staticmethod
     def get_save_image_name(word: str,
@@ -295,6 +303,7 @@ class CardProcessorInterface(Protocol):
         ...
 
 
+@runtime_checkable
 class DeckSavingFormatInterface(Protocol):
     @staticmethod
     def save(deck: SavedDataDeck,

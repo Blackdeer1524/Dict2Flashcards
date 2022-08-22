@@ -2,7 +2,7 @@ import json
 import os
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Callable, Union, Any
+from typing import Callable, Union, Any, Protocol, runtime_checkable
 
 from app_utils.storages import FrozenDictJSONEncoder
 from app_utils.storages import PointerList, FrozenDict
@@ -52,6 +52,20 @@ class Card(FrozenDict):
         p = f"{prefix}{sep}" if prefix else ""
         traverse_tags_dict(tags_container, dictionary_tags, cur_stage_prefix=p)
         return " ".join(tags_container)
+
+
+@runtime_checkable
+class CardGeneratorProtocol(Protocol):
+    name: str
+    item_converter: Callable[[str, dict], dict]
+    config: LoadableConfig
+    scheme_docs: str
+
+    def get(self,
+            query: str,
+            word_filter: Callable[[str], bool],
+            additional_filter: Callable[[Card], bool] = None) -> list[Card]:
+        ...
 
 
 class CardGenerator(ABC):
@@ -135,7 +149,7 @@ class Deck(PointerList):
 
     def __init__(self, deck_path: str,
                  current_deck_pointer: int,
-                 card_generator: CardGenerator):
+                 card_generator: CardGeneratorProtocol):
         self.deck_path = deck_path
         if os.path.isfile(self.deck_path):
             with open(self.deck_path, "r", encoding="UTF-8") as f:
@@ -146,18 +160,16 @@ class Deck(PointerList):
         else:
             raise Exception("Invalid _deck path!")
 
-        self._card_generator: CardGenerator = card_generator
+        self._card_generator: CardGeneratorProtocol = card_generator
         for i in range(len(self)):
             self._data[i] = Card(self._data[i])
 
         self._cards_left = max(0, len(self) - self._pointer_position)
 
-    def update_card_generator(self, cd: CardGenerator):
+    def update_card_generator(self, cd: CardGeneratorProtocol):
+        if not isinstance(cd, CardGeneratorProtocol):
+            raise TypeError(f"{cd} is not of CardGenerator Protocol")
         self._card_generator = cd
-
-    def set_card_generator(self, value: CardGenerator):
-        assert (isinstance(value, CardGenerator))
-        self._card_generator = value
 
     def get_n_cards_left(self) -> int:
         return self._cards_left

@@ -1346,12 +1346,12 @@ n_sentences_per_batch:
                 "theme":                ("dark", [str], []),
                 "main_window_geometry": ("500x800+0+0", [str], []),
                 "language_package":     ("eng", [str], []),
-                "audio_autochoose_mode":  ("off", [str], ["off",
-                                                          "first_default_audio",
-                                                          "all_default_audios",
-                                                          "first_available_audio",
-                                                          "first_available_audio_source",
-                                                          "all"])
+                "audio_autochoose_mode":  ("all_default_audios", [str], ["off",
+                                                                         "first_default_audio",
+                                                                         "all_default_audios",
+                                                                         "first_available_audio",
+                                                                         "first_available_audio_source",
+                                                                         "all"])
             },
             "image_search": {
                 "starting_position":   ("+0+0", [str], []),

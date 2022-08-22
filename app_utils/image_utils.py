@@ -461,7 +461,7 @@ class ImageSearch(Toplevel):
 
 if __name__ == "__main__":
     from tkinterdnd2 import Tk
-    from plugins.parsers.image_parsers.google.main import get
+    from plugins.parsers.image.google.main import get
     from pprint import pprint
     from plugins_loading.factory import loaded_plugins
 

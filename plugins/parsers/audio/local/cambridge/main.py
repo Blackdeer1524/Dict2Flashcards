@@ -2,9 +2,12 @@ import os
 
 from app_utils.string_utils import remove_special_chars
 from consts.card_fields import FIELDS
-from consts.paths import LOCAL_MEDIA_DIR
+from consts.paths import LOCAL_AUDIO_DIR
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import AudioData
+
+
+AUDIO_FOLDER = "cambridge"
 
 _CONFIG_DOCS = \
 """
@@ -37,9 +40,8 @@ def get(word, card_data: dict) -> AudioData:
     if not word:
         return ([], []), ""
 
-    audio_folder = f"{config['audio_region']}_audios"
     letter_group = lower_first_letter if (lower_first_letter := word[0].lower()) in _LETTERS else "0-9"
-    search_root = os.path.join(LOCAL_MEDIA_DIR, audio_folder, letter_group)
+    search_root = os.path.join(LOCAL_AUDIO_DIR, AUDIO_FOLDER, config["audio_region"], letter_group)
 
     filename_without_extension = f"{remove_special_chars(word, '-', _AUDIO_NAME_SPEC_CHARS)}"
     extension = ".mp3"

@@ -864,7 +864,7 @@ n_sentences_per_batch:
                 elif chain_type == "sentence_parsers":
                     displaying_options = loaded_plugins.web_sent_parsers.loaded
                 elif chain_type == "image_parsers":
-                    displaying_options = loaded_plugins.image_parsers.loaded
+                    displaying_options = loaded_plugins.web_image_parsers.loaded
                 elif chain_type == "audio_getters":
                     displaying_options = \
                         itertools.chain(
@@ -1053,7 +1053,7 @@ n_sentences_per_batch:
         self.special_field = self.Text(self, relief="ridge", state="disabled", height=1)
         self.special_field.grid(row=2, column=0, columnspan=8, sticky="news", padx=self.text_padx)
 
-        self.image_word_parsers_names = loaded_plugins.image_parsers.loaded
+        self.image_word_parsers_names = loaded_plugins.web_image_parsers.loaded
         if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
             typed_image_parser_name = self.image_parser.name
         else:
@@ -1381,7 +1381,7 @@ n_sentences_per_batch:
                 "card_processor":         ("Anki", [str], [])
             }
         }
-        conf_file = LoadableConfig(config_location=os.path.dirname(__file__),
+        conf_file = LoadableConfig(config_location=os.path.dirname(CONFIG_FILE_PATH),
                                    validation_scheme=validation_scheme,  # type: ignore
                                    docs="")
 

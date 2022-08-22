@@ -4,7 +4,7 @@ from app_utils.preprocessing import remove_empty_keys
 from consts.card_fields import FIELDS
 from plugins_management.config_management import LoadableConfig
 
-DICTIONARY_PATH = "cambridge"
+DICTIONARY_NAME = "cambridge"
 SCHEME_DOCS = """
 tags: {
     pos: part of speach (str)

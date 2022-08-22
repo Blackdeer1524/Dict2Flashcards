@@ -1,4 +1,5 @@
 import importlib
+import os.path
 import pkgutil
 from dataclasses import dataclass
 from types import ModuleType
@@ -7,17 +8,17 @@ from typing import ClassVar
 from typing import TypeVar, Generic
 
 import plugins.language_packages
-import plugins.parsers.audio_getters.local
-import plugins.parsers.audio_getters.web
-import plugins.parsers.image_parsers
-import plugins.parsers.sentence_parsers
-import plugins.parsers.word_parsers.local
-import plugins.parsers.word_parsers.web
+import plugins.parsers.audio.local
+import plugins.parsers.audio.web
+import plugins.parsers.image
+import plugins.parsers.sentence
+import plugins.parsers.word.local
+import plugins.parsers.word.web
 import plugins.saving.card_processors
 import plugins.saving.format_processors
 import plugins.themes
 from app_utils.cards import WebCardGenerator, LocalCardGenerator
-from consts.paths import LOCAL_MEDIA_DIR
+from consts.paths import LOCAL_DICTIONARIES_DIR, LOCAL_AUDIO_DIR
 from plugins_loading.containers import CardProcessorContainer
 from plugins_loading.containers import DeckSavingFormatContainer
 from plugins_loading.containers import ImageParserContainer
@@ -100,11 +101,11 @@ class PluginFactory:
     web_word_parsers:    PluginLoader[WebWordParserContainer]
     local_word_parsers:  PluginLoader[LocalWordParserContainer]
     web_sent_parsers:    PluginLoader[WebSentenceParserContainer]
-    image_parsers:       PluginLoader[ImageParserContainer]
-    card_processors:     PluginLoader[CardProcessorContainer]
-    deck_saving_formats: PluginLoader[DeckSavingFormatContainer]
+    web_image_parsers:       PluginLoader[ImageParserContainer]
     local_audio_getters: PluginLoader[LocalAudioGetterContainer]
     web_audio_getters:   PluginLoader[WebAudioGetterContainer]
+    card_processors:     PluginLoader[CardProcessorContainer]
+    deck_saving_formats: PluginLoader[DeckSavingFormatContainer]
 
     def __init__(self):
         if PluginFactory._is_initialized:
@@ -119,19 +120,19 @@ class PluginFactory:
                                                                      configurable=False,
                                                                      container_type=ThemeContainer))
         object.__setattr__(self, "web_word_parsers",    PluginLoader(plugin_type="web word parser",
-                                                                     module=plugins.parsers.word_parsers.web,
+                                                                     module=plugins.parsers.word.web,
                                                                      configurable=True,
                                                                      container_type=WebWordParserContainer))
         object.__setattr__(self, "local_word_parsers",  PluginLoader(plugin_type="local word parser",
-                                                                     module=plugins.parsers.word_parsers.local,
+                                                                     module=plugins.parsers.word.local,
                                                                      configurable=True,
                                                                      container_type=LocalWordParserContainer))
         object.__setattr__(self, "web_sent_parsers",    PluginLoader(plugin_type="web sentence parser",
-                                                                     module=plugins.parsers.sentence_parsers,
+                                                                     module=plugins.parsers.sentence,
                                                                      configurable=True,
                                                                      container_type=WebSentenceParserContainer))
-        object.__setattr__(self, "image_parsers",       PluginLoader(plugin_type="web image parser",
-                                                                     module=plugins.parsers.image_parsers,
+        object.__setattr__(self, "web_image_parsers",   PluginLoader(plugin_type="web image parser",
+                                                                     module=plugins.parsers.image,
                                                                      configurable=True,
                                                                      container_type=ImageParserContainer))
         object.__setattr__(self, "card_processors",     PluginLoader(plugin_type="card processor",
@@ -143,11 +144,11 @@ class PluginFactory:
                                                                      configurable=False,
                                                                      container_type=DeckSavingFormatContainer))
         object.__setattr__(self, "local_audio_getters", PluginLoader(plugin_type="local audio getter",
-                                                                     module=plugins.parsers.audio_getters.local,
+                                                                     module=plugins.parsers.audio.local,
                                                                      configurable=True,
                                                                      container_type=LocalAudioGetterContainer))
         object.__setattr__(self, "web_audio_getters",   PluginLoader(plugin_type="web audio getter",
-                                                                     module=plugins.parsers.audio_getters.web,
+                                                                     module=plugins.parsers.audio.web,
                                                                      configurable=True,
                                                                      container_type=WebAudioGetterContainer))
 
@@ -174,7 +175,8 @@ class PluginFactory:
         if (local_parser := self.local_word_parsers.get(name)) is None:
             raise UnknownPluginName(f"Unknown local word parser: {name}")
         return LocalCardGenerator(name=local_parser.name,
-                                  local_dict_path=f"{LOCAL_MEDIA_DIR}/{local_parser.local_dict_name}.json",
+                                  local_dict_path=os.path.join(LOCAL_DICTIONARIES_DIR,
+                                                               f"{local_parser.local_dict_name}.json"),
                                   item_converter=local_parser.translate,
                                   config=local_parser.config,
                                   scheme_docs=local_parser.scheme_docs)
@@ -185,7 +187,7 @@ class PluginFactory:
         return gen
 
     def get_image_parser(self, name: str) -> ImageParserContainer:
-        if (gen := self.image_parsers.get(name)) is None:
+        if (gen := self.web_image_parsers.get(name)) is None:
             raise UnknownPluginName(f"Unknown image parser: {name}")
         return gen
 

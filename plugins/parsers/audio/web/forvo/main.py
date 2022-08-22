@@ -4,8 +4,10 @@ Credits:
 """
 
 
-import requests.utils
 import re
+
+import requests.utils
+
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import AudioGenerator
 from .consts import _PLUGIN_NAME, _PLUGIN_LOCATION

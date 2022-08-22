@@ -231,7 +231,7 @@ class WebWordParserInterface(Protocol):
 class LocalWordParserInterface(Protocol):
     SCHEME_DOCS: str
     config: LoadableConfig
-    DICTIONARY_PATH: str
+    DICTIONARY_NAME: str
 
     @staticmethod
     def translate(word: str, word_dict: dict) -> dict:

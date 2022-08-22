@@ -149,7 +149,7 @@ suppotred_types and valid values can be empty. **In that case, all types/values 
 ## [Parsers](#plugins)
 ### [Word parsers](#parsers) 
 #### [Web](#word-parsers)  
-To create a web parser, create a python file inside **./plugins/parsers/word_parsers/web/** with the following protocol:
+To create a web parser, create a python file inside **./plugins/parsers/word/web/** with the following protocol:
   * SCHEME_DOCS: str - documentation to the resulting scheme
   * define(word: str) function that returns [dictionary format](#dictionary-format)
   * translate(word: str, word_dict: dict) function that converts [dictionary entry](#dictionary-format) to [card format](#card-format)
@@ -157,20 +157,20 @@ To create a web parser, create a python file inside **./plugins/parsers/word_par
 #### [Local](#word-parsers)
 Parses local JSON dictionary, that is located in **./media** folder
 
-To register a local dictionary, create a python file inside **./plugins/parsers/word_parsers/local/** with the following protocol:
-  * DICTIONARY_PATH: str - relative path to the JSON dictionary of [dictionary format](#dictionary-format) that is located inside **./media** folder
+To register a local dictionary, create a python file inside **./plugins/parsers/word/local/** with the following protocol:
+  * DICTIONARY_NAME: str - relative path to the JSON dictionary of [dictionary format](#dictionary-format) that is located inside **./media** folder
   * SCHEME_DOCS: str - documentation to the resulting scheme
   * translate(word: str, word_dict: dict) function that converts [dictionary entry](#dictionary-format) to [card format](#card-format)
 
 ### [Sentence parsers](#parsers)
-To create a sentence parser, create a python file inside **./plugins/parsers/sentence_parsers/** with the following protocol:
+To create a sentence parser, create a python file inside **./plugins/parsers/sentence/** with the following protocol:
   * get(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
   sentences are needed. This function has to have 2 stages
     * initialization on first next() call
     * current step batch size initialization on \<gen>.send(batch_size) that returns sentence batch of \<batch_size>
 
 ### [Image parsers](#parsers)
-To create an image parser, create a python file inside **./plugins/parsers/image_parsers/** with the following protocol:
+To create an image parser, create a python file inside **./plugins/parsers/image/** with the following protocol:
   * get(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
   images are needed. This function has to have 2 stages
     * initialization on first next() call
@@ -178,13 +178,13 @@ To create an image parser, create a python file inside **./plugins/parsers/image
  
 ### [Audio getters](#parsers)
 #### [Web](#audio-getters)
-To register web audio getter, create a python file inside **./plugins/parsers/audio_getters/web/** with the following protocol:
+To register web audio getter, create a python file inside **./plugins/parsers/audio/web/** with the following protocol:
   * get(word: str, card_data: dict) -> tuple\[tuple\[list\[str], list\[str]], str] function that takes 
   word for which audio is needed and current card data for the additional info and returns a list of urls, list of associated to each url information,
   and error message.
 
 #### [Local](#audio-getters)
-To register folder with audio files, create a python file inside **./plugins/parsers/audio_getters/local/** with the following protocol:
+To register folder with audio files, create a python file inside **./plugins/parsers/audio/local/** with the following protocol:
   * AUDIO_FOLDER: str - relative path to the folder with audio files that is located inside ./media folder
   * get(word: str, card_data: dict) -> tuple\[tuple\[list\[str], list\[str]], str] function that takes 
   word for which audio is needed and current card data for the additional info and returns a list of paths, list of associated to each path information,

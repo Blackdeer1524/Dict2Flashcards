@@ -52,31 +52,6 @@ class App(Tk):
     def __init__(self, *args, **kwargs):
         super(App, self).__init__(*args, **kwargs)
 
-        if not os.path.exists(TEMP_DIR):
-            os.makedirs(TEMP_DIR)
-
-        if not os.path.exists(LOCAL_MEDIA_DIR):
-            os.makedirs(LOCAL_MEDIA_DIR)
-
-        if not os.path.exists(CARDS_DIR):
-            os.makedirs(CARDS_DIR)
-
-        if not os.path.exists(WORDS_DIR):
-            os.makedirs(WORDS_DIR)
-
-        # CHAINS
-        if not os.path.exists(CHAIN_WORD_PARSERS_DATA_DIR):
-            os.makedirs(CHAIN_WORD_PARSERS_DATA_DIR)
-
-        if not os.path.exists(CHAIN_SENTENCE_PARSERS_DATA_DIR):
-            os.makedirs(CHAIN_SENTENCE_PARSERS_DATA_DIR)
-
-        if not os.path.exists(CHAIN_IMAGE_PARSERS_DATA_DIR):
-            os.makedirs(CHAIN_IMAGE_PARSERS_DATA_DIR)
-
-        if not os.path.exists(CHAIN_AUDIO_GETTERS_DATA_DIR):
-            os.makedirs(CHAIN_AUDIO_GETTERS_DATA_DIR)
-
         if not os.path.exists(f"{WORDS_DIR}/custom.json"):
             with open(f"{WORDS_DIR}/custom.json", "w", encoding="UTF-8") as custom_file:
                 json.dump([], custom_file)

@@ -209,40 +209,50 @@ from functools import reduce
 from typing import Callable, Sized, ClassVar
 from typing import Iterable, Iterator, Generator
 from typing import Optional, Any
+from typing import Type
+import sys
 
 from app_utils.storages import FrozenDict
 from consts.card_fields import FIELDS
 
 
-class ParsingException(Exception):
+class QueryLangException(Exception):
+    def __init__(self, message, caught: bool = False):
+        super(QueryLangException, self).__init__(message)
+        self.caught = caught
+
+
+class LogicOperatorError(QueryLangException):
     pass
 
 
-class LogicOperatorError(ParsingException):
+class WrongMethodError(QueryLangException):
     pass
 
 
-class WrongMethodError(ParsingException):
+class WrongKeywordError(QueryLangException):
     pass
 
 
-class WrongKeywordError(ParsingException):
+class WrongTokenError(QueryLangException):
     pass
 
 
-class WrongTokenError(ParsingException):
+class QuerySyntaxError(QueryLangException):
     pass
 
 
-class QuerySyntaxError(ParsingException):
+class TreeBuildingError(QueryLangException):
     pass
 
 
-class TreeBuildingError(ParsingException):
+class ArgumentTypeError(QueryLangException):
     pass
 
 
 class Computable(ABC):
+    value: str
+
     @abstractmethod
     def compute(self, mapping: Mapping):
         pass
@@ -368,17 +378,31 @@ def method_factory(method_name: str):
                 return n
             return 0
         return field_length
+    elif method_name == "split":
+        def string_split(x):
+            if not isinstance(x, str):
+                raise ArgumentTypeError(f"{type(x)} type was given. String type was expected")
+            return x.split(sep=" ")
+        return string_split
     elif method_name == "any":
-        return lambda x: any(x) if isinstance(x, Iterable) else x
+        def any_aggregation_method(x):
+            if not isinstance(x, Iterable):
+                raise ArgumentTypeError(f"{type(x)} type was given. Iterable type was expected")
+            return any(x)
+        return any_aggregation_method
     elif method_name == "all":
-        return lambda x: all(x) if isinstance(x, Iterable) else x
+        def all_aggregation_method(x):
+            if not isinstance(x, Iterable):
+                raise ArgumentTypeError(f"{type(x)} type was given. Iterable type was expected")
+            return all(x)
+        return all_aggregation_method
     elif method_name == "lower":
         def lower(x):
             if isinstance(x, Iterable):
                 return (item_x.lower() if isinstance(item_x, str) else "" for item_x in x)
             elif isinstance(x, str):
                 return x.lower()
-            return ""
+            raise ArgumentTypeError(f"{type(x)} type was given. Iterable or String types were expected")
         return lower
     elif method_name == "upper":
         def upper(x):
@@ -386,13 +410,16 @@ def method_factory(method_name: str):
                 return (item_x.upper() if isinstance(item_x, str) else ""  for item_x in x)
             elif isinstance(x, str):
                 return x.upper()
-            return ""
+            raise ArgumentTypeError(f"{type(x)} type was given. Iterable or String types were expected")
         return upper
     elif method_name == "reduce":
         def reduce(x):
-            if isinstance(x, (list, tuple)) and len(x) and isinstance(x[0], (list, tuple)):
-                return itertools.chain(*x)
-            return x
+            computed_x = []
+            for i in x:
+                if isinstance(i, (str, int, float)):
+                    raise ArgumentTypeError("Can concatenate only Iterable (not String) objects")
+                computed_x.append(i)
+            return itertools.chain(*computed_x)
         return reduce
     raise WrongMethodError(f"Unknown method name: {method_name}")
 
@@ -400,8 +427,16 @@ def method_factory(method_name: str):
 def keyword_factory(keyword_name: str) -> Callable[[Any], int]:
     if keyword_name == "in":
         def field_contains(collection: Iterable, search_pattern: re.Pattern):
+            if not isinstance(collection, Iterable):
+                raise ArgumentTypeError(f"{type(collection)} type was given. Iterable[String] or String types were expected")
+
             if isinstance(collection, str):
                 return re.search(search_pattern, collection) is not None
+
+            for i in collection:
+                if not isinstance(i, str):
+                    raise ArgumentTypeError(f"Wrong collection item type: {type(i)}. String type wes expected")
+
             return any((re.search(search_pattern, str(item)) is not None for item in collection))
         return field_contains
     raise WrongKeywordError(f"Unknown keyword: {keyword_name}")
@@ -421,158 +456,23 @@ class Token_T(Enum):
     BIN_LOGIC_OP = auto()  # type: ignore
     L_PARENTHESIS = auto()  # type: ignore
     R_PARENTHESIS = auto()  # type: ignore
+    COMMA = auto()  # type: ignore
     END = auto()  # type: ignore
 
 STRING_PLACEHOLDER = "*"
 END_PLACEHOLDER = "END"
 
 
-@dataclass(slots=True, frozen=True)
-class Token(Computable):
-    un_logic_deduction: ClassVar[FrozenDict] =  FrozenDict({logic_operator: Token_T.UN_LOGIC_OP for 
-                                                            logic_operator in UNARY_LOGIC})
-    bin_logic_deduction: ClassVar[FrozenDict] = FrozenDict({logic_operator: Token_T.BIN_LOGIC_OP for 
-                                                            logic_operator in BIN_LOGIC_SET})
-    keyword_deduction: ClassVar[FrozenDict] =   FrozenDict({keyword_name: Token_T.KEYWORD for 
-                                                            keyword_name in KEYWORDS})
-    
-    next_expected: ClassVar[FrozenDict] = FrozenDict(
-        {Token_T.START:         {"(": Token_T.L_PARENTHESIS,
-                                 STRING_PLACEHOLDER: Token_T.STRING,
-                                 END_PLACEHOLDER: Token_T.END} 
-                                | un_logic_deduction.to_dict(),
-
-         Token_T.STRING:        {"(": Token_T.L_PARENTHESIS,
-                                 ")": Token_T.R_PARENTHESIS,
-                                 END_PLACEHOLDER: Token_T.END} 
-                                | bin_logic_deduction.to_dict() 
-                                | keyword_deduction.to_dict(),
-         
-         Token_T.KEYWORD:       {STRING_PLACEHOLDER: Token_T.STRING,
-                                 "(": Token_T.L_PARENTHESIS},
-
-         Token_T.UN_LOGIC_OP:   {STRING_PLACEHOLDER: Token_T.STRING,
-                                 "(": Token_T.L_PARENTHESIS},
-
-         Token_T.BIN_LOGIC_OP:  {STRING_PLACEHOLDER: Token_T.STRING,
-                                 "(": Token_T.L_PARENTHESIS} 
-                                | un_logic_deduction.to_dict(),
-
-         Token_T.L_PARENTHESIS: {STRING_PLACEHOLDER: Token_T.STRING,
-                                 "(": Token_T.L_PARENTHESIS} 
-                                | un_logic_deduction.to_dict(),
-
-         Token_T.R_PARENTHESIS: {END_PLACEHOLDER: Token_T.END,
-                                 ")": Token_T.R_PARENTHESIS} 
-                                | bin_logic_deduction.to_dict(),
-
-         Token_T.END:           {}
-         })
-    
-    value: str
-    prev_token_type: Token_T = field(repr=False)
-    t_type: Optional[Token_T] = None
-
-    def __post_init__(self):
-        def get_expected_keys() -> str:
-            nonlocal expected_types
-            return f"[{' '.join(expected_types.keys())}] were expected!"
-
-        def get_expected_values() -> str:
-            nonlocal expected_types
-            return f"[{' '.join([token.name for token in expected_types.values()])}] were expected!"
-
-        expected_types: FrozenDict[str, Token_T] = Token.next_expected[self.prev_token_type]
-        if self.t_type is not None:
-            if (self.t_type == Token_T.STRING and expected_types.get(STRING_PLACEHOLDER)) is None or \
-                expected_types.get(self.value) is None:
-                raise WrongTokenError(f"Unexpected forced token! \"{self.t_type}\" was forced when "
-                                      f"{get_expected_values()}")
-            return
-
-        if (deduced_type := expected_types.get(self.value)) is None:
-            if (str_type := expected_types.get(STRING_PLACEHOLDER)) is None:
-                raise WrongTokenError(f"Unexpected token! \"{self.value}\" was given when "
-                                      f"{get_expected_keys()}")
-            object.__setattr__(self, "t_type", str_type)
-            return
-        object.__setattr__(self, "t_type", deduced_type)
-
-    def compute(self, mapping: Mapping):
-        if self.t_type != Token_T.STRING:
-            raise WrongTokenError("Can't compute non-STRING token!")
-
-        if self.value.startswith(FIELD_FORCE_PREFIX):
-            return FieldDataGetter(self.value[len(FIELD_FORCE_PREFIX):]).compute(mapping)
-
-        if self.value.lstrip("-").isdecimal():
-            return float(self.value)
-        return FieldDataGetter(self.value).compute(mapping)
-
-
-class Tokenizer:
-    def __init__(self, exp: str):
-        self.exp = exp
-
-    def _get_next_token(self, start_ind: int, prev_token_type: Token_T) -> tuple[Token, int]:
-        while start_ind < len(self.exp) and self.exp[start_ind].isspace():
-            start_ind += 1
-
-        if start_ind == len(self.exp):
-            return Token(END_PLACEHOLDER, prev_token_type), start_ind
-
-        if self.exp[start_ind] in "()":
-            return Token(self.exp[start_ind], prev_token_type), start_ind + 1
-
-        if self.exp[start_ind] == "\"":
-            start_ind += 1
-            i = start_ind
-            while i < len(self.exp) and (self.exp[i] != "\"" or self.exp[i-1] == "\\"):
-                i += 1
-            if i == len(self.exp):
-                raise QuerySyntaxError("Wrong <\"> usage!")
-            return Token(self.exp[start_ind:i], prev_token_type), i + 1
-
-        i = start_ind
-        while i < len(self.exp):
-            if self.exp[i].isspace():
-                return Token(self.exp[start_ind:i], prev_token_type), i + 1
-            elif self.exp[i] in f"()":
-                break
-            i += 1
-
-        return Token(self.exp[start_ind:i], prev_token_type), i
-
-    def get_tokens(self):
-        search_index = 0
-        res: list[Token] = []
-
-        current_token_type = Token_T.START
-
-        parenthesis_counter = 0
-        while current_token_type != Token_T.END:
-            cur_token, search_index = self._get_next_token(search_index, current_token_type)
-            res.append(cur_token)
-            if cur_token.value == "(":
-                parenthesis_counter += 1
-            elif cur_token.value == ")":
-                parenthesis_counter -= 1
-                if parenthesis_counter < 0:
-                    raise QuerySyntaxError("Too many closing parentheses!")
-            current_token_type = cur_token.t_type
-        if parenthesis_counter:
-            raise QuerySyntaxError("Too many opening parentheses!")
-        return res
-
-
 @dataclass(slots=True, frozen=True, init=False)
 class FieldDataGetter(Computable):
+    value: str
     ANY_FIELD: ClassVar[str] = "$ANY"
     SELF_FIELD: ClassVar[str] = "$SELF"
 
     query_chain: list[str] = field(init=False, repr=True)
-    
+
     def __init__(self, path: str):
+        object.__setattr__(self, "value", path)
         self._check_nested_path(path)
         path_chain = []
 
@@ -641,9 +541,10 @@ class FieldDataGetter(Computable):
                 for key in entry:
                     if (val := entry.get(key)) is not None:
                         traverse_recursively(val, chain_index + 1)
+                return
 
             elif current_key == FieldDataGetter.SELF_FIELD:
-                traverse_recursively(entry, chain_index + 1)
+                return traverse_recursively(entry, chain_index + 1)
 
             if (val := entry.get(current_key)) is not None:
                 traverse_recursively(val, chain_index + 1)
@@ -652,19 +553,224 @@ class FieldDataGetter(Computable):
         return result
 
 
+def format_exception(exc: Type[QueryLangException],exception_message: str,token_string: str):
+    raise exc(message=f"\n{token_string}\n" +
+                      "~" * max(1, len(token_string)) + "\n" +
+                      str(exception_message),
+              caught=True)
+
+
+@dataclass(slots=True, frozen=True)
+class Token(Computable):
+    un_logic_deduction: ClassVar[FrozenDict] =  FrozenDict({logic_operator: Token_T.UN_LOGIC_OP for 
+                                                            logic_operator in UNARY_LOGIC})
+    bin_logic_deduction: ClassVar[FrozenDict] = FrozenDict({logic_operator: Token_T.BIN_LOGIC_OP for 
+                                                            logic_operator in BIN_LOGIC_SET})
+    keyword_deduction: ClassVar[FrozenDict] =   FrozenDict({keyword_name: Token_T.KEYWORD for 
+                                                            keyword_name in KEYWORDS})
+    
+    next_expected: ClassVar[FrozenDict] = FrozenDict(
+        {Token_T.START:         {"(": Token_T.L_PARENTHESIS,
+                                 STRING_PLACEHOLDER: Token_T.STRING,
+                                 END_PLACEHOLDER: Token_T.END} 
+                                | un_logic_deduction.to_dict(),
+
+         Token_T.STRING:        {"(": Token_T.L_PARENTHESIS,
+                                 ")": Token_T.R_PARENTHESIS,
+                                 END_PLACEHOLDER: Token_T.END} 
+                                | bin_logic_deduction.to_dict() 
+                                | keyword_deduction.to_dict(),
+         
+         Token_T.KEYWORD:       {STRING_PLACEHOLDER: Token_T.STRING,
+                                 "(": Token_T.L_PARENTHESIS},
+
+         Token_T.UN_LOGIC_OP:   {STRING_PLACEHOLDER: Token_T.STRING,
+                                 "(": Token_T.L_PARENTHESIS},
+
+         Token_T.BIN_LOGIC_OP:  {STRING_PLACEHOLDER: Token_T.STRING,
+                                 "(": Token_T.L_PARENTHESIS} 
+                                | un_logic_deduction.to_dict(),
+
+         Token_T.L_PARENTHESIS: {STRING_PLACEHOLDER: Token_T.STRING,
+                                 "(": Token_T.L_PARENTHESIS} 
+                                | un_logic_deduction.to_dict(),
+
+         Token_T.R_PARENTHESIS: {END_PLACEHOLDER: Token_T.END,
+                                 ")": Token_T.R_PARENTHESIS} 
+                                | bin_logic_deduction.to_dict(),
+
+         Token_T.END:           {}
+         })
+    
+    value: str
+    start_position: int
+    length: int
+    prev_token_type: Token_T = field(repr=False)
+    t_type: Optional[Token_T] = None
+
+    def __post_init__(self):
+        def get_expected_keys() -> str:
+            nonlocal expected_types
+            return f"[{' '.join(expected_types.keys())}] were expected!"
+
+        def get_expected_values() -> str:
+            nonlocal expected_types
+            return f"[{' '.join([token.name for token in expected_types.values()])}] were expected!"
+
+        expected_types: FrozenDict[str, Token_T] = Token.next_expected[self.prev_token_type]
+        if self.t_type is not None:
+            if (self.t_type == Token_T.STRING and expected_types.get(STRING_PLACEHOLDER)) is None or \
+                expected_types.get(self.value) is None:
+
+                format_exception(exc=WrongTokenError,
+                                 exception_message=f"Unexpected forced token! \"{self.t_type}\" was forced when "
+                                                    f"{get_expected_values()}",
+                                 token_string=self.value)
+            return
+
+        if (deduced_type := expected_types.get(self.value)) is None:
+            if (str_type := expected_types.get(STRING_PLACEHOLDER)) is None:
+                format_exception(exc=WrongTokenError,
+                                 exception_message=f"Unexpected token! \"{self.value}\" was given when "
+                                                    f"{get_expected_keys()}",
+                                 token_string=self.value)
+            object.__setattr__(self, "t_type", str_type)
+            return
+        object.__setattr__(self, "t_type", deduced_type)
+
+    def compute(self, mapping: Mapping):
+        if self.t_type != Token_T.STRING:
+            format_exception(exc=WrongTokenError,
+                             exception_message="Can't compute non-STRING token!",
+                             token_string=self.value)
+
+        if self.value.lstrip("-").isdecimal():
+            return float(self.value)
+
+        try:
+            if self.value.startswith(FIELD_FORCE_PREFIX):
+                return FieldDataGetter(self.value[len(FIELD_FORCE_PREFIX):]).compute(mapping)
+
+            return FieldDataGetter(self.value).compute(mapping)
+        except QueryLangException as e:
+            if e.caught:
+                raise
+            exc_type, *_ = sys.exc_info()
+            format_exception(exc=exc_type,
+                             exception_message=str(e),
+                             token_string=self.value)
+
+
+class Tokenizer:
+    def __init__(self, exp: str):
+        self.exp = exp
+
+    def _get_next_token(self, start_ind: int, prev_token_type: Token_T) -> tuple[Token, int]:
+        while start_ind < len(self.exp) and self.exp[start_ind].isspace():
+            start_ind += 1
+
+        if start_ind == len(self.exp):
+            return Token(value=END_PLACEHOLDER,
+                         start_position=start_ind,
+                         length=0,
+                         prev_token_type=prev_token_type), start_ind
+
+        if self.exp[start_ind] in "()":
+            return Token(value=self.exp[start_ind],
+                         start_position=start_ind,
+                         length=1,
+                         prev_token_type=prev_token_type), start_ind + 1
+
+        if self.exp[start_ind] == "\"":
+            start_ind += 1
+            i = start_ind
+            while i < len(self.exp) and (self.exp[i] != "\"" or self.exp[i-1] == "\\"):
+                i += 1
+            if i == len(self.exp):
+                format_exception(exc=QuerySyntaxError,
+                                 exception_message="Wrong <\"> usage! No closing quote found!",
+                                 token_string=self.exp[max(0, start_ind - 5):start_ind + 5])
+            return Token(value=self.exp[start_ind:i],
+                         start_position=start_ind,
+                         length=i - start_ind + 1,
+                         prev_token_type=prev_token_type), i + 1
+
+        i = start_ind
+        while i < len(self.exp):
+            if self.exp[i].isspace():
+                return Token(value=self.exp[start_ind:i],
+                             start_position=start_ind,
+                             length=i - start_ind + 1,
+                             prev_token_type=prev_token_type), i + 1
+            elif self.exp[i] in f"()":
+                break
+            i += 1
+
+        return Token(value=self.exp[start_ind:i],
+                     start_position=start_ind,
+                     length=i - start_ind + 1,
+                     prev_token_type=prev_token_type), i
+
+    def get_tokens(self):
+        search_index = 0
+        res: list[Token] = []
+
+        current_token_type = Token_T.START
+
+        parenthesis_counter = 0
+        first_opening_parenthesis_pos = -1
+        last_closing_parenthesis_pos = -1
+
+        while current_token_type != Token_T.END:
+            cur_token, search_index = self._get_next_token(search_index, current_token_type)
+            res.append(cur_token)
+            if cur_token.value == "(":
+                if parenthesis_counter == 0:
+                    first_opening_parenthesis_pos = cur_token.start_position
+                parenthesis_counter += 1
+            elif cur_token.value == ")":
+                parenthesis_counter -= 1
+                if parenthesis_counter == 0:
+                    last_closing_parenthesis_pos = cur_token.start_position
+                elif parenthesis_counter < 0:
+                    format_exception(exc=QuerySyntaxError,
+                                     exception_message="Too many closing parentheses!",
+                                     token_string=self.exp[max(0, first_opening_parenthesis_pos - 5):
+                                                            last_closing_parenthesis_pos + 1 + 5])
+            current_token_type = cur_token.t_type
+        if parenthesis_counter:
+            format_exception(exc=QuerySyntaxError,
+                             exception_message="Too many opening parentheses!",
+                             token_string=self.exp[max(0, first_opening_parenthesis_pos - 5):
+                                                    max(first_opening_parenthesis_pos, last_closing_parenthesis_pos) + 1 + 5])
+        return res
+
+
 @dataclass(slots=True, frozen=True)
 class Method(Computable):
     operand: Computable
-
+    method_name: str
     method: Callable[[Any], int]
+    value: str = field(init=False)
+
+    def __post_init__(self):
+        object.__setattr__(self, "value", f"{self.method_name}({self.operand.value})")
 
     def compute(self, mapping: Mapping) -> Iterator[int] | int:
-        computed_operand = self.operand.compute(mapping)
-        return self.method(computed_operand)
-
+        try:
+            computed_operand = self.operand.compute(mapping)
+            return self.method(computed_operand)
+        except QueryLangException as e:
+            if e.caught:
+                raise
+            exc_type, *_ = sys.exc_info()
+            format_exception(exc=exc_type,
+                             exception_message=str(e),
+                             token_string=self.value)
 
 @dataclass(slots=True, frozen=True)
 class EvalNode(Computable):
+    value: str = field(init=False)
     operator: str
     left: Optional[Computable | Token] = None
     right: Optional[Computable | Token] = None
@@ -672,13 +778,20 @@ class EvalNode(Computable):
 
     def __post_init__(self):
         object.__setattr__(self, "operation", logic_factory(self.operator))
+        if self.left is not None and self.right is not None:
+            object.__setattr__(self, "value", f"({self.left.value} {self.operator} {self.right.value})")
+        elif self.left is not None:
+            object.__setattr__(self, "value", f"({self.operator} {self.left.value})")
+        else:
+            format_exception(exc=TreeBuildingError,
+                             exception_message="Empty node!",
+                             token_string="????")
 
     def compute(self, mapping: Mapping) -> bool:
         if self.left is not None and self.right is not None:
             return self.operation(self.left, self.right, mapping)
         elif self.left is not None:
             return self.operation(self.left, mapping)
-        raise TreeBuildingError("Empty node!")
 
 
 class EvaluationTree:
@@ -704,7 +817,9 @@ class EvaluationTree:
                     build_expression(string_index)
 
                 operand = self._expressions.pop(string_index)
-                self._expressions.insert(string_index, Method(operand, keyword_function))
+                self._expressions.insert(string_index, Method(operand=operand,
+                                                              method_name=f"{query} {keyword_name} ",
+                                                              method=keyword_function))
 
             elif next_item.t_type == Token_T.L_PARENTHESIS:
                 method_name = self._expressions.pop(string_index).value
@@ -713,7 +828,9 @@ class EvaluationTree:
                 build_expression(string_index)
                 build_logic(string_index)
                 operand = self._expressions.pop(string_index)
-                self._expressions.insert(string_index, Method(operand, method_function))
+                self._expressions.insert(string_index, Method(operand=operand,
+                                                              method_name=method_name,
+                                                              method=method_function))
 
         def build_logic(start_index: int):
             logic_start = start_index
@@ -837,7 +954,7 @@ def main():
                             'region': [[]],
                             'usage': [[]]}}}
 
-    query = "$SELF[insult][$ANY]"
+    query = "not not not"
     card_filter = get_card_filter(query)
     result = card_filter(test_card)
     print(result)

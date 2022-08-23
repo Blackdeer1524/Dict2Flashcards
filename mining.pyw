@@ -33,7 +33,7 @@ from app_utils.plugin_wrappers import ExternalDataGeneratorWrapper
 from app_utils.error_handling import create_exception_message, error_handler
 from app_utils.global_bindings import Binder
 from app_utils.image_utils import ImageSearch
-from app_utils.search_checker import ParsingException, get_card_filter
+from app_utils.search_checker import QueryLangException, get_card_filter
 from app_utils.string_utils import remove_special_chars
 from app_utils.widgets import TextWithPlaceholder as Text
 from app_utils.widgets import EntryWithPlaceholder as Entry
@@ -1806,9 +1806,9 @@ n_sentences_per_batch:
                 return False
             messagebox.showerror(title=self.typed_word_parser_name,
                                  message=self.lang_pack.define_word_word_not_found_message)
-        except ParsingException as e:
-            messagebox.showerror(title=self.lang_pack.error_title,
-                                 message=str(e))
+        except QueryLangException as e:
+            self.show_window(title=self.lang_pack.error_title,
+                             text=str(e))
         return True
 
     @error_handler(show_exception_logs)
@@ -1873,7 +1873,7 @@ n_sentences_per_batch:
 
             try:
                 searching_filter = get_card_filter(find_query)
-            except ParsingException as e:
+            except QueryLangException as e:
                 messagebox.showerror(title=self.lang_pack.error_title,
                                      message=str(e))
                 find_window.withdraw()

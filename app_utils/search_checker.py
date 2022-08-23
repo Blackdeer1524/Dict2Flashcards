@@ -250,6 +250,10 @@ class ArgumentTypeError(QueryLangException):
     pass
 
 
+class ResultPrint(QueryLangException):
+    pass
+
+
 class Computable(ABC):
     value: str
 
@@ -273,7 +277,7 @@ T_binary_op = Callable[[Iterable[Computable] | Computable,
                         Mapping], Iterator[bool] | bool]
 
 def logic_factory(operator: str) -> T_unary_op | T_binary_op:
-    list_like_types = (list, tuple, Generator)
+    list_like_types = (list, tuple, Generator, itertools.chain)
 
     def operator_not(x: Iterable[Computable] | Computable,
                       mapping: Mapping):
@@ -378,6 +382,12 @@ def method_factory(method_name: str):
                 return n
             return 0
         return field_length
+    elif method_name == "print":
+        def print_results(x):
+            if isinstance(x, (Generator, itertools.chain)):
+                raise ResultPrint(f"{[i for i in x]}")
+            raise ResultPrint(x)
+        return print_results
     elif method_name == "split":
         def string_split(x):
             if not isinstance(x, Iterable):
@@ -941,7 +951,7 @@ def main():
     for query in queries:
         get_card_filter(query)
 
-    test_card = {'insult':
+    test_card = {'split into':
                   {'noun': {'UK_IPA': ['/ˈɪn.sʌlt/'],
                             'UK_audio_link': 'https://dictionary.cambridge.org//media/english/uk_pron/u/uki/ukins/ukinstr024.mp3',
                             'US_IPA': ['/ˈɪn.sʌlt/'],
@@ -976,7 +986,7 @@ def main():
                             'region': [[]],
                             'usage': [[]]}}}
 
-    query = "len(split(reduce(reduce(insult[noun][examples]))))"
+    query = "len(reduce(split(reduce($SELF))))"
     card_filter = get_card_filter(query)
     result = card_filter(test_card)
     print(result)

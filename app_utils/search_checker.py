@@ -380,9 +380,18 @@ def method_factory(method_name: str):
         return field_length
     elif method_name == "split":
         def string_split(x):
-            if not isinstance(x, str):
-                raise ArgumentTypeError(f"{type(x)} type was given. String type was expected")
-            return x.split(sep=" ")
+            if not isinstance(x, Iterable):
+                raise ArgumentTypeError(f"{type(x)} type was given. Iterable[String] or String types ware expected")
+
+            if isinstance(x, str):
+                return x.split(sep=" ")
+
+            res_x = []
+            for i in x:
+                if not isinstance(i, str):
+                    raise ArgumentTypeError(f"Wrong collection item type. Got {type(i)}. String type was expected")
+                res_x.append(i.split(sep=" "))
+            return res_x
         return string_split
     elif method_name == "any":
         def any_aggregation_method(x):
@@ -807,7 +816,13 @@ class EvaluationTree:
             if next_item.t_type == Token_T.KEYWORD:
                 query = self._expressions.pop(string_index).value
                 keyword_name = self._expressions.pop(string_index).value
-                keyword_function = partial(keyword_factory(keyword_name), search_pattern=re.compile(query))
+
+                try:
+                    keyword_function = partial(keyword_factory(keyword_name), search_pattern=re.compile(query))
+                except QueryLangException as e:
+                    format_exception(exc=type(e),
+                                     exception_message=str(e),
+                                     token_string=keyword_name)
 
                 if self._expressions[string_index].t_type == Token_T.L_PARENTHESIS:
                     self._expressions.pop(string_index)
@@ -823,7 +838,14 @@ class EvaluationTree:
 
             elif next_item.t_type == Token_T.L_PARENTHESIS:
                 method_name = self._expressions.pop(string_index).value
-                method_function = method_factory(method_name)
+
+                try:
+                    method_function = method_factory(method_name)
+                except QueryLangException as e:
+                    format_exception(exc=type(e),
+                                     exception_message=str(e),
+                                     token_string=method_name)
+
                 self._expressions.pop(string_index)  # parenthesis
                 build_expression(string_index)
                 build_logic(string_index)
@@ -954,7 +976,7 @@ def main():
                             'region': [[]],
                             'usage': [[]]}}}
 
-    query = "not not not"
+    query = "len(split(reduce(reduce(insult[noun][examples]))))"
     card_filter = get_card_filter(query)
     result = card_filter(test_card)
     print(result)

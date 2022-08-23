@@ -57,7 +57,6 @@ class Card(FrozenDict):
 @runtime_checkable
 class CardGeneratorProtocol(Protocol):
     name: str
-    item_converter: Callable[[str, dict], dict]
     config: LoadableConfig
     scheme_docs: str
 

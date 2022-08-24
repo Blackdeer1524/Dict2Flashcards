@@ -1799,13 +1799,21 @@ n_sentences_per_batch:
         exact_word_filter = lambda comparable: re.search(exact_pattern, comparable)
         try:
             additional_filter = get_card_filter(additional_query) if additional_query else None
-            if self.deck.add_card_to_deck(query=word_query,
-                                          word_filter=exact_word_filter,
-                                          additional_filter=additional_filter):
+            n_definitions_added_to_deck, error_message = self.deck.add_card_to_deck(query=word_query,
+                                                                                    word_filter=exact_word_filter,
+                                                                                    additional_filter=additional_filter)
+            message_already_shown = False
+            if error_message:
+                messagebox.showerror(title=self.typed_word_parser_name,
+                                     message=error_message)
+                message_already_shown = True
+            if n_definitions_added_to_deck:
                 self.refresh()
                 return False
-            messagebox.showerror(title=self.typed_word_parser_name,
-                                 message=self.lang_pack.define_word_word_not_found_message)
+            elif not message_already_shown:
+                messagebox.showerror(
+                    title=self.typed_word_parser_name,
+                    message=self.lang_pack.define_word_word_not_found_message)
         except QueryLangException as e:
             self.show_window(title=self.lang_pack.error_title,
                              text=str(e))
@@ -2447,40 +2455,38 @@ n_sentences_per_batch:
 
     @error_handler(show_exception_logs)
     def add_external_sentences(self) -> None:
-        sentence_data = ([], "")
+        from plugins_management.parsers_return_types import SentenceData
+        results: list[str, SentenceData] = []
 
         def schedule_sentence_fetcher():
-            nonlocal sentence_data
-
-            try:
-                sentence_data = self.external_sentence_fetcher.get(
-                    word=self.word,
-                    card_data=self.dict_card_data,
-                    batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
-                if sentence_data is None:
-                    sentence_data = ([], "")
-                    return
-            except StopIteration:
-                sentence_data = ([], "")
+            nonlocal results
+            parser_results = self.external_sentence_fetcher.get(
+                word=self.word,
+                card_data=self.dict_card_data,
+                batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
+            if parser_results is None:
                 return
+
+            sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
+            if sentence_parser_type == parser_types.CHAIN:
+                results = parser_results
+            elif sentence_parser_type == parser_types.WEB:
+                results.append((self.external_sentence_fetcher.data_generator.name, parser_results))
+            else:
+                raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
 
         def wait_sentence_fetcher(thread: Thread):
             if thread.is_alive():
                 self.after(100, lambda: wait_sentence_fetcher(thread))
-            else:
-                sent_batch, error_message = sentence_data
-                sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-                if sentence_parser_type == parser_types.WEB:
-                    typed_sentence_parser = self.external_sentence_fetcher.data_generator.name
-                elif sentence_parser_type == parser_types.CHAIN:
-                    typed_sentence_parser = \
-                        "[{}] {}".format(sentence_parser_type, self.external_sentence_fetcher.data_generator.name)
-                else:
-                    raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
+                return
 
+            nonlocal results
+
+            for (typed_parser_name, (sent_batch, error_message)) in results:
+                sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
                 for sentence in sent_batch:
                     self.add_sentence_field(
-                        source=f"{typed_sentence_parser}: {self.word}",
+                        source=f"{typed_parser_name}: {self.word}",
                         sentence=sentence)
 
                 if error_message:

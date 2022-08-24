@@ -8,7 +8,7 @@ from consts import parser_types
 from consts.paths import *
 from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig
-from plugins_management.parsers_return_types import ImageGenerator, SentenceGenerator, AudioData, AudioGenerator
+from plugins_management.parsers_return_types import ImageGenerator, SentenceData, SentenceGenerator, AudioData, AudioGenerator
 from typing import Generator
 
 
@@ -30,15 +30,23 @@ class ChainConfig(LoadableConfig):
                  config_dir: str,
                  config_name: str,
                  name_config_pairs: list[tuple[str, LoadableConfig]],
-                 additional_val_scheme: Optional[dict] = None,
-                 additional_docs: str = ""
                  ):
-        if additional_val_scheme is None:
-            validation_scheme = {}
-            docs_list = []
-        else:
-            validation_scheme = copy.deepcopy(additional_val_scheme)
-            docs_list = [additional_docs]
+        validation_scheme = {}
+        docs_list = []
+
+        validation_scheme["query_type"] = ("all", [str], ["first_found", "all"])
+        validation_scheme["error_verbosity"] = ("silent", [str], ["silent", "if_found", "all"])
+        docs_list.append("""
+query_type:
+    How to get data from sources
+    first_found: get only first available
+    all: get data from all sources
+    
+error_verbosity:
+    silent: doesn't save any errors
+    if_found: saves errors ONLY IF found something
+    all: saves all errors
+""")
 
         validation_scheme["parsers"] = {}
         seen_config_ids = set()
@@ -96,6 +104,7 @@ class CardGeneratorsChain:
             self.enum_name2generator[enum_parser_name] = generator
             parser_configs.append(generator.config)
             scheme_docs_list.append("{}\n{}".format(parser_name, generator.scheme_docs.replace("\n", "\n |\t")))
+
         self.config = ChainConfig(config_dir=CHAIN_WORD_PARSERS_DATA_DIR,
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(parser_name, config) for parser_name, config in
@@ -105,13 +114,23 @@ class CardGeneratorsChain:
     def get(self,
             query: str,
             word_filter: Callable[[str], bool],
-            additional_filter: Callable[[Card], bool] = None) -> list[Card]:
+            additional_filter: Callable[[Card], bool] = None) -> tuple[list[Card], str]:
         current_result = []
+        errors = []
         for enum_name, generator in self.enum_name2generator.items():
             self.config.update_config(enum_name)
-            if current_result := generator.get(query, word_filter, additional_filter):
+            cards, error_message = generator.get(query, word_filter, additional_filter)
+            if self.config["error_verbosity"] == "silent":
+                error_message = ""
+
+            if error_message and \
+                    (self.config["error_verbosity"] == "all" or cards and self.config["error_verbosity"] == "if_found"):
+                errors.append("\n  ".join((enum_name, error_message)))
+
+            current_result.extend(cards)
+            if self.config["query_type"] == "first_found" and current_result:
                 break
-        return current_result
+        return current_result, "\n\n".join(errors)
 
 
 class SentenceParsersChain:
@@ -130,28 +149,60 @@ class SentenceParsersChain:
                                   name_config_pairs=[(parser_name, config) for parser_name, config in
                                                      zip(chain_data["chain"], parser_configs)])
 
-    def get(self, word: str, card_data: dict) -> SentenceGenerator:
+    def get(self, word: str, card_data: dict) -> Generator[tuple[str, SentenceGenerator],
+                                                           int,
+                                                           tuple[str, SentenceGenerator]]:
         batch_size = yield
-        for enum_name, get_sentences_f in self.enum_name2get_sentences_functions.items():
+        results = []
+        yielded_once = False
+        for enum_name, get_sentences_generator in self.enum_name2get_sentences_functions.items():
             self.config.update_config(enum_name)
-            sent_generator = get_sentences_f(word, card_data)
+
+            sent_generator = get_sentences_generator(word, card_data)
             try:
                 next(sent_generator)
             except StopIteration as e:
-                sentence_list, error_message = e.value
-                if sentence_list or error_message:
-                    yield sentence_list, error_message
+                _, error_message = e.value
+                if self.config["error_verbosity"] == "silent":
+                    error_message = ""
+
+                if error_message and self.config["error_verbosity"] == "all":
+                    results.append((enum_name, ([], error_message)))
                 continue
 
             while True:
                 try:
-                    sentence_list, error_message = sent_generator.send(batch_size)
-                    if not sentence_list:
-                        break
-                    batch_size = yield sentence_list, error_message
-                except StopIteration:
+                    sentences, error_message = sent_generator.send(batch_size)
+                    if self.config["error_verbosity"] == "silent":
+                        error_message = ""
+
+                    if sentences or self.config["error_verbosity"] == "all" and error_message:
+                        results.append((enum_name,
+                                        (sentences, error_message)))
+                        batch_size -= len(sentences)
+                        if batch_size <= 0:
+                            batch_size = yield results
+                            yielded_once = True
+                            results = []
+
+                except StopIteration as e:
+                    sentences, error_message = e.value
+                    if self.config["error_verbosity"] == "silent":
+                        error_message = ""
+
+                    if sentences or self.config["error_verbosity"] == "all" and error_message:
+                        results.append((enum_name,
+                                        (sentences, error_message)))
+                        batch_size -= len(sentences)
+                        if batch_size <= 0:
+                            batch_size = yield results
+                            yielded_once = True
+                            results = []
                     break
-        return [], ""
+
+            if self.config["query_type"] == "first_found" and yielded_once:
+                break
+        return results
 
 
 class ImageParsersChain:
@@ -213,25 +264,17 @@ class AudioGettersChain:
             self.enum_name2parsers_data[enum_name] = (parser_type, getter.get)
             parser_configs.append(getter.config)
 
-        get_all_configuration = {"error_verbosity": ("silent", [str], ["silent", "if_found_audio", "all"])}
-        get_all_docs = """
-error_verbosity:
-    silent - doesn't save any errors
-    if_found_audio - saves errors ONLY IF found audios
-    all - saves all errors
-"""
         self.config = ChainConfig(config_dir=CHAIN_AUDIO_GETTERS_DATA_DIR,
                                   config_name=chain_data["config_name"],
                                   name_config_pairs=[(parser_name, config) for parser_name, config
-                                                     in zip(names, parser_configs)],
-                                  additional_val_scheme=get_all_configuration,
-                                  additional_docs=get_all_docs)
+                                                     in zip(names, parser_configs)])
                 
     def get(self, word: str, card_data: dict) -> \
             Generator[list[tuple[tuple[str, str], AudioData]], int, list[tuple[tuple[str, str], AudioData]]]:
 
-        results = []
         batch_size = yield
+        results = []
+        yielded_once = False
         for enum_name, (parser_type, get_audio_generator) in self.enum_name2parsers_data.items():
             self.config.update_config(enum_name)
 
@@ -259,6 +302,7 @@ error_verbosity:
                         batch_size -= len(audios)
                         if batch_size <= 0:
                             batch_size = yield results
+                            yielded_once = True
                             results = []
 
                 except StopIteration as e:
@@ -272,6 +316,10 @@ error_verbosity:
                         batch_size -= len(audios)
                         if batch_size <= 0:
                             batch_size = yield results
+                            yielded_once = True
                             results = []
                     break
+
+            if self.config["query_type"] == "first_found" and yielded_once:
+                break
         return results

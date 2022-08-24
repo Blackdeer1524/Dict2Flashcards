@@ -8,6 +8,7 @@ from app_utils.storages import FrozenDictJSONEncoder
 from app_utils.storages import PointerList, FrozenDict
 from consts.card_fields import FIELDS
 from plugins_management.config_management import LoadableConfig
+from plugins_management.parsers_return_types import DictionaryFormat
 
 
 class Card(FrozenDict):
@@ -63,7 +64,7 @@ class CardGeneratorProtocol(Protocol):
     def get(self,
             query: str,
             word_filter: Callable[[str], bool],
-            additional_filter: Callable[[Card], bool] = None) -> list[Card]:
+            additional_filter: Callable[[Card], bool] = None) -> tuple[list[Card], str]:
         ...
 
 
@@ -79,17 +80,17 @@ class CardGenerator(ABC):
         self.scheme_docs = scheme_docs
 
     @abstractmethod
-    def _get_search_subset(self, query: str) -> list[tuple[str, dict]]:
+    def _get_search_subset(self, query: str) -> tuple[DictionaryFormat, str]:
         pass
 
     def get(self,
             query: str,
             word_filter: Callable[[str], bool],
-            additional_filter: Callable[[Card], bool] = None) -> list[Card]:
+            additional_filter: Callable[[Card], bool] = None) -> tuple[list[Card], str]:
         if additional_filter is None:
             additional_filter = lambda _: True
 
-        source: list[tuple[str, dict]] = self._get_search_subset(query)
+        source, error_message = self._get_search_subset(query)
         res: list[Card] = []
         for word, word_data in source:
             if word_filter(word):
@@ -101,7 +102,7 @@ class CardGenerator(ABC):
             word = card[FIELDS.word]
             return len(word.split()), word
 
-        return sorted(res, key=sorting_key)
+        return sorted(res, key=sorting_key), error_message
 
 
 class LocalCardGenerator(CardGenerator):
@@ -117,19 +118,19 @@ class LocalCardGenerator(CardGenerator):
                                                  scheme_docs=scheme_docs)
 
         if not os.path.isfile(local_dict_path):
-            raise Exception(f"Local dictionary with path \"{local_dict_path}\" doesn't exist")
+            raise FileNotFoundError(f"Local dictionary with path \"{local_dict_path}\" doesn't exist")
 
         with open(local_dict_path, "r", encoding="UTF-8") as f:
-            self.local_dictionary: list[(str, dict)] = json.load(f)
+            self.local_dictionary: DictionaryFormat = json.load(f)
 
-    def _get_search_subset(self, query: str) -> list[tuple[str, dict]]:
-        return self.local_dictionary
+    def _get_search_subset(self, query: str) -> tuple[DictionaryFormat, str]:
+        return self.local_dictionary, ""
 
 
 class WebCardGenerator(CardGenerator):
     def __init__(self,
                  name: str,
-                 parsing_function: Callable[[str], list[(str, dict)]],
+                 parsing_function: Callable[[str], tuple[DictionaryFormat, str]],
                  item_converter: Callable[[(str, dict)], dict],
                  config: LoadableConfig,
                  scheme_docs: str):
@@ -139,7 +140,7 @@ class WebCardGenerator(CardGenerator):
                                                scheme_docs=scheme_docs)
         self.parsing_function = parsing_function
 
-    def _get_search_subset(self, query: str) -> list[tuple[str, dict]]:
+    def _get_search_subset(self, query: str) -> tuple[DictionaryFormat, str]:
         return self.parsing_function(query)
 
 
@@ -186,15 +187,15 @@ class Deck(PointerList):
                 last_found = current_index
         return PointerList(data=move_list)
 
-    def add_card_to_deck(self, query: str, **kwargs) -> int:
-        res: list[Card] = self._card_generator.get(query, **kwargs)
+    def add_card_to_deck(self, query: str, **kwargs) -> tuple[int, str]:
+        res, error_message = self._card_generator.get(query, **kwargs)
 
         self._data = self[:self._pointer_position] + res + self[self._pointer_position:]
         if res:
             self._pointer_position = self._pointer_position - 1
 
         self._cards_left += len(res)
-        return len(res)
+        return len(res), error_message
 
     def append(self, card: Card):
         self._data = self[:self._pointer_position] + [card] + self[self._pointer_position:]

@@ -1,5 +1,6 @@
 import bs4
 import requests
+from plugins_management.parsers_return_types import DictionaryFormat
 
 
 REQUESTS_HEADER = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'}
@@ -195,7 +196,7 @@ def get_alt_terms(word_header_block) -> list[str]:
     return alt_terms
 
 
-def define(word, dictionary_index=0, headers=None, timeout=5):
+def define(word, dictionary_index=0, headers=None, timeout=5) -> tuple[DictionaryFormat, str]:
     """
     :param word: word to be parsed
     :param headers: request headers
@@ -210,7 +211,11 @@ def define(word, dictionary_index=0, headers=None, timeout=5):
 
     link = f"{LINK_PREFIX}/dictionary/english/{word}"
     # will raise error if headers are None
-    page = requests.get(link, headers=headers, timeout=timeout)
+    try:
+        page = requests.get(link, headers=headers, timeout=timeout)
+    except Exception as e:
+        return [], str(e)
+
     word_info = {}
 
     soup = bs4.BeautifulSoup(page.content, "html.parser")
@@ -222,7 +227,7 @@ def define(word, dictionary_index=0, headers=None, timeout=5):
         main_block.extend(primal_block[dictionary_index].find_all("div", {"class": "pv-block"}))
         main_block.extend(primal_block[dictionary_index].find_all("div", {"class": "pr idiom-block"}))
     else:
-        return {}
+        return [], ""
 
     for entity in main_block:
         header_block = entity.find("span", {"class": "di-info"})
@@ -328,7 +333,7 @@ def define(word, dictionary_index=0, headers=None, timeout=5):
                              us_ipa=us_ipa,
                              uk_audio_links=uk_audio_links,
                              us_audio_links=us_audio_links)
-    return list(word_info.items())
+    return list(word_info.items()), ""
 
 
 if __name__ == "__main__":

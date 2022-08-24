@@ -4,6 +4,8 @@ from app_utils.preprocessing import remove_empty_keys
 from consts.card_fields import FIELDS
 from plugins_management.config_management import LoadableConfig
 from .utils import define as _define
+from plugins_management.parsers_return_types import DictionaryFormat
+
 
 SCHEME_DOCS = """
 tags: {
@@ -72,5 +74,5 @@ def translate(word: str, word_dict: dict):
     return word_list
 
 
-def define(word: str) -> list[tuple[str, dict]]:
+def define(word: str) -> tuple[DictionaryFormat, str]:
     return _define(word=word, timeout=config["timeout"])

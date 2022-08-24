@@ -55,3 +55,5 @@ def get(word: str, card_data: dict) -> SentenceGenerator:
     while i < len(sentences):
         size = yield sentences[i:i + size], ""
         i += size
+
+    return [], ""

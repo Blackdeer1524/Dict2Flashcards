@@ -470,7 +470,6 @@ class Token_T(Enum):
     START = auto()  # type: ignore
     KEYWORD = auto()  # type: ignore
     STRING = auto()  # type: ignore
-    QUERY_STRING = auto()  # type: ignore
     UN_LOGIC_OP = auto()  # type: ignore
     BIN_LOGIC_OP = auto()  # type: ignore
     L_PARENTHESIS = auto()  # type: ignore
@@ -534,12 +533,20 @@ class FieldDataGetter(Computable):
 
     def compute(self, mapping: Mapping) -> list[Any]:
         """query_chain: chain of keys"""
-        result = []
+        result = None
+        seen = False
 
         def traverse_recursively(entry: Mapping | Any, chain_index: int = 0) -> None:
-            nonlocal result
+            nonlocal result, seen
             if chain_index == len(self.query_chain):
-                result.append(list(entry.keys())) if isinstance(entry, Mapping) else result.append(entry)
+                end = list(entry.keys()) if isinstance(entry, Mapping) else entry
+                if result is None:
+                    result = end
+                else:
+                    if not seen:
+                        result = [result]
+                        seen = True
+                    result.append(end)
                 return
 
             current_key = self.query_chain[chain_index]
@@ -986,7 +993,7 @@ def main():
                             'region': [[]],
                             'usage': [[]]}}}
 
-    query = "len(reduce(split(reduce($SELF))))"
+    query = "len(print(split(print(\"$SELF\"))))"
     card_filter = get_card_filter(query)
     result = card_filter(test_card)
     print(result)

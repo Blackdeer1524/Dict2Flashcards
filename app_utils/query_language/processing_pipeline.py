@@ -46,7 +46,7 @@ Special queries & commands
                 "field_1": 1,
                 "field_2": 2,
             }
-        $SELF will return [["field_1", "field_2"]]
+        $SELF will return ["field_1", "field_2"]
 
     d_$
         Will convert string expression to a digit.
@@ -108,6 +108,17 @@ Methods:
             }
         len(field[$ANY][data]) = len([[1, 2, 3], [4, 5]]) = 2
 
+    split
+        Splits given string or list of strings
+        Example:
+            {
+                "field": "text with spaces",
+                "list_field": ["text with spaces 1", "text with spaces 2"]
+            }
+        split(field) = ["text", "with", "spaces"]
+        split(list_field) = [["text", "with", "spaces", "1"],
+                             ["text", "with", "spaces", "2"]]
+
     any
         Returns True if one of items is True
         Example:
@@ -140,28 +151,24 @@ Methods:
         all($ANY[$ANY][data] > 1) will return False
 
     lower
-        Makes all strings lowercase, discarding non-string types
+        Makes all strings lowercase
         Example:
             {
-                "field_1": ["ABC", "abc", "AbC", 1],
-                "field_2": [["1", "2", "3"]],
-                "field_3": "ABC"
+                "field_1": ["ABC", "abc", "AbC"],
+                "field_2": "ABC"
             }
-        lower(field_1) will return ["abc", "abc", "abc", ""]
-        lower(field_2) will return [""]
-        lower(field_3) will return "abc"
+        lower(field_1) will return ["abc", "abc", "abc"]
+        lower(field_2) will return "abc"
 
     upper
-        Makes all strings uppercase, discarding non-string types
+        Makes all strings uppercase
         Example:
             {
-                "field_1": ["ABC", "abc", "AbC", 1],
-                "field_2": [["1", "2", "3"]],
-                "field_3": "abc"
+                "field_1": ["ABC", "abc", "AbC"],
+                "field_2": "abc"
             }
         upper(field_1) will return ["ABC", "ABC", "ABC", ""]
-        upper(field_2) will return [""]
-        upper(field_3) will return "ABC"
+        upper(field_2) will return "ABC"
 
     reduce
         Flattens one layer of nested list result:
@@ -200,6 +207,7 @@ Evaluation precedence:
 import copy
 import itertools
 import re
+import sys
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -210,48 +218,10 @@ from typing import Callable, Sized, ClassVar
 from typing import Iterable, Iterator, Generator
 from typing import Optional, Any
 from typing import Type
-import sys
 
+from app_utils.query_language.exceptions import *
 from app_utils.storages import FrozenDict
 from consts.card_fields import FIELDS
-
-
-class QueryLangException(Exception):
-    def __init__(self, message, caught: bool = False):
-        super(QueryLangException, self).__init__(message)
-        self.caught = caught
-
-
-class LogicOperatorError(QueryLangException):
-    pass
-
-
-class WrongMethodError(QueryLangException):
-    pass
-
-
-class WrongKeywordError(QueryLangException):
-    pass
-
-
-class WrongTokenError(QueryLangException):
-    pass
-
-
-class QuerySyntaxError(QueryLangException):
-    pass
-
-
-class TreeBuildingError(QueryLangException):
-    pass
-
-
-class ArgumentTypeError(QueryLangException):
-    pass
-
-
-class ResultPrint(QueryLangException):
-    pass
 
 
 class Computable(ABC):
@@ -275,14 +245,13 @@ T_unary_op =  Callable[[Iterable[Computable] | Computable,
 T_binary_op = Callable[[Iterable[Computable] | Computable,
                         Iterable[Computable] | Computable,
                         Mapping], Iterator[bool] | bool]
+LIST_LIKE_TYPES = (list, tuple, Generator, itertools.chain)
 
 def logic_factory(operator: str) -> T_unary_op | T_binary_op:
-    list_like_types = (list, tuple, Generator, itertools.chain)
-
     def operator_not(x: Iterable[Computable] | Computable,
                       mapping: Mapping):
         x_computed = x.compute(mapping)
-        if isinstance(x_computed, list_like_types):
+        if isinstance(x_computed, LIST_LIKE_TYPES):
             return (not item for item in x)
         return not x_computed
 
@@ -292,14 +261,14 @@ def logic_factory(operator: str) -> T_unary_op | T_binary_op:
         x_computed = x.compute(mapping)
         y_computed = y.compute(mapping)
 
-        if isinstance(x_computed, list_like_types):
-            if isinstance(y_computed, list_like_types):
+        if isinstance(x_computed, LIST_LIKE_TYPES):
+            if isinstance(y_computed, LIST_LIKE_TYPES):
                 return (item_x and item_y for item_x in x_computed for item_y in y_computed)
             if not y_computed:
                 return (False for _ in x_computed)
             return (item_x for item_x in x_computed)
 
-        if isinstance(y_computed, list_like_types):
+        if isinstance(y_computed, LIST_LIKE_TYPES):
             if not x_computed:
                 return (False for _ in y_computed)
             return (item_y for item_y in y_computed)
@@ -314,14 +283,14 @@ def logic_factory(operator: str) -> T_unary_op | T_binary_op:
         x_computed = x.compute(mapping)
         y_computed = y.compute(mapping)
 
-        if isinstance(x_computed, list_like_types):
-            if isinstance(y_computed, list_like_types):
+        if isinstance(x_computed, LIST_LIKE_TYPES):
+            if isinstance(y_computed, LIST_LIKE_TYPES):
                 return (item_x or item_y for item_x in x_computed for item_y in y_computed)
             if y_computed:
                 return (True for _ in x_computed)
             return (item_x for item_x in x_computed)
 
-        if isinstance(y_computed, list_like_types):
+        if isinstance(y_computed, LIST_LIKE_TYPES):
             if x_computed:
                 return (True for _ in y_computed)
             return (item_y for item_y in y_computed)
@@ -339,12 +308,12 @@ def logic_factory(operator: str) -> T_unary_op | T_binary_op:
         x_computed = x.compute(mapping)
         y_computed = y.compute(mapping)
 
-        if isinstance(x_computed, list_like_types):
-            if isinstance(y_computed, list_like_types):
+        if isinstance(x_computed, LIST_LIKE_TYPES):
+            if isinstance(y_computed, LIST_LIKE_TYPES):
                 return (_op(item_x, item_y) for item_x in x_computed for item_y in y_computed)
             return (_op(item_x, y_computed) for item_x in x_computed)
 
-        if isinstance(y_computed, list_like_types):
+        if isinstance(y_computed, LIST_LIKE_TYPES):
             return (_op(x_computed, item_y) for item_y in y_computed)
 
         return _op(x_computed, y_computed)
@@ -395,13 +364,11 @@ def method_factory(method_name: str):
 
             if isinstance(x, str):
                 return x.split(sep=" ")
+            
+            def raise_if_not_str(item):
+                raise ArgumentTypeError(f"Wrong collection item type. Got {type(item)}. String type was expected")
 
-            res_x = []
-            for i in x:
-                if not isinstance(i, str):
-                    raise ArgumentTypeError(f"Wrong collection item type. Got {type(i)}. String type was expected")
-                res_x.append(i.split(sep=" "))
-            return res_x
+            return (i.split(sep=" ") if isinstance(i, str) else raise_if_not_str(i) for i in x)
         return string_split
     elif method_name == "any":
         def any_aggregation_method(x):
@@ -417,26 +384,30 @@ def method_factory(method_name: str):
         return all_aggregation_method
     elif method_name == "lower":
         def lower(x):
-            if isinstance(x, Iterable):
-                return (item_x.lower() if isinstance(item_x, str) else "" for item_x in x)
-            elif isinstance(x, str):
+            def raise_if_not_str(item):
+                raise ArgumentTypeError(f"Wrong collection item type. Got {type(item)}. String type was expected")
+            if isinstance(x, str):
                 return x.lower()
-            raise ArgumentTypeError(f"{type(x)} type was given. Iterable or String types were expected")
+            elif isinstance(x, Iterable):
+                return (item_x.lower() if isinstance(item_x, str) else raise_if_not_str(item_x) for item_x in x)
+            raise ArgumentTypeError(f"{type(x)} type was given. Iterable[String] or String types were expected")
         return lower
     elif method_name == "upper":
         def upper(x):
-            if isinstance(x, Iterable):
-                return (item_x.upper() if isinstance(item_x, str) else ""  for item_x in x)
-            elif isinstance(x, str):
+            def raise_if_not_str(item):
+                raise ArgumentTypeError(f"Wrong collection item type. Got {type(item)}. String type was expected")
+            if isinstance(x, str):
                 return x.upper()
+            elif isinstance(x, Iterable):
+                return (item_x.upper() if isinstance(item_x, str) else raise_if_not_str(item_x) for item_x in x)
             raise ArgumentTypeError(f"{type(x)} type was given. Iterable or String types were expected")
         return upper
     elif method_name == "reduce":
         def reduce(x):
             computed_x = []
             for i in x:
-                if isinstance(i, (str, int, float)):
-                    raise ArgumentTypeError("Can concatenate only Iterable (not String) objects")
+                if not isinstance(i, LIST_LIKE_TYPES):
+                    raise ArgumentTypeError(f"Can concatenate only Iterable (not String) objects. Got {type(i)}")
                 computed_x.append(i)
             return itertools.chain(*computed_x)
         return reduce
@@ -512,22 +483,30 @@ class FieldDataGetter(Computable):
 
         object.__setattr__(self, "query_chain", path_chain)
 
-    @staticmethod
-    def _check_nested_path(path) -> None:
+    def _check_nested_path(self, path) -> None:
         bracket_stack = 0
-        last_closing_bracket = -1
+        brace_sequence_start = 0
+        brace_sequence_end = 0
         for i in range(len(path)):
             char = path[i]
             if char == "[":
+                if bracket_stack == 0:
+                    brace_sequence_start = i
                 bracket_stack += 1
             elif char == "]":
-                last_closing_bracket = i
+                brace_sequence_end = i
                 bracket_stack -= 1
                 if bracket_stack < 0:
-                    raise QuerySyntaxError("Wrong bracket sequence in field query!")
+                    format_exception(
+                        exc=QuerySyntaxError,
+                        exception_message="Too much closing braces!",
+                        token_string=self.value[brace_sequence_start:max(brace_sequence_start, brace_sequence_end) + 1])
 
-        if last_closing_bracket > 0:
-            for i in range(last_closing_bracket + 1, len(path)):
+        if bracket_stack > 0:
+            raise QuerySyntaxError("Too much opening braces!")
+
+        if brace_sequence_end > 0:
+            for i in range(brace_sequence_end + 1, len(path)):
                 if not path[i].isspace():
                     raise QuerySyntaxError("Wrong bracket sequence in field query!")
 
@@ -934,69 +913,5 @@ class EvaluationTree:
         return self._expressions[0]
 
 
-def get_card_filter(expression: str) -> Callable[[Mapping], bool]:
-    _tokenizer = Tokenizer(expression)
-    tokens = _tokenizer.get_tokens()
-    if tokens[0].t_type == Token_T.END:
-        return lambda x: True
-
-    _logic_tree = EvaluationTree(tokens)
-    _logic_tree.construct()
-    return _logic_tree.get_master_node().compute
-
-
-def main():
-    queries = ("query in field and len(inner_query in len(field))",
-               "test in word and \"some meaning\" in meaning "
-                   "or alt in alt_terms and (\"some sentences\" in sentences "
-                   "or some_tags in tags and (noun in tags[pos])) "
-                   "and (len(sentences) < 5)",
-               "\"test value\" in \"test tag\" and len(user_tags[image_links]) == 5",
-               "len(\"meaning [  test  ][tag]\") == 2 or len(meaning[test][tag]) != 2",
-               "/ˈɪn.sʌlt/ in lower(reduce($ANY[$ANY][UK_IPA]))")
-
-    for query in queries:
-        get_card_filter(query)
-
-    test_card = {'split into':
-                  {'noun': {'UK_IPA': ['/ˈɪn.sʌlt/'],
-                            'UK_audio_link': 'https://dictionary.cambridge.org//media/english/uk_pron/u/uki/ukins/ukinstr024.mp3',
-                            'US_IPA': ['/ˈɪn.sʌlt/'],
-                            'US_audio_link': 'https://dictionary.cambridge.org//media/english/us_pron/i/ins/insul/insult_01_01.mp3',
-                            'alt_terms': [[]],
-                            'definitions': ['an offensive remark or action'],
-                            'domain': [[]],
-                            'examples': [['She made several insults about my appearance.',
-                                          "The steelworkers' leader rejected the two percent "
-                                          'pay rise saying it was an insult to the profession.',
-                                          'The instructions are so easy they are an insult to '
-                                          'your intelligence (= they seem to suggest you are '
-                                          'not clever if you need to use them).']],
-                            'image_links': [''],
-                            'labels_and_codes': [['[ C ]']],
-                            'level': ['C2'],
-                            'region': [[]],
-                            'usage': [[]]},
-                   'verb': {'UK_IPA': ['/ɪnˈsʌlt/'],
-                            'UK_audio_link': 'https://dictionary.cambridge.org//media/english/uk_pron/u/uki/ukins/ukinstr025.mp3',
-                            'US_IPA': ['/ɪnˈsʌlt/'],
-                            'US_audio_link': 'https://dictionary.cambridge.org//media/english/us_pron/i/ins/insul/insult_01_00.mp3',
-                            'alt_terms': [[]],
-                            'definitions': ['to say or do something to someone that is rude or '
-                                            'offensive'],
-                            'domain': [[]],
-                            'examples': [['First he drank all my wine and then he insulted all '
-                                          'my friends.']],
-                            'image_links': [''],
-                            'level': ['C1'],
-                            'labels_and_codes': [['[ T ]']],
-                            'region': [[]],
-                            'usage': [[]]}}}
-
-    query = "len(print(split(print(\"$SELF\"))))"
-    card_filter = get_card_filter(query)
-    result = card_filter(test_card)
-    print(result)
-
 if __name__ == "__main__":
-    main()
+    print(__doc__)

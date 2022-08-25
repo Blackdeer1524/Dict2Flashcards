@@ -170,7 +170,7 @@ query_language_docs = """
                 "field_1": 1,
                 "field_2": 2,
             }
-        $SELF вернет [["field_1", "field_2"]]
+        $SELF вернет ["field_1", "field_2"]
 
     d_$
         Конвертирует строку в тип числа.
@@ -231,7 +231,18 @@ query_language_docs = """
                 }
             }
         len(field[$ANY][data]) = len([[1, 2, 3], [4, 5]]) = 2
-
+    
+    split
+        Разбивает строку/строки
+        Пример:
+            {
+                "field": "text with spaces",
+                "list_field": ["text with spaces 1", "text with spaces 2"]
+            }
+        split(field) = ["text", "with", "spaces"]
+        split(list_field) = [["text", "with", "spaces", "1"],
+                             ["text", "with", "spaces", "2"]]
+    
     any
         Вернет истину если хотя бы один элемент истина
         Пример:
@@ -264,28 +275,24 @@ query_language_docs = """
             all($ANY[$ANY][data] > 1) вернет ложь
 
     lower
-        Конвертирует все строки в нижний регистр, отбросив нестроковые типы
+        Конвертирует строки в нижний регистр
         Пример:
             {
-                "field_1": ["ABC", "abc", "AbC", 1],
-                "field_2": [["1", "2", "3"]],
-                "field_3": "ABC"
+                "field_1": ["ABC", "abc", "AbC"],
+                "field_2": "ABC"
             }
-        lower(field_1) вернет ["abc", "abc", "abc", ""]
-        lower(field_2) вернет [""]
-        lower(field_3) вернет "abc"
+        lower(field_1) вернет ["abc", "abc", "abc"]
+        lower(field_2) вернет "abc"
 
     upper
-        Конвертирует все строки в верхний регистр, отбросив нестроковые типы
+        Конвертирует все строки в верхний регистр
         Пример:
             {
-                "field_1": ["ABC", "abc", "AbC", 1],
-                "field_2": [["1", "2", "3"]],
-                "field_3": "abc"
+                "field_1": ["ABC", "abc", "AbC"],
+                "field_2": "abc"
             }
-        upper(field_1) вернет ["ABC", "ABC", "ABC", ""]
-        upper(field_2) вернет [""]
-        upper(field_3) вернет "ABC"
+        upper(field_1) вернет ["ABC", "ABC", "ABC"]
+        upper(field_2) вернет "ABC"
 
     reduce
         Объединит один(!) слой вложенности:

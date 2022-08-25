@@ -33,7 +33,8 @@ from app_utils.plugin_wrappers import ExternalDataGeneratorWrapper
 from app_utils.error_handling import create_exception_message, error_handler
 from app_utils.global_bindings import Binder
 from app_utils.image_utils import ImageSearch
-from app_utils.search_checker import QueryLangException, get_card_filter
+from app_utils.query_language.query_processing import get_card_filter
+from app_utils.query_language.exceptions import QueryLangException
 from app_utils.string_utils import remove_special_chars
 from app_utils.widgets import TextWithPlaceholder as Text
 from app_utils.widgets import EntryWithPlaceholder as Entry

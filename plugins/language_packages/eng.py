@@ -141,8 +141,8 @@ Keywords:
                 "field": [val_1, .., val_n]}
             }
 
-            thing in field
-            Returns True if thing is in [val_1, .., val_n]
+        thing in field
+        Returns True if thing is in [val_1, .., val_n]
 
 
 Special queries & commands
@@ -170,7 +170,7 @@ Special queries & commands
                 "field_1": 1,
                 "field_2": 2,
             }
-        $SELF will return [["field_1", "field_2"]]
+        $SELF will return ["field_1", "field_2"]
 
     d_$
         Will convert string expression to a digit.
@@ -232,6 +232,17 @@ Methods:
             }
         len(field[$ANY][data]) = len([[1, 2, 3], [4, 5]]) = 2
 
+    split
+        Splits given string or list of strings
+        Example:
+            {
+                "field": "text with spaces",
+                "list_field": ["text with spaces 1", "text with spaces 2"]
+            }
+        split(field) = ["text", "with", "spaces"]
+        split(list_field) = [["text", "with", "spaces", "1"],
+                             ["text", "with", "spaces", "2"]]
+
     any
         Returns True if one of items is True
         Example:
@@ -245,7 +256,7 @@ Methods:
                     }
                 }
             }
-            any(field[$ANY][data] > 1) will return True
+       any(field[$ANY][data] > 1) will return True
 
     all
         Returns True if all items are True
@@ -260,32 +271,28 @@ Methods:
                     }
                 }
             }
-            all($ANY[$ANY][data] > 0) will return True
-            all($ANY[$ANY][data] > 1) will return False
+        all($ANY[$ANY][data] > 0) will return True
+        all($ANY[$ANY][data] > 1) will return False
 
     lower
-        Makes all strings lowercase, discarding non-string types
+        Makes all strings lowercase
         Example:
             {
-                "field_1": ["ABC", "abc", "AbC", 1],
-                "field_2": [["1", "2", "3"]],
-                "field_3": "ABC"
+                "field_1": ["ABC", "abc", "AbC"],
+                "field_2": "ABC"
             }
-        lower(field_1) will return ["abc", "abc", "abc", ""]
-        lower(field_2) will return [""]
-        lower(field_3) will return "abc"
+        lower(field_1) will return ["abc", "abc", "abc"]
+        lower(field_2) will return "abc"
 
     upper
-        Makes all strings uppercase, discarding non-string types
+        Makes all strings uppercase
         Example:
             {
-                "field_1": ["ABC", "abc", "AbC", 1],
-                "field_2": [["1", "2", "3"]],
-                "field_3": "abc"
+                "field_1": ["ABC", "abc", "AbC"],
+                "field_2": "abc"
             }
         upper(field_1) will return ["ABC", "ABC", "ABC", ""]
-        upper(field_2) will return [""]
-        upper(field_3) will return "ABC"
+        upper(field_2) will return "ABC"
 
     reduce
         Flattens one layer of nested list result:

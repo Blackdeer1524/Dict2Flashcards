@@ -1070,9 +1070,13 @@ n_sentences_per_batch:
                                        else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
                                                              self.external_audio_generator.data_generator.name)
 
+        def display_audio_getter_results_on_button_click():
+            self.waiting_for_audio_display = True
+            self.display_audio_getter_results(show_errors=True)
+
         self.fetch_audio_data_button = self.Button(self,
                                                    text=self.lang_pack.fetch_audio_data_button_text,
-                                                   command=lambda: self.display_audio_getter_results(show_errors=True))
+                                                   command=display_audio_getter_results_on_button_click)
 
         if typed_audio_getter == "default":
             self.fetch_audio_data_button["state"] = "disabled"
@@ -2524,7 +2528,6 @@ n_sentences_per_batch:
         self.text_widgets_frame.destroy()
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
-        # self.text_widgets_frame.grid_columnconfigure(0, weight=1)
         self.text_widgets_frame.last_source = None
         self.text_widgets_frame.source_display_frame = None
 
@@ -2563,7 +2566,6 @@ n_sentences_per_batch:
             self.display_audio_on_frame(word=self.word, parser_results=parser_results, show_errors=False)
 
         if not self.dict_card_data:
-            # normal
             self.find_image_button["text"] = self.lang_pack.find_image_button_normal_text
             return False
 

@@ -1266,7 +1266,7 @@ n_sentences_per_batch:
         self.after(AUTOSAVE_INTERVAL, autosave)
 
         self.tried_to_display_audio_getters_on_refresh = False
-        self.already_waiting = False
+        self.waiting_for_audio_display = False
         self.last_refresh_call_time = 0
         self.refresh()
 
@@ -1421,7 +1421,7 @@ n_sentences_per_batch:
     @error_handler(show_exception_logs)
     def display_audio_getter_results(self, show_errors: bool):
         parser_results: list[tuple[tuple[str, str], AudioData]] = []
-
+        
         def fill_parser_results() -> None:
             nonlocal parser_results
 
@@ -1456,6 +1456,9 @@ n_sentences_per_batch:
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 
         def display_audio_if_done(thread: Thread):
+            if not self.waiting_for_audio_display:
+                return
+
             if thread.is_alive():
                 self.after(100, lambda: display_audio_if_done(thread))
             else:
@@ -2505,6 +2508,8 @@ n_sentences_per_batch:
     @error_handler(show_exception_logs)
     def refresh(self) -> bool:
         self.last_refresh_call_time = time.time()
+        self.waiting_for_audio_display = False
+        self.tried_to_display_audio_getters_on_refresh = False
 
         self.dict_card_data = self.deck.get_card().to_dict()
         self.card_processor.process_card(self.dict_card_data)
@@ -2568,23 +2573,20 @@ n_sentences_per_batch:
         else:
             self.find_image_button["text"] = self.lang_pack.find_image_button_normal_text
 
-        self.already_waiting = False
-        self.tried_to_display_audio_getters_on_refresh = False
-
         def display_audio_getters_results_on_refresh():
             if self.tried_to_display_audio_getters_on_refresh:
                 return
 
             if (time.time() - self.last_refresh_call_time) > 0.1:
-                self.display_audio_getter_results(show_errors=False)
+                self.waiting_for_audio_display = True
                 self.tried_to_display_audio_getters_on_refresh = True
-                self.already_waiting = False
+                self.display_audio_getter_results(show_errors=False)
             else:
-                if self.already_waiting:
+                if self.waiting_for_audio_display:
                     return
 
                 self.after(300, display_audio_getters_results_on_refresh)
-                self.already_waiting = True
+                self.waiting_for_audio_display = True
         
         if self.external_audio_generator is not None and word_data:
             self.external_audio_generator.force_update(word_data, self.dict_card_data)

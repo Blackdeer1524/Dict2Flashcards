@@ -1239,7 +1239,10 @@ n_sentences_per_batch:
 
         self.gb = Binder()
         self.gb.bind("Control", "c", "space",
-                     action=lambda: self.define_word(word_query=self.clipboard_get(), additional_query="")
+                     action=lambda: self.define_word(
+                         word_query=remove_special_chars(text=self.clipboard_get(),
+                                                         special_chars="№!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~").strip(),
+                         additional_query="")
                      )
 
         @error_handler(self.show_exception_logs)

@@ -98,9 +98,9 @@ class CardGenerator(ABC):
                     if additional_filter(card := Card(item)):
                         res.append(card)
 
-        def sorting_key(card: Card) -> tuple[int, str]:
+        def sorting_key(card: Card) -> tuple[int, int, str]:
             word = card[FIELDS.word]
-            return len(word.split()), word
+            return len(word.split()), len(word), word
 
         return sorted(res, key=sorting_key), error_message
 

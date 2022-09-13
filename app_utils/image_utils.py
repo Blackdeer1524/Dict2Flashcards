@@ -1,3 +1,4 @@
+import concurrent.futures
 import copy
 import os
 import time
@@ -283,17 +284,23 @@ class ImageSearch(Toplevel):
 
     @staticmethod
     def preprocess_image(img: Image, width: int = None, height: int = None) -> Image:
-        processed_img = copy.copy(img)
-        if width is not None and processed_img.width > width:
-            k_width = width / processed_img.width
-            processed_img = processed_img.resize((width, int(processed_img.height * k_width)),
-                                                 Image.ANTIALIAS)
+        resize_is_needed = False
+        new_width = img.width
+        new_height = img.height
 
-        if height is not None and processed_img.height > height:
-            k_height = height / processed_img.height
-            processed_img = processed_img.resize((int(processed_img.width * k_height), height),
-                                                 Image.ANTIALIAS)
-        return processed_img
+        if width is not None and new_width > width:
+            new_height = int(new_height * width / new_width)
+            new_width = width
+            resize_is_needed = True
+
+        if height is not None and new_height > height:
+            new_width = int(new_width * height / new_height)
+            new_height = height
+            resize_is_needed = True
+
+        if resize_is_needed:
+            img = img.resize((new_width, new_height), Image.ANTIALIAS)
+        return img
 
     def fetch_image(self, url):
         """
@@ -352,12 +359,13 @@ class ImageSearch(Toplevel):
         :param n_retries: (if some error occurred) replace "bad" image with the new one and tries to fetch it.
         :return:
         """
-        def wait_url_generation_future(future, on_completion_action: Callable):
+        def wait_url_generation_future(future, on_completion_action: Callable = None):
             if future.running():
                 self.after(100, lambda: wait_url_generation_future(future, on_completion_action))
             else:
                 future.result()
-                on_completion_action()
+                if on_completion_action is not None:
+                    on_completion_action()
 
         def schedule_button_placement():
             def add_fetching_to_queue():
@@ -378,25 +386,24 @@ class ImageSearch(Toplevel):
                 if not image_fetching_futures:
                     self._place_buttons(button_images_batch)
                     return
-                current_future = image_fetching_futures[0]
-                if current_future.running():
-                    self.after(100, place_buttons_on_future_completion)
-                    return
-                image_fetching_futures.pop(0)
-                fetching_status, content, url = current_future.result()
-                if fetching_status == ImageSearch.StatusCodes.NORMAL:
-                    processing_status, button_img, img = self.process_bin_data(content)
-                    if processing_status == ImageSearch.StatusCodes.NORMAL:
-                        button_images_batch.append(button_img)
-                        self.saving_images.append(img)
-                        self.images_source.append(url)
+
+                while len(image_fetching_futures) and not (current_future := image_fetching_futures[0]).running():
+                    image_fetching_futures.pop(0)
+                    fetching_status, content, url = current_future.result()
+                    if fetching_status == ImageSearch.StatusCodes.NORMAL:
+                        processing_status, button_img, img = self.process_bin_data(content)
+                        if processing_status == ImageSearch.StatusCodes.NORMAL:
+                            button_images_batch.append(button_img)
+                            self.saving_images.append(img)
+                            self.images_source.append(url)
+                        else:
+                            add_fetching_to_queue()
+                    elif fetching_status == ImageSearch.StatusCodes.RETRIABLE_FETCHING_ERROR:
+                        self._img_urls.append(url)
+                        add_fetching_to_queue()
                     else:
                         add_fetching_to_queue()
-                elif fetching_status == ImageSearch.StatusCodes.RETRIABLE_FETCHING_ERROR:
-                    self._img_urls.append(url)
-                    add_fetching_to_queue()
-                else:
-                    add_fetching_to_queue()
+
                 self.after(100, place_buttons_on_future_completion)
 
             place_buttons_on_future_completion()
@@ -484,7 +491,7 @@ if __name__ == "__main__":
         for i in range(len(instance.working_state)):
             if instance.working_state[i]:
                 instance.saving_images[i].save(f"./{i}.png")
-    
+
     def get_chosen_urls(instance: ImageSearch):
         res = []
         for i in range(len(instance.working_state)):
@@ -497,5 +504,7 @@ if __name__ == "__main__":
     root.after(0, start_image_search("test", root,
                                      local_images=["/home/blackdeer/Desktop/conv_2.png"],
                                      url_scrapper=get, show_image_width=300,
-                                     on_closing_action=get_chosen_urls, timeout=0.2, max_request_tries=5))
+                                     n_rows=10,
+                                     n_images_in_row=3,
+                                     on_closing_action=save_on_closing, timeout=0.2, max_request_tries=5))
     root.mainloop()

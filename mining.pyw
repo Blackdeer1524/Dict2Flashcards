@@ -1245,9 +1245,9 @@ n_sentences_per_batch:
         self.gb.bind("Control", "c", "space",
                      action=lambda: self.define_word(
                          word_query=remove_special_chars(text=self.clipboard_get(),
-                                                         special_chars="№!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~").strip(),
+                                                         special_chars="№!\"#$%'()*+,./:;<=>?@[\\]^_`{|}~").strip(),
                          additional_query="")
-                     )
+                     )  # &- are not removed
 
         @error_handler(self.show_exception_logs)
         def paste_in_sentence_field():

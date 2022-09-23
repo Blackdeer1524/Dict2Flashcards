@@ -1220,24 +1220,66 @@ n_sentences_per_batch:
         self.text_widgets_frame.last_source = None
         self.text_widgets_frame.source_display_frame = None
 
-        def focus_next_window(event):
+        def focus_next_window(event, focusout_action: Callable[[], None] = None):
             event.widget.tk_focusNext().focus()
+            if focusout_action is not None:
+                focusout_action()
             return "break"
 
-        def focus_prev_window(event):
+        def focus_prev_window(event, focusout_action: Callable[[], None] = None):
             event.widget.tk_focusPrev().focus()
+            if focusout_action is not None:
+                focusout_action()
             return "break"
 
-        self.new_order = [self.browse_button, self.word_text, self.find_image_button, self.definition_text,
-                          self.add_sentences_button] + self.sentence_texts + \
-                         [self.user_tags_field] + [self.skip_button, self.prev_button,
-                                                                       self.anki_button, self.bury_button,
-                                                                       self.tag_prefix_field]
+        def fill_search_fields():
+            word = self.word
+            self.sound_search_entry.insert(0, word)
+            self.sentence_search_entry.insert(0, word)
 
-        for widget_index in range(len(self.new_order)):
-            self.new_order[widget_index].lift()
-            self.new_order[widget_index].bind("<Tab>", focus_next_window)
-            self.new_order[widget_index].bind("<Shift-Tab>", focus_prev_window)
+        self.new_order = [(self.browse_button, None),
+                          (self.anki_button, None),
+                          (self.word_parser_option_menu, None),
+                          (self.configure_word_parser_button, None),
+
+                          (self.word_text, fill_search_fields),
+
+                          (self.special_field, None),
+                          (self.dict_tags_field, None),
+
+                          (self.user_tags_field, None),
+                          (self.tag_prefix_field, None),
+
+                          (self.definition_text, None),
+
+                          (self.find_image_button, None),
+                          (self.image_parser_option_menu, None),
+                          (self.configure_image_parser_button, None),
+
+                          (self.fetch_audio_data_button, None),
+                          (self.audio_getter_option_menu, None),
+                          (self.configure_audio_getter_button, None),
+
+                          (self.sound_search_entry, None),
+                          # audio_sf
+
+                          (self.prev_button, None),
+                          (self.bury_button, None),
+                          (self.skip_button, None),
+
+                          (self.add_sentences_button, None),
+                          (self.sentence_parser_option_menu, None),
+                          (self.configure_sentence_parser_button, None),
+
+                          (self.sentence_search_entry, None),
+
+                          # sentence_texts
+                          ]
+
+        for widget, action in self.new_order:
+            widget.lift()
+            widget.bind("<Tab>", partial(focus_next_window, focusout_action=action))
+            widget.bind("<Shift-Tab>", partial(focus_prev_window, focusout_action=action))
 
         self.bind("<Escape>", lambda event: self.on_closing())
         self.bind("<Control-Key-0>", lambda event: self.geometry("+0+0"))
@@ -1443,7 +1485,7 @@ n_sentences_per_batch:
             assert self.external_audio_generator is not None, \
                 "display_audio_getter_results cannot be called because self.external_audio_generator is None"
 
-            word = self.word
+            word = self.sound_search_entry.get()
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
 
             if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
@@ -1477,7 +1519,7 @@ n_sentences_per_batch:
             if thread.is_alive():
                 self.after(100, lambda: display_audio_if_done(thread))
             else:
-                self.display_audio_on_frame(word=self.word, parser_results=parser_results, show_errors=show_errors)
+                self.display_audio_on_frame(word=self.sound_search_entry.get(), parser_results=parser_results, show_errors=show_errors)
 
         th = Thread(target=fill_parser_results)
         th.start()
@@ -2483,7 +2525,7 @@ n_sentences_per_batch:
         def schedule_sentence_fetcher():
             nonlocal results
             parser_results = self.external_sentence_fetcher.get(
-                word=self.word,
+                word=self.sentence_search_entry.get(),
                 card_data=self.dict_card_data,
                 batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
             if parser_results is None:
@@ -2508,7 +2550,7 @@ n_sentences_per_batch:
                 sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
                 for sentence in sent_batch:
                     self.add_sentence_field(
-                        source=f"{typed_parser_name}: {self.word}",
+                        source=f"{typed_parser_name}: {self.sentence_search_entry.get()}",
                         sentence=sentence)
 
                 if error_message:
@@ -2549,8 +2591,13 @@ n_sentences_per_batch:
 
         self.word_text.focus()
         self.word_text.clear()
+        self.sound_search_entry.clear()
+        self.sentence_search_entry.clear()
+
         if (word_data := self.dict_card_data.get(FIELDS.word, "")):
             self.word_text.insert(1.0, word_data)
+            self.sound_search_entry.insert(0, word_data)
+            self.sentence_search_entry.insert(0, word_data)
 
         self.external_sentence_fetcher.force_update(word_data, self.dict_card_data)
         dict_sentences = self.dict_card_data.get(FIELDS.sentences, [""])

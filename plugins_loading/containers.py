@@ -284,7 +284,7 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
         object.__setattr__(self, "fetch_audio_data_button_text", source_module.fetch_audio_data_button_text)
         object.__setattr__(self, "sound_search_entry_text", source_module.sound_search_entry_text)
         object.__setattr__(self, "sentence_button_text", source_module.sentence_button_text)
-        object.__setattr__(self, "sentence_search_entry_text", source_module.sound_search_entry_text)
+        object.__setattr__(self, "sentence_search_entry_text", source_module.sentence_search_entry_text)
         object.__setattr__(self, "sentence_text_placeholder_prefix", source_module.sentence_text_placeholder_prefix)
         object.__setattr__(self, "user_tags_field_placeholder", source_module.user_tags_field_placeholder)
 

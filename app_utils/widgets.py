@@ -81,8 +81,6 @@ class EntryWithPlaceholder(Entry):
             self.insert(0, self._placeholder)
             self._placeholder_set_status = True
             self['foreground'] = self._placeholder_fg_color
-        else:
-            self._placeholder_set_status = False
 
     def remove_placeholder(self):
         if self._placeholder_set_status:

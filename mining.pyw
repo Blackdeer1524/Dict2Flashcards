@@ -1192,7 +1192,7 @@ n_sentences_per_batch:
         self.configure_sentence_parser_button.grid(row=10, column=7, sticky="news",
                                                    padx=(0, self.text_padx), pady=(self.text_pady, 0))
         # ======
-        self.sentence_search_entry = self.Entry(self, placeholder=self.lang_pack.sentence_text_placeholder_prefix)
+        self.sentence_search_entry = self.Entry(self, placeholder=self.lang_pack.sentence_search_entry_text)
         self.sentence_search_entry.grid(row=11, column=0, columnspan=8, sticky="news",
                                         padx=self.text_padx, pady=(0, 0))
 
@@ -2599,6 +2599,9 @@ n_sentences_per_batch:
             self.word_text.insert(1.0, word_data)
             self.sound_search_entry.insert(0, word_data)
             self.sentence_search_entry.insert(0, word_data)
+        else:
+            self.sound_search_entry.fill_placeholder()
+            self.sentence_search_entry.fill_placeholder()
 
         self.external_sentence_fetcher.force_update(word_data, self.dict_card_data)
         dict_sentences = self.dict_card_data.get(FIELDS.sentences, [""])

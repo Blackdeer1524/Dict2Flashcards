@@ -978,12 +978,11 @@ n_sentences_per_batch:
         main_menu.add_command(label=self.lang_pack.exit_menu_label, command=self.on_closing)
         self.config(menu=main_menu)
 
-        self.text_padx = 10
-        self.text_pady = 10
+        self.text_padx = 5
+        self.text_pady = 5
 
         for i in range(6):
             self.grid_columnconfigure(i, weight=1)
-        self.grid_rowconfigure(13, weight=1)
 
         additional_search_frame = self.Frame(self)
         additional_search_frame.grid_propagate(False)
@@ -1029,23 +1028,37 @@ n_sentences_per_batch:
         self.special_field = self.Text(self, relief="ridge", state="disabled", height=1)
         self.special_field.grid(row=2, column=0, columnspan=8, sticky="news", padx=self.text_padx)
 
-        self.dict_tags_field = self.Text(self, relief="ridge", state="disabled", height=2)
-        self.dict_tags_field.grid(row=3, column=0, columnspan=8, sticky="news",
-                                  padx=self.text_padx, pady=0)
-
-        self.user_tags_field = self.Entry(self, placeholder=self.lang_pack.user_tags_field_placeholder)
-        self.user_tags_field.fill_placeholder()
-        self.user_tags_field.grid(row=4, column=0, columnspan=6, sticky="news",
-                                  padx=(self.text_padx, 0), pady=(self.text_pady, 0))
-
-        self.tag_prefix_field = self.Entry(self, justify="center", width=8)
-        self.tag_prefix_field.insert(0, self.configurations["deck"]["tags_hierarchical_pref"])
-        self.tag_prefix_field.grid(row=4, column=7, columnspan=1, sticky="news",
-                                   padx=(0, self.text_padx), pady=(self.text_pady, 0))
-
         self.definition_text = self.Text(self, placeholder=self.lang_pack.definition_text_placeholder, height=4)
-        self.definition_text.grid(row=5, column=0, columnspan=8, sticky="news",
+        self.definition_text.grid(row=3, column=0, columnspan=8, sticky="news",
                                   padx=self.text_padx, pady=(self.text_pady, 0))
+
+        self.dict_tags_field = self.Text(self, relief="ridge", state="disabled", height=2)
+        self.dict_tags_field.grid(row=4, column=0, columnspan=8, sticky="news",
+                                  padx=self.text_padx, pady=self.text_pady)
+
+        a = self.Frame(self)
+        a.grid(row=5, column=0, columnspan=8, padx=self.text_padx, pady=0, sticky="news")
+
+        for i in range(3):
+            a.columnconfigure(i, weight=1)
+
+        self.prev_button = self.Button(a,
+                                       text="<",
+                                       command=lambda x=-1: self.replace_decks_pointers(x),
+                                       font=Font(weight="bold"),
+                                       state="disabled")
+        self.prev_button.grid(row=0, column=0, sticky="news")
+
+        self.bury_button = self.Button(a,
+                                       text=self.lang_pack.bury_button_text,
+                                       command=self.bury_command)
+        self.bury_button.grid(row=0, column=1, sticky="news")
+
+        self.skip_button = self.Button(a,
+                                       text=">",
+                                       command=self.skip_command,
+                                       font=Font(weight="bold"))
+        self.skip_button.grid(row=0, column=2, sticky="news")
 
         self.image_word_parsers_names = loaded_plugins.web_image_parsers.loaded
         if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
@@ -1063,7 +1076,8 @@ n_sentences_per_batch:
                                                              init_text=typed_image_parser_name,
                                                              values=itertools.chain(
                                                                  self.image_word_parsers_names,
-                                                                 [f"[{parser_types.CHAIN}] {name}" for name in self.chaining_data["image_parsers"]]),
+                                                                 [f"[{parser_types.CHAIN}] {name}" for name in
+                                                                  self.chaining_data["image_parsers"]]),
                                                              command=lambda parser_name:
                                                              self.change_image_parser(parser_name))
         self.image_parser_option_menu.grid(row=6, column=3, columnspan=4, sticky="news",
@@ -1073,15 +1087,20 @@ n_sentences_per_batch:
             self,
             text="</>",
             command=lambda: self.call_configuration_window(
-                plugin_name=self.image_parser.name if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB
-                                                   else f"[{parser_types.CHAIN}] {self.image_parser.name}",
+                plugin_name=self.image_parser.name if self.configurations["scrappers"]["image"][
+                                                          "type"] == parser_types.WEB
+                else f"[{parser_types.CHAIN}] {self.image_parser.name}",
                 plugin_config=self.image_parser.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()))
         self.configure_image_parser_button.grid(row=6, column=7, sticky="news",
                                                 padx=(0, self.text_padx), pady=(self.text_pady, 0))
 
-        # ======
+        if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
+            typed_sentence_parser_name = self.external_sentence_fetcher.data_generator.name
+        else:
+            typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
+
         typed_audio_getter = "default" if self.external_audio_generator is None \
                                        else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
                                                              self.external_audio_generator.data_generator.name)
@@ -1135,58 +1154,28 @@ n_sentences_per_batch:
                                       height=110)
 
         self.sound_sf.grid(row=9, column=0, columnspan=8, sticky="news",
-                                   padx=self.text_padx, pady=(0, self.text_pady))
+                                   padx=self.text_padx, pady=0)
 
         self.sound_inner_frame = self.sound_sf.display_widget(self.Frame, fit_width=True)
         self.sound_sf.bind_scroll_wheel(self.sound_inner_frame)
         self.sound_inner_frame.last_source = None
         self.sound_inner_frame.source_display_frame = None
 
-        if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
-            typed_sentence_parser_name = self.external_sentence_fetcher.data_generator.name
-        else:
-            typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
-
-        # ======
-        a = self.Frame(self)
-        a.grid(row=10, column=0, columnspan=8, padx=self.text_padx, pady=0, sticky="news")
-
-        for i in range(3):
-            a.columnconfigure(i, weight=1)
-
-        self.prev_button = self.Button(a,
-                                       text="<",
-                                       command=lambda x=-1: self.replace_decks_pointers(x),
-                                       font=Font(weight="bold"),
-                                       state="disabled")
-        self.prev_button.grid(row=0, column=0, sticky="news")
-
-        self.bury_button = self.Button(a,
-                                       text=self.lang_pack.bury_button_text,
-                                       command=self.bury_command)
-        self.bury_button.grid(row=0, column=1, sticky="news")
-
-        self.skip_button = self.Button(a,
-                                       text=">",
-                                       command=self.skip_command,
-                                       font=Font(weight="bold"))
-        self.skip_button.grid(row=0, column=2, sticky="news")
-        # ======
-
         self.add_sentences_button = self.Button(self,
                                                 text=self.lang_pack.sentence_button_text,
                                                 command=self.add_external_sentences)
-        self.add_sentences_button.grid(row=11, column=0, columnspan=3, sticky="news",
+        self.add_sentences_button.grid(row=10, column=0, columnspan=3, sticky="news",
                                        padx=(self.text_padx, 0), pady=(self.text_pady, 0))
 
         self.sentence_parser_option_menu = self.get_option_menu(self,
                                                                 init_text=typed_sentence_parser_name,
                                                                 values=itertools.chain(
                                                                     loaded_plugins.web_sent_parsers.loaded,
-                                                                    [f"[{parser_types.CHAIN}] {name}" for name in self.chaining_data["sentence_parsers"]]),
+                                                                    [f"[{parser_types.CHAIN}] {name}" for name in
+                                                                     self.chaining_data["sentence_parsers"]]),
                                                                 command=lambda parser_name:
                                                                 self.change_sentence_parser(parser_name))
-        self.sentence_parser_option_menu.grid(row=11, column=3, columnspan=4, sticky="news",
+        self.sentence_parser_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
                                               pady=(self.text_pady, 0))
 
         self.configure_sentence_parser_button = self.Button(
@@ -1194,31 +1183,42 @@ n_sentences_per_batch:
             text="</>",
             command=lambda: self.call_configuration_window(
                 plugin_name=self.external_sentence_fetcher.data_generator.name
-                            if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB
-                            else f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}",
+                if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB
+                else f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}",
                 plugin_config=self.external_sentence_fetcher.data_generator.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()),
             width=6)
-        self.configure_sentence_parser_button.grid(row=11, column=7, sticky="news",
+        self.configure_sentence_parser_button.grid(row=10, column=7, sticky="news",
                                                    padx=(0, self.text_padx), pady=(self.text_pady, 0))
         # ======
         self.sentence_search_entry = self.Entry(self)
-        self.sentence_search_entry.grid(row=12, column=0, columnspan=8, sticky="news",
+        self.sentence_search_entry.grid(row=11, column=0, columnspan=8, sticky="news",
                                         padx=self.text_padx, pady=(0, 0))
 
         self.sentence_texts = []
 
         self.text_widgets_sf = ScrolledFrame(self, scrollbars="vertical",
-                                        canvas_bg=self.theme.frame_cfg.get("bg"))
-        self.text_widgets_sf.grid(row=13, column=0, columnspan=8, sticky="news",
-                                     padx=self.text_padx, pady=(0, self.text_pady))
+                                             canvas_bg=self.theme.frame_cfg.get("bg"))
+        self.text_widgets_sf.grid(row=12, column=0, columnspan=8, sticky="news",
+                                  padx=self.text_padx, pady=(0, self.text_pady))
+        self.grid_rowconfigure(12, weight=1)
 
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
         # self.text_widgets_frame.grid_columnconfigure(0, weight=1)
         self.text_widgets_frame.last_source = None
         self.text_widgets_frame.source_display_frame = None
+
+        self.user_tags_field = self.Entry(self, placeholder=self.lang_pack.user_tags_field_placeholder)
+        self.user_tags_field.fill_placeholder()
+        self.user_tags_field.grid(row=13, column=0, columnspan=6, sticky="news",
+                                  padx=(self.text_padx, 0), pady=(0, self.text_pady))
+
+        self.tag_prefix_field = self.Entry(self, justify="center", width=8)
+        self.tag_prefix_field.insert(0, self.configurations["deck"]["tags_hierarchical_pref"])
+        self.tag_prefix_field.grid(row=13, column=7, columnspan=1, sticky="news",
+                                   padx=(0, self.text_padx), pady=(0, self.text_pady))
 
         def focus_next_window(event, focusout_action: Callable[[], None] = None):
             event.widget.tk_focusNext().focus()
@@ -1247,12 +1247,14 @@ n_sentences_per_batch:
                           (self.word_text, fill_search_fields),
 
                           (self.special_field, None),
-                          (self.dict_tags_field, None),
-
-                          (self.user_tags_field, None),
-                          (self.tag_prefix_field, None),
 
                           (self.definition_text, None),
+
+                          (self.dict_tags_field, None),
+
+                          (self.prev_button, None),
+                          (self.bury_button, None),
+                          (self.skip_button, None),
 
                           (self.find_image_button, None),
                           (self.image_parser_option_menu, None),
@@ -1263,11 +1265,6 @@ n_sentences_per_batch:
                           (self.configure_audio_getter_button, None),
 
                           (self.sound_search_entry, None),
-                          # audio_sf
-
-                          (self.prev_button, None),
-                          (self.bury_button, None),
-                          (self.skip_button, None),
 
                           (self.add_sentences_button, None),
                           (self.sentence_parser_option_menu, None),
@@ -1275,7 +1272,8 @@ n_sentences_per_batch:
 
                           (self.sentence_search_entry, None),
 
-                          # sentence_texts
+                          (self.user_tags_field, None),
+                          (self.tag_prefix_field, None),
                           ]
 
         for widget, action in self.new_order:

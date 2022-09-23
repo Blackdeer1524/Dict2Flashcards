@@ -1234,8 +1234,10 @@ n_sentences_per_batch:
 
         def fill_search_fields():
             word = self.word
-            self.sound_search_entry.insert(0, word)
-            self.sentence_search_entry.insert(0, word)
+            if not self.sound_search_entry.get():
+                self.sound_search_entry.insert(0, word)
+            if not self.sentence_search_entry.get():
+                self.sentence_search_entry.insert(0, word)
 
         self.new_order = [(self.browse_button, None),
                           (self.anki_button, None),
@@ -2304,8 +2306,9 @@ n_sentences_per_batch:
         if sentence_number >= len(self.sentence_texts):
             return
 
-        word = self.word
-        self.dict_card_data[FIELDS.word] = word
+        saving_word = self.word
+        word_for_audio_query = self.sound_search_entry.get()
+        self.dict_card_data[FIELDS.word] = saving_word
         self.dict_card_data[FIELDS.definition] = self.definition
 
         picked_sentence = self.get_sentence(sentence_number)
@@ -2334,7 +2337,7 @@ n_sentences_per_batch:
                 os.path.join(self.configurations["directories"]["media_dir"],
                              self.card_processor
                              .get_save_audio_name(
-                                 word,
+                                 word_for_audio_query,
                                  "[{}] {}".format(getter_type, getter_name) if add_type_prefix else getter_name,
                                  str(i),
                                  self.dict_card_data))
@@ -2372,8 +2375,8 @@ n_sentences_per_batch:
                      not dictionary_audio_links and
                      audio_autochoose_mode in ("first_available_audio", "first_available_audio_source")):
 
-                self.external_audio_generator.force_update(word, self.dict_card_data)
-                audio_data_pack = self.external_audio_generator.get(word=word,
+                self.external_audio_generator.force_update(word_for_audio_query, self.dict_card_data)
+                audio_data_pack = self.external_audio_generator.get(word=word_for_audio_query,
                                                                     card_data=self.dict_card_data,
                                                                     batch_size=choosing_slice)
 

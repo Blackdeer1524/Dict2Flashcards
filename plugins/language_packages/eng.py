@@ -57,16 +57,18 @@ chain_management_close_chain_type_selection_button = "Close"
 exit_menu_label = "Exit"
 
 # widgets
+anki_button_text = "Anki"
 browse_button_text = "Find in browser"
+word_text_placeholder = "Word"
+definition_text_placeholder = "Definition"
+bury_button_text = "Bury"
 find_image_button_normal_text = "Add image"
 find_image_button_image_link_encountered_postfix = "★"
 fetch_audio_data_button_text = "Load audio"
+sound_search_entry_text = "Audio query"
 sentence_button_text = "Add sentences"
-word_text_placeholder = "Word"
-definition_text_placeholder = "Definition"
+sentence_search_entry_text = "Sentence query"
 sentence_text_placeholder_prefix = "Sentence"
-anki_button_text = "Anki"
-bury_button_text = "Bury"
 user_tags_field_placeholder = "Tags"
 
 # display_audio_on_frame

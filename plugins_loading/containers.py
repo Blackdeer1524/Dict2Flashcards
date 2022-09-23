@@ -273,17 +273,19 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
         object.__setattr__(self, "exit_menu_label", source_module.exit_menu_label)
 
         # widgets
+        object.__setattr__(self, "anki_button_text", source_module.anki_button_text)
         object.__setattr__(self, "browse_button_text", source_module.browse_button_text)
+        object.__setattr__(self, "word_text_placeholder", source_module.word_text_placeholder)
+        object.__setattr__(self, "definition_text_placeholder", source_module.definition_text_placeholder)
+        object.__setattr__(self, "bury_button_text", source_module.bury_button_text)
         object.__setattr__(self, "find_image_button_normal_text", source_module.find_image_button_normal_text)
         object.__setattr__(self, "find_image_button_image_link_encountered_postfix",
                            source_module.find_image_button_image_link_encountered_postfix)
         object.__setattr__(self, "fetch_audio_data_button_text", source_module.fetch_audio_data_button_text)
+        object.__setattr__(self, "sound_search_entry_text", source_module.sound_search_entry_text)
         object.__setattr__(self, "sentence_button_text", source_module.sentence_button_text)
-        object.__setattr__(self, "word_text_placeholder", source_module.word_text_placeholder)
-        object.__setattr__(self, "definition_text_placeholder", source_module.definition_text_placeholder)
+        object.__setattr__(self, "sentence_search_entry_text", source_module.sound_search_entry_text)
         object.__setattr__(self, "sentence_text_placeholder_prefix", source_module.sentence_text_placeholder_prefix)
-        object.__setattr__(self, "anki_button_text", source_module.anki_button_text)
-        object.__setattr__(self, "bury_button_text", source_module.bury_button_text)
         object.__setattr__(self, "user_tags_field_placeholder", source_module.user_tags_field_placeholder)
 
         # display_audio_on_frame

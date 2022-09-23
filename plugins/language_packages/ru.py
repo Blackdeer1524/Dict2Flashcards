@@ -57,16 +57,18 @@ chain_management_close_chain_type_selection_button = "Закрыть"
 exit_menu_label = "Выход"
 
 # widgets
+anki_button_text = "Anki"
 browse_button_text = "Найти в браузере"
+word_text_placeholder = "Слово"
+definition_text_placeholder = "Значение"
+bury_button_text = "Отложить"
 find_image_button_normal_text = "Добавить изображение"
 find_image_button_image_link_encountered_postfix = "★"
 fetch_audio_data_button_text = "Подгрузить аудио"
+sound_search_entry_text = "Запрос аудио"
 sentence_button_text = "Добавить предложения"
-word_text_placeholder = "Слово"
-definition_text_placeholder = "Значение"
+sentence_search_entry_text = "Запрос предложений"
 sentence_text_placeholder_prefix = "Предложение"
-anki_button_text = "Anki"
-bury_button_text = "Отложить"
 user_tags_field_placeholder = "Тэги"
 
 # display_audio_on_frame

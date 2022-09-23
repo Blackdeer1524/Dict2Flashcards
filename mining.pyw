@@ -1145,7 +1145,7 @@ n_sentences_per_batch:
         self.configure_audio_getter_button.grid(row=7, column=7, sticky="news",
                                                 padx=(0, self.text_padx), pady=(self.text_pady, 0))
 
-        self.sound_search_entry = self.Entry(self)
+        self.sound_search_entry = self.Entry(self, placeholder=self.lang_pack.sound_search_entry_text)
         self.sound_search_entry.grid(row=8, column=0, columnspan=8, sticky="news",
                                      padx=self.text_padx, pady=0)
 
@@ -1192,7 +1192,7 @@ n_sentences_per_batch:
         self.configure_sentence_parser_button.grid(row=10, column=7, sticky="news",
                                                    padx=(0, self.text_padx), pady=(self.text_pady, 0))
         # ======
-        self.sentence_search_entry = self.Entry(self)
+        self.sentence_search_entry = self.Entry(self, placeholder=self.lang_pack.sentence_text_placeholder_prefix)
         self.sentence_search_entry.grid(row=11, column=0, columnspan=8, sticky="news",
                                         padx=self.text_padx, pady=(0, 0))
 

@@ -67,16 +67,18 @@ class LanguagePackageInterface(Protocol):
     exit_menu_label: str
 
     # widgets
+    anki_button_text: str
     browse_button_text: str
+    word_text_placeholder: str
+    definition_text_placeholder: str
+    bury_button_text: str
     find_image_button_normal_text: str
     find_image_button_image_link_encountered_postfix: str
     fetch_audio_data_button_text: str
+    sound_search_entry_text: str
     sentence_button_text: str
-    word_text_placeholder: str
-    definition_text_placeholder: str
+    sentence_search_entry_text: str
     sentence_text_placeholder_prefix: str
-    anki_button_text: str
-    bury_button_text: str
     user_tags_field_placeholder: str
 
     # display_audio_on_frame

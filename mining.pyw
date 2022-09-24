@@ -1256,6 +1256,12 @@ n_sentences_per_batch:
                           (self.bury_button, None),
                           (self.skip_button, None),
 
+                          (self.add_sentences_button, None),
+                          (self.sentence_parser_option_menu, None),
+                          (self.configure_sentence_parser_button, None),
+
+                          (self.sentence_search_entry, None),
+
                           (self.find_image_button, None),
                           (self.image_parser_option_menu, None),
                           (self.configure_image_parser_button, None),
@@ -1265,12 +1271,6 @@ n_sentences_per_batch:
                           (self.configure_audio_getter_button, None),
 
                           (self.sound_search_entry, None),
-
-                          (self.add_sentences_button, None),
-                          (self.sentence_parser_option_menu, None),
-                          (self.configure_sentence_parser_button, None),
-
-                          (self.sentence_search_entry, None),
 
                           (self.user_tags_field, None),
                           (self.tag_prefix_field, None),

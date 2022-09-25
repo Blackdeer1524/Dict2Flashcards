@@ -2034,6 +2034,7 @@ n_sentences_per_batch:
         statistics_window.withdraw()
 
         statistics_window.title(self.lang_pack.statistics_dialog_statistics_window_title)
+        statistics_window.columnconfigure(1, weight=1)
         text_list = ((self.lang_pack.statistics_dialog_added_label,
                       self.lang_pack.statistics_dialog_buried_label,
                       self.lang_pack.statistics_dialog_skipped_label,
@@ -2049,24 +2050,22 @@ n_sentences_per_batch:
                       self.configurations["directories"]["last_save_dir"],
                       self.configurations["directories"]["media_dir"]))
 
-        scroll_frame = ScrolledFrame(statistics_window, scrollbars="horizontal")
-        scroll_frame.pack()
-        scroll_frame.bind_scroll_wheel(statistics_window)
-        inner_frame = scroll_frame.display_widget(self.Frame)
         for row_index in range(len(text_list[0])):
-            for column_index in range(2):
-                info = self.Label(inner_frame, text=text_list[column_index][row_index], anchor="center",
-                             relief="ridge")
-                info.grid(column=column_index, row=row_index, sticky="news")
+            info = self.Label(
+                statistics_window,
+                text=text_list[0][row_index],
+                anchor="center",
+                relief="ridge")
+            info.grid(column=0, row=row_index, sticky="news")
+
+            data_text = self.Text(statistics_window, height=1)
+            data_text.tag_configure('tag-center', justify='center')
+            data_text.insert(1.0, str(text_list[1][row_index]), 'tag-center')
+            data_text["state"] = "disabled"
+            data_text.grid(column=1, row=row_index, sticky="news")
 
         statistics_window.bind("<Escape>", lambda _: statistics_window.destroy())
-        statistics_window.update()
-        current_frame_width = inner_frame.winfo_width()
-        current_frame_height = inner_frame.winfo_height()
-        scroll_frame.config(width=min(self.winfo_width(), current_frame_width),
-                            height=min(self.winfo_height(), current_frame_height))
         statistics_window.deiconify()
-        spawn_window_in_center(self, statistics_window)
         statistics_window.resizable(False, False)
         statistics_window.grab_set()
 

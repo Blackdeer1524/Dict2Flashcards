@@ -46,7 +46,7 @@ from consts.paths import *
 from plugins_loading.containers import LanguagePackageContainer
 from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig, Config
-from plugins_management.parsers_return_types import AudioData
+from plugins_management.parsers_return_types import AudioData, SentenceData
 
 
 class App(Tk):
@@ -1071,9 +1071,55 @@ n_sentences_per_batch:
         else:
             typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
 
+        @error_handler(self.show_exception_logs)
+        def add_external_sentences() -> None:
+            results: list[str, SentenceData] = []
+
+            fill_search_fields()
+
+            def schedule_sentence_fetcher():
+                nonlocal results
+                parser_results = self.external_sentence_fetcher.get(
+                    word=self.sentence_search_entry.get(),
+                    card_data=self.dict_card_data,
+                    batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
+                if parser_results is None:
+                    return
+
+                sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
+                if sentence_parser_type == parser_types.CHAIN:
+                    results = parser_results
+                elif sentence_parser_type == parser_types.WEB:
+                    results.append((self.external_sentence_fetcher.data_generator.name, parser_results))
+                else:
+                    raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
+
+            def wait_sentence_fetcher(thread: Thread):
+                if thread.is_alive():
+                    self.after(100, lambda: wait_sentence_fetcher(thread))
+                    return
+
+                nonlocal results
+
+                for (typed_parser_name, (sent_batch, error_message)) in results:
+                    sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
+                    for sentence in sent_batch:
+                        self.add_sentence_field(
+                            source=f"{typed_parser_name}: {self.sentence_search_entry.get()}",
+                            sentence=sentence)
+
+                    if error_message:
+                        messagebox.showerror(
+                            title=f"[{sentence_parser_type}] {self.external_sentence_fetcher.data_generator.name}",
+                            message=error_message)
+
+            place_sentences_thread = Thread(target=schedule_sentence_fetcher)
+            place_sentences_thread.start()
+            wait_sentence_fetcher(place_sentences_thread)
+
         self.add_sentences_button = self.Button(self,
                                                 text=self.lang_pack.sentence_button_text,
-                                                command=self.add_external_sentences)
+                                                command=add_external_sentences)
         self.add_sentences_button.grid(row=6, column=0, columnspan=3, sticky="news",
                                        padx=(self.text_padx, 0), pady=(self.text_pady, 0))
 
@@ -1161,6 +1207,7 @@ n_sentences_per_batch:
                                                              self.external_audio_generator.data_generator.name)
 
         def display_audio_getter_results_on_button_click():
+            fill_search_fields()
             self.waiting_for_audio_display = True
             self.display_audio_getter_results(show_errors=True)
 
@@ -2525,51 +2572,6 @@ n_sentences_per_batch:
         self.text_widgets_sf.bind_scroll_wheel(choose_button)
 
         self.sentence_texts.append(sentence_text)
-
-    @error_handler(show_exception_logs)
-    def add_external_sentences(self) -> None:
-        from plugins_management.parsers_return_types import SentenceData
-        results: list[str, SentenceData] = []
-
-        def schedule_sentence_fetcher():
-            nonlocal results
-            parser_results = self.external_sentence_fetcher.get(
-                word=self.sentence_search_entry.get(),
-                card_data=self.dict_card_data,
-                batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
-            if parser_results is None:
-                return
-
-            sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-            if sentence_parser_type == parser_types.CHAIN:
-                results = parser_results
-            elif sentence_parser_type == parser_types.WEB:
-                results.append((self.external_sentence_fetcher.data_generator.name, parser_results))
-            else:
-                raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
-
-        def wait_sentence_fetcher(thread: Thread):
-            if thread.is_alive():
-                self.after(100, lambda: wait_sentence_fetcher(thread))
-                return
-
-            nonlocal results
-
-            for (typed_parser_name, (sent_batch, error_message)) in results:
-                sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-                for sentence in sent_batch:
-                    self.add_sentence_field(
-                        source=f"{typed_parser_name}: {self.sentence_search_entry.get()}",
-                        sentence=sentence)
-
-                if error_message:
-                    messagebox.showerror(
-                        title=f"[{sentence_parser_type}] {self.external_sentence_fetcher.data_generator.name}",
-                        message=error_message)
-
-        place_sentences_thread = Thread(target=schedule_sentence_fetcher)
-        place_sentences_thread.start()
-        wait_sentence_fetcher(place_sentences_thread)
 
     @error_handler(show_exception_logs)
     def refresh(self) -> bool:

@@ -1039,12 +1039,12 @@ n_sentences_per_batch:
         a = self.Frame(self)
         a.grid(row=5, column=0, columnspan=8, padx=self.text_padx, pady=0, sticky="news")
 
-        for i in range(3):
+        for i in range(4):
             a.columnconfigure(i, weight=1)
 
         self.prev_button = self.Button(a,
                                        text="<",
-                                       command=lambda x=-1: self.replace_decks_pointers(x),
+                                       command=lambda: self.move_decks_pointers(-1),
                                        font=Font(weight="bold"),
                                        state="disabled")
         self.prev_button.grid(row=0, column=0, sticky="news")
@@ -1056,9 +1056,15 @@ n_sentences_per_batch:
 
         self.skip_button = self.Button(a,
                                        text=">",
-                                       command=self.skip_command,
+                                       command=lambda: self.move_decks_pointers(1),
                                        font=Font(weight="bold"))
         self.skip_button.grid(row=0, column=2, sticky="news")
+
+        self.skip_all_button = self.Button(a,
+                                           text=">>>",
+                                           command=lambda: self.move_decks_pointers(self.deck.get_n_cards_left()),
+                                           font=Font(weight="bold"))
+        self.skip_all_button.grid(row=0, column=3, sticky="news")
 
         if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
             typed_sentence_parser_name = self.external_sentence_fetcher.data_generator.name
@@ -1283,13 +1289,14 @@ n_sentences_per_batch:
 
         self.bind("<Escape>", lambda event: self.on_closing())
         self.bind("<Control-Key-0>", lambda event: self.geometry("+0+0"))
-        self.bind("<Control-d>", lambda event: self.skip_command())
+        self.bind("<Control-z>", lambda event: self.move_decks_pointers(-1))
         self.bind("<Control-q>", lambda event: self.bury_command())
+        self.bind("<Control-d>", lambda event: self.move_decks_pointers(1))
+        self.bind("<Control-Shift_L><D>", lambda event: self.move_decks_pointers(self.deck.get_n_cards_left()))
         self.bind("<Control-s>", lambda event: self.save_button())
+        self.bind("<Control-Shift_L><A>", lambda event: self.add_word_dialog())
         self.bind("<Control-f>", lambda event: self.find_dialog())
         self.bind("<Control-e>", lambda event: self.statistics_dialog())
-        self.bind("<Control-Shift_L><A>", lambda event: self.add_word_dialog())
-        self.bind("<Control-z>", lambda event: self.replace_decks_pointers(-1))
 
         for i in range(0, 9):
             self.bind(f"<Control-Key-{i + 1}>", lambda event, index=i: self.choose_sentence(index))
@@ -1939,7 +1946,7 @@ n_sentences_per_batch:
                     messagebox.showerror(title=self.lang_pack.error_title,
                                          message=self.lang_pack.find_dialog_wrong_move_message)
                 else:
-                    self.replace_decks_pointers(int(move_quotient))
+                    self.move_decks_pointers(int(move_quotient))
                 find_window.destroy()
                 return
 
@@ -1969,7 +1976,7 @@ n_sentences_per_batch:
                     left["state"] = "disabled" if not move_list.get_pointer_position() else "normal"
                     right["state"] = "disabled" if move_list.get_pointer_position() == len(move_list) else "normal"
 
-                    self.replace_decks_pointers(current_offset)
+                    self.move_decks_pointers(current_offset)
 
                 find_window.destroy()
 
@@ -2425,12 +2432,13 @@ n_sentences_per_batch:
     
     @error_handler(show_exception_logs)
     def skip_command(self):
-        if self.deck.get_n_cards_left():
-            self.saved_cards_data.append(CardStatus.SKIP)
-        self.refresh()
+        self.move_decks_pointers(1)
+        # if self.deck.get_n_cards_left():
+        #     self.saved_cards_data.append(CardStatus.SKIP)
+        # self.refresh()
 
     @error_handler(show_exception_logs)
-    def replace_decks_pointers(self, n: int):
+    def move_decks_pointers(self, n: int):
         self.saved_cards_data.move(min(n, self.deck.get_n_cards_left()))
         self.deck.move(n - 1)
         self.refresh()

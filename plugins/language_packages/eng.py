@@ -105,6 +105,7 @@ Hotkeys (local):
 * Ctrl + 0: Moves app to upper left corner of the screen
 * Ctrl + 1..9: picks corresponding sentence
 * Ctrl + d: skips current card
+* Ctrl + Shift + d: skips all remaining cards
 * Ctrl + z: returns to a previous card
 * Ctrl + q: moves current card to a separate file
 * Ctrl + Shift + a: calls <add word> window

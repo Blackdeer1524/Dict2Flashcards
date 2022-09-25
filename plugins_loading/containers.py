@@ -282,7 +282,7 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
         object.__setattr__(self, "find_image_button_image_link_encountered_postfix",
                            source_module.find_image_button_image_link_encountered_postfix)
         object.__setattr__(self, "fetch_audio_data_button_text", source_module.fetch_audio_data_button_text)
-        object.__setattr__(self, "sound_search_entry_text", source_module.sound_search_entry_text)
+        object.__setattr__(self, "audio_search_entry_text", source_module.audio_search_entry_text)
         object.__setattr__(self, "sentence_button_text", source_module.sentence_button_text)
         object.__setattr__(self, "sentence_search_entry_text", source_module.sentence_search_entry_text)
         object.__setattr__(self, "sentence_text_placeholder_prefix", source_module.sentence_text_placeholder_prefix)
@@ -409,13 +409,13 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
         object.__setattr__(self, "configuration_window_save_button_text",
                            source_module.configuration_window_save_button_text)
 
-        # play_sound
-        object.__setattr__(self, "play_sound_playsound_window_title",
-                           source_module.play_sound_playsound_window_title)
-        object.__setattr__(self, "play_sound_local_audio_not_found_message",
-                           source_module.play_sound_local_audio_not_found_message)
-        object.__setattr__(self, "play_sound_no_audio_source_found_message",
-                           source_module.play_sound_no_audio_source_found_message)
+        # play_audio
+        object.__setattr__(self, "play_audio_playaudio_window_title",
+                           source_module.play_audio_playaudio_window_title)
+        object.__setattr__(self, "play_audio_local_audio_not_found_message",
+                           source_module.play_audio_local_audio_not_found_message)
+        object.__setattr__(self, "play_audio_no_audio_source_found_message",
+                           source_module.play_audio_no_audio_source_found_message)
 
         # request anki
         object.__setattr__(self, "request_anki_connection_error_message",

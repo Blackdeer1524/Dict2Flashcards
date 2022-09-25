@@ -75,7 +75,7 @@ class LanguagePackageInterface(Protocol):
     find_image_button_normal_text: str
     find_image_button_image_link_encountered_postfix: str
     fetch_audio_data_button_text: str
-    sound_search_entry_text: str
+    audio_search_entry_text: str
     sentence_button_text: str
     sentence_search_entry_text: str
     sentence_text_placeholder_prefix: str
@@ -177,9 +177,9 @@ class LanguagePackageInterface(Protocol):
     configuration_window_save_button_text: str
 
     # play_sound
-    play_sound_playsound_window_title: str
-    play_sound_local_audio_not_found_message: str
-    play_sound_no_audio_source_found_message: str
+    play_audio_playaudio_window_title: str
+    play_audio_local_audio_not_found_message: str
+    play_audio_no_audio_source_found_message: str
 
     # request anki
     request_anki_connection_error_message: str

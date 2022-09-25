@@ -65,7 +65,7 @@ bury_button_text = "Bury"
 find_image_button_normal_text = "Add image"
 find_image_button_image_link_encountered_postfix = "★"
 fetch_audio_data_button_text = "Load audio"
-sound_search_entry_text = "Audio query"
+audio_search_entry_text = "Audio query"
 sentence_button_text = "Add sentences"
 sentence_search_entry_text = "Sentence query"
 sentence_text_placeholder_prefix = "Sentence"
@@ -394,9 +394,9 @@ configuration_window_expected_prefix = "Expected"
 configuration_window_save_button_text = "Save"
 
 # play_sound
-play_sound_playsound_window_title = "Audio"
-play_sound_local_audio_not_found_message = "Local audio not found"
-play_sound_no_audio_source_found_message = "No audio source found"
+play_audio_playaudio_window_title = "Audio"
+play_audio_local_audio_not_found_message = "Local audio not found"
+play_audio_no_audio_source_found_message = "No audio source found"
 
 # request anki
 request_anki_connection_error_message = "Make sure Anki is open and AnkiConnect addon is installed"

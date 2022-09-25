@@ -65,7 +65,7 @@ bury_button_text = "Отложить"
 find_image_button_normal_text = "Добавить изображение"
 find_image_button_image_link_encountered_postfix = "★"
 fetch_audio_data_button_text = "Подгрузить аудио"
-sound_search_entry_text = "Запрос аудио"
+audio_search_entry_text = "Запрос аудио"
 sentence_button_text = "Добавить предложения"
 sentence_search_entry_text = "Запрос предложений"
 sentence_text_placeholder_prefix = "Предложение"
@@ -394,9 +394,9 @@ configuration_window_expected_prefix = "Ожидалось"
 configuration_window_save_button_text = "Готово"
 
 # play_sound
-play_sound_playsound_window_title = "Аудио"
-play_sound_local_audio_not_found_message = "Локальный файл не найден"
-play_sound_no_audio_source_found_message = "Не откуда брать аудио"
+play_audio_playaudio_window_title = "Аудио"
+play_audio_local_audio_not_found_message = "Локальный файл не найден"
+play_audio_no_audio_source_found_message = "Не откуда брать аудио"
 
 # request anki
 request_anki_connection_error_message = "Проверьте аддон AnkiConnect и откройте Anki"

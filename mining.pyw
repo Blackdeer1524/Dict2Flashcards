@@ -1282,6 +1282,7 @@ n_sentences_per_batch:
                           (self.tag_prefix_field, None),
                           ]
 
+        self.word_text.bind("<FocusOut>", lambda event: fill_search_fields(), add=True)
         for widget, action in self.new_order:
             widget.lift()
             widget.bind("<Tab>", partial(focus_next_window, focusout_action=action))

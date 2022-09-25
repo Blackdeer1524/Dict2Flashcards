@@ -1045,8 +1045,7 @@ n_sentences_per_batch:
         self.prev_button = self.Button(a,
                                        text="<",
                                        command=lambda: self.move_decks_pointers(-1),
-                                       font=Font(weight="bold"),
-                                       state="disabled")
+                                       font=Font(weight="bold"))
         self.prev_button.grid(row=0, column=0, sticky="news")
 
         self.bury_button = self.Button(a,
@@ -2594,9 +2593,6 @@ n_sentences_per_batch:
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
         self.text_widgets_frame.last_source = None
         self.text_widgets_frame.source_display_frame = None
-
-        self.prev_button["state"] = "normal" if self.deck.get_pointer_position() != self.deck.get_starting_position() + 1 \
-                                             else "disabled"
 
         self.title(f"{self.lang_pack.main_window_title_prefix}: {self.deck.get_n_cards_left()}")
 

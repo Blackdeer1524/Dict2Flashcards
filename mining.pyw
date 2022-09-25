@@ -1071,7 +1071,7 @@ n_sentences_per_batch:
             typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
 
         @error_handler(self.show_exception_logs)
-        def add_external_sentences() -> None:
+        def fetch_external_sentences() -> None:
             results: list[str, SentenceData] = []
 
             fill_search_fields()
@@ -1116,10 +1116,10 @@ n_sentences_per_batch:
             place_sentences_thread.start()
             wait_sentence_fetcher(place_sentences_thread)
 
-        self.add_sentences_button = self.Button(self,
-                                                text=self.lang_pack.sentence_button_text,
-                                                command=add_external_sentences)
-        self.add_sentences_button.grid(row=6, column=0, columnspan=3, sticky="news",
+        self.fetch_ext_sentences_button = self.Button(self,
+                                                text=self.lang_pack.fetch_ext_sentences_button,
+                                                command=fetch_external_sentences)
+        self.fetch_ext_sentences_button.grid(row=6, column=0, columnspan=3, sticky="news",
                                        padx=(self.text_padx, 0), pady=(self.text_pady, 0))
 
         self.sentence_parser_option_menu = self.get_option_menu(self,
@@ -1171,10 +1171,10 @@ n_sentences_per_batch:
         else:
             typed_image_parser_name = f"[{parser_types.CHAIN}] {self.image_parser.name}"
 
-        self.find_image_button = self.Button(self,
-                                             text=self.lang_pack.find_image_button_normal_text,
+        self.fetch_images_button = self.Button(self,
+                                             text=self.lang_pack.fetch_images_button_normal_text,
                                              command=self.start_image_search)
-        self.find_image_button.grid(row=9, column=0, columnspan=3, sticky="news",
+        self.fetch_images_button.grid(row=9, column=0, columnspan=3, sticky="news",
                                     padx=(self.text_padx, 0), pady=(0, self.text_pady))
 
         self.image_parser_option_menu = self.get_option_menu(self,
@@ -1308,13 +1308,13 @@ n_sentences_per_batch:
                           (self.bury_button, None),
                           (self.skip_button, None),
 
-                          (self.add_sentences_button, None),
+                          (self.fetch_ext_sentences_button, None),
                           (self.sentence_parser_option_menu, None),
                           (self.configure_sentence_parser_button, None),
 
                           (self.sentence_search_entry, None),
 
-                          (self.find_image_button, None),
+                          (self.fetch_images_button, None),
                           (self.image_parser_option_menu, None),
                           (self.configure_image_parser_button, None),
 
@@ -2634,14 +2634,14 @@ n_sentences_per_batch:
             self.display_audio_on_frame(word=self.word, parser_results=parser_results, show_errors=False)
 
         if not self.dict_card_data:
-            self.find_image_button["text"] = self.lang_pack.find_image_button_normal_text
+            self.fetch_images_button["text"] = self.lang_pack.fetch_images_button_normal_text
             return False
 
         if self.dict_card_data.get(FIELDS.img_links, []):
-            self.find_image_button["text"] = self.lang_pack.find_image_button_normal_text + \
-                                             self.lang_pack.find_image_button_image_link_encountered_postfix
+            self.fetch_images_button["text"] = self.lang_pack.fetch_images_button_normal_text + \
+                                             self.lang_pack.fetch_images_button_image_link_encountered_postfix
         else:
-            self.find_image_button["text"] = self.lang_pack.find_image_button_normal_text
+            self.fetch_images_button["text"] = self.lang_pack.fetch_images_button_normal_text
 
         def display_audio_getters_results_on_refresh():
             if self.tried_to_display_audio_getters_on_refresh:

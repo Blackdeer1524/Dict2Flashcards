@@ -72,11 +72,11 @@ class LanguagePackageInterface(Protocol):
     word_text_placeholder: str
     definition_text_placeholder: str
     bury_button_text: str
-    find_image_button_normal_text: str
-    find_image_button_image_link_encountered_postfix: str
+    fetch_images_button_normal_text: str
+    fetch_images_button_image_link_encountered_postfix: str
     fetch_audio_data_button_text: str
     audio_search_entry_text: str
-    sentence_button_text: str
+    fetch_ext_sentences_button: str
     sentence_search_entry_text: str
     sentence_text_placeholder_prefix: str
     user_tags_field_placeholder: str

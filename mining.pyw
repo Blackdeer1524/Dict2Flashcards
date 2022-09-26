@@ -1036,8 +1036,44 @@ n_sentences_per_batch:
         self.dict_tags_field.grid(row=4, column=0, columnspan=8, sticky="news",
                                   padx=self.text_padx, pady=self.text_pady)
 
+        self.image_word_parsers_names = loaded_plugins.web_image_parsers.loaded
+        if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
+            typed_image_parser_name = self.image_parser.name
+        else:
+            typed_image_parser_name = f"[{parser_types.CHAIN}] {self.image_parser.name}"
+
+        self.fetch_images_button = self.Button(self,
+                                             text=self.lang_pack.fetch_images_button_normal_text,
+                                             command=self.start_image_search)
+        self.fetch_images_button.grid(row=5, column=0, columnspan=3, sticky="news",
+                                    padx=(self.text_padx, 0), pady=(0, self.text_pady))
+
+        self.image_parser_option_menu = self.get_option_menu(self,
+                                                             init_text=typed_image_parser_name,
+                                                             values=itertools.chain(
+                                                                 self.image_word_parsers_names,
+                                                                 [f"[{parser_types.CHAIN}] {name}" for name in
+                                                                  self.chaining_data["image_parsers"]]),
+                                                             command=lambda parser_name:
+                                                             self.change_image_parser(parser_name))
+        self.image_parser_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
+                                           padx=0, pady=(0, self.text_pady))
+
+        self.configure_image_parser_button = self.Button(
+            self,
+            text="</>",
+            command=lambda: self.call_configuration_window(
+                plugin_name=self.image_parser.name if self.configurations["scrappers"]["image"][
+                                                          "type"] == parser_types.WEB
+                else f"[{parser_types.CHAIN}] {self.image_parser.name}",
+                plugin_config=self.image_parser.config,
+                plugin_load_function=lambda conf: conf.load(),
+                saving_action=lambda conf: conf.save()))
+        self.configure_image_parser_button.grid(row=5, column=7, sticky="news",
+                                                padx=(0, self.text_padx), pady=(0, self.text_pady))
+
         a = self.Frame(self)
-        a.grid(row=5, column=0, columnspan=8, padx=self.text_padx, pady=0, sticky="news")
+        a.grid(row=6, column=0, columnspan=8, padx=self.text_padx, pady=0, sticky="news")
 
         for i in range(4):
             a.columnconfigure(i, weight=1)
@@ -1119,7 +1155,7 @@ n_sentences_per_batch:
         self.fetch_ext_sentences_button = self.Button(self,
                                                 text=self.lang_pack.fetch_ext_sentences_button,
                                                 command=fetch_external_sentences)
-        self.fetch_ext_sentences_button.grid(row=6, column=0, columnspan=3, sticky="news",
+        self.fetch_ext_sentences_button.grid(row=7, column=0, columnspan=3, sticky="news",
                                        padx=(self.text_padx, 0), pady=(self.text_pady, 0))
 
         self.sentence_parser_option_menu = self.get_option_menu(self,
@@ -1130,7 +1166,7 @@ n_sentences_per_batch:
                                                                      self.chaining_data["sentence_parsers"]]),
                                                                 command=lambda parser_name:
                                                                 self.change_sentence_parser(parser_name))
-        self.sentence_parser_option_menu.grid(row=6, column=3, columnspan=4, sticky="news",
+        self.sentence_parser_option_menu.grid(row=7, column=3, columnspan=4, sticky="news",
                                               pady=(self.text_pady, 0))
 
         self.configure_sentence_parser_button = self.Button(
@@ -1144,62 +1180,26 @@ n_sentences_per_batch:
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()),
             width=6)
-        self.configure_sentence_parser_button.grid(row=6, column=7, sticky="news",
+        self.configure_sentence_parser_button.grid(row=7, column=7, sticky="news",
                                                    padx=(0, self.text_padx), pady=(self.text_pady, 0))
         # ======
         self.sentence_search_entry = self.Entry(self, placeholder=self.lang_pack.sentence_search_entry_text)
-        self.sentence_search_entry.grid(row=7, column=0, columnspan=8, sticky="news",
+        self.sentence_search_entry.grid(row=8, column=0, columnspan=8, sticky="news",
                                         padx=self.text_padx, pady=(0, 0))
 
         self.sentence_texts = []
 
         self.text_widgets_sf = ScrolledFrame(self, scrollbars="vertical",
                                              canvas_bg=self.theme.frame_cfg.get("bg"))
-        self.text_widgets_sf.grid(row=8, column=0, columnspan=8, sticky="news",
+        self.text_widgets_sf.grid(row=9, column=0, columnspan=8, sticky="news",
                                   padx=self.text_padx, pady=(0, self.text_pady))
-        self.grid_rowconfigure(8, weight=1)
+        self.grid_rowconfigure(9, weight=1)
 
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
         # self.text_widgets_frame.grid_columnconfigure(0, weight=1)
         self.text_widgets_frame.last_source = None
         self.text_widgets_frame.source_display_frame = None
-
-        self.image_word_parsers_names = loaded_plugins.web_image_parsers.loaded
-        if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
-            typed_image_parser_name = self.image_parser.name
-        else:
-            typed_image_parser_name = f"[{parser_types.CHAIN}] {self.image_parser.name}"
-
-        self.fetch_images_button = self.Button(self,
-                                             text=self.lang_pack.fetch_images_button_normal_text,
-                                             command=self.start_image_search)
-        self.fetch_images_button.grid(row=9, column=0, columnspan=3, sticky="news",
-                                    padx=(self.text_padx, 0), pady=(0, self.text_pady))
-
-        self.image_parser_option_menu = self.get_option_menu(self,
-                                                             init_text=typed_image_parser_name,
-                                                             values=itertools.chain(
-                                                                 self.image_word_parsers_names,
-                                                                 [f"[{parser_types.CHAIN}] {name}" for name in
-                                                                  self.chaining_data["image_parsers"]]),
-                                                             command=lambda parser_name:
-                                                             self.change_image_parser(parser_name))
-        self.image_parser_option_menu.grid(row=9, column=3, columnspan=4, sticky="news",
-                                           padx=0, pady=(0, self.text_pady))
-
-        self.configure_image_parser_button = self.Button(
-            self,
-            text="</>",
-            command=lambda: self.call_configuration_window(
-                plugin_name=self.image_parser.name if self.configurations["scrappers"]["image"][
-                                                          "type"] == parser_types.WEB
-                else f"[{parser_types.CHAIN}] {self.image_parser.name}",
-                plugin_config=self.image_parser.config,
-                plugin_load_function=lambda conf: conf.load(),
-                saving_action=lambda conf: conf.save()))
-        self.configure_image_parser_button.grid(row=9, column=7, sticky="news",
-                                                padx=(0, self.text_padx), pady=(0, self.text_pady))
 
         typed_audio_getter = "default" if self.external_audio_generator is None \
                                        else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],

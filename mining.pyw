@@ -25,7 +25,7 @@ from typing import Callable
 
 from playsound import playsound
 from tkinterdnd2 import Tk
-
+from tkinter.ttk import Scrollbar
 from app_utils.audio_utils import AudioDownloader
 from app_utils.cards import Card, Deck, SavedDataDeck, CardStatus
 from app_utils.chaining_adapters import ImageParsersChain, CardGeneratorsChain, SentenceParsersChain, AudioGettersChain
@@ -1379,6 +1379,9 @@ n_sentences_per_batch:
         self.tried_to_display_audio_getters_on_refresh = False
         self.waiting_for_audio_display = False
         self.last_refresh_call_time = 0
+
+        self.added_cards_browser()
+
         self.refresh()
 
     def show_window(self, title: str, text: str) -> Toplevel:
@@ -1510,6 +1513,48 @@ n_sentences_per_batch:
             with open(HISTORY_FILE_PATH, "r", encoding="UTF-8") as f:
                 history_json = json.load(f)
         return history_json
+
+    def added_cards_browser(self):
+        added_cards_browser_window = self.Toplevel(self)
+        table_view = PanedWindow(added_cards_browser_window, bg="red")
+        table_view.pack(side="left", anchor="nw", expand=1, fill="both", padx=5, pady=5)
+
+        table_view_frame = self.Frame(added_cards_browser_window, bg="blue")
+        table_view.add(table_view_frame, stretch="always", sticky="news")
+        table_view_frame.rowconfigure(0, weight=1)
+        table_view_frame.columnconfigure(0, weight=1)
+
+        columns = ("#1", "#2", "#3")
+        items_table = Treeview(table_view_frame, show="headings", columns=columns)
+        items_table.grid(row=0, column=0, sticky="news")
+        items_table.heading("#1", text="Word")
+        items_table.heading("#2", text="Definition")
+        items_table.heading("#3", text="Sentence")
+        items_table.column("#1",anchor="center", stretch=False)
+        items_table.column("#2",anchor="center", stretch=False)
+        items_table.column("#3",anchor="center", stretch=True)
+
+        ysb = Scrollbar(table_view_frame, orient="vertical", command=items_table.yview)
+        ysb.grid(row=0, column=1, sticky="ns")
+        items_table.configure(yscroll=ysb.set)
+
+        xsb = Scrollbar(table_view_frame, orient="horizontal", command=items_table.xview)
+        xsb.grid(row=1, column=0, columnspan=2, sticky="ew")
+        items_table.configure(xscroll=xsb.set)
+
+        for i in range(1000):
+            items_table.insert("", "end", values=(i+1, i+2, i+3, i+3, i+3, i+3, i+3))
+
+        item_editor = PanedWindow(table_view, orient="vertical", bg="green", showhandle=True)
+        item_editor_frame = self.Frame(item_editor, bg="yellow")
+        item_editor.add(item_editor_frame)
+
+        test = self.Entry(item_editor)
+        test.pack(fill="x", expand=True)
+
+        table_view.add(item_editor, stretch="always", sticky="news")
+
+
 
     @error_handler(show_exception_logs)
     def load_chaining_data(self) -> LoadableConfig:

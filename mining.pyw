@@ -1958,6 +1958,11 @@ n_sentences_per_batch:
 
             *_, added_card_index = items_table.item(selected_item_index)["values"]
             full_saved_card_data = self.saved_cards_data[added_card_index]
+            if full_saved_card_data is None:
+                str_selection_index = items_table.selection()[0]
+                items_table.delete(str_selection_index)
+                return
+
             editor_card_data = full_saved_card_data[SavedDataDeck.CARD_DATA]
             additional_data = full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {})
 

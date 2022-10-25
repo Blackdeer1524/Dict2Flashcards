@@ -223,13 +223,13 @@ class SavedDataDeck(PointerList):
     CARD_STATUS         = "status"               # 0
     CARD_DATA           = "card"                 # 0
     ADDITIONAL_DATA     = "additional"           # 0
-    USER_TAGS           = "user_tags"            # 1
-    HIERARCHICAL_PREFIX = "hierarchical_prefix"  # 1
-    SAVED_IMAGES_PATHS  = "local_images"         # 1
-    AUDIO_DATA          = "audio_data"           # 1
-    AUDIO_SRCS          = "audio_src"            # 2
-    AUDIO_SRCS_TYPE     = "audio_src_type"       # 2
-    AUDIO_SAVING_PATHS  = "audio_saving_paths"   # 2
+    USER_TAGS           =   "user_tags"            # 1
+    HIERARCHICAL_PREFIX =   "hierarchical_prefix"  # 1
+    SAVED_IMAGES_PATHS  =   "local_images"         # 1
+    AUDIO_DATA          =   "audio_data"           # 1
+    AUDIO_SRCS          =       "audio_src"            # 2
+    AUDIO_SRCS_TYPE     =       "audio_src_type"       # 2
+    AUDIO_SAVING_PATHS  =       "audio_saving_paths"   # 2
 
     __slots__ = "_statistics"
 

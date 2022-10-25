@@ -1398,8 +1398,6 @@ n_sentences_per_batch:
         self.waiting_for_audio_display = False
         self.last_refresh_call_time = 0
 
-        self.added_cards_browser()
-
         self.refresh()
 
     def show_window(self, title: str, text: str) -> Toplevel:
@@ -1553,9 +1551,9 @@ n_sentences_per_batch:
         items_table.heading("#1", text="Word")
         items_table.heading("#2", text="Definition")
         items_table.heading("#3", text="Sentence")
-        items_table.column("#1",anchor="center", stretch=False)
-        items_table.column("#2",anchor="center", stretch=False)
-        items_table.column("#3",anchor="center", stretch=True)
+        items_table.column("#1",anchor="w", stretch=False)
+        items_table.column("#2",anchor="w", stretch=False)
+        items_table.column("#3",anchor="w", stretch=True)
 
         ysb = Scrollbar(table_view_frame, orient="vertical", command=items_table.yview)
         ysb.grid(row=0, column=1, sticky="ns")
@@ -1565,17 +1563,31 @@ n_sentences_per_batch:
         xsb.grid(row=1, column=0, columnspan=2, sticky="ew")
         items_table.configure(xscroll=xsb.set)
 
-        for i in range(1000):
-            items_table.insert("", "end", values=(i+1, i+2, i+3, i+3, i+3, i+3, i+3))
+        def selectItem(a):
+            curItem = items_table.focus()
+            print(items_table.item(curItem))
 
-        # item_editor = PanedWindow(table_view, orient="vertical", bg="green", showhandle=True)
+        items_table.bind('<Button-1>', selectItem)
+
+        added_cards_list = []
+        for i, saved_card_data in enumerate(self.saved_cards_data):
+            if saved_card_data[SavedDataDeck.CARD_STATUS] != CardStatus.ADD:
+                continue
+            added_cards_list.append(saved_card_data)
+            main_card_data = saved_card_data[SavedDataDeck.CARD_DATA]
+
+            word = main_card_data.get(FIELDS.word, "")
+            definition = main_card_data.get(FIELDS.definition, "")
+            sentence = main_card_data.get(FIELDS.sentences, [""])[0]
+            items_table.insert("", "end", values=(word, definition, sentence, i))
+
+        # for i in range(1000):
+        #     items_table.insert("", "end", values=(i+1, i+2, i+3, i+3, i+3, i+3, i+3))
+
         item_editor_frame = self.Frame(added_cards_browser_window, bg="yellow")
         main_paned_window.add(item_editor_frame, stretch="never")
 
-        # item_editor_frame.bind("<Configure>",
-        #                        lambda e: print(item_editor_frame.winfo_height(), item_editor_frame.winfo_width()))
         #=======================================
-
         editor_text_padx = 5
         editor_text_pady = 5
 
@@ -2474,6 +2486,8 @@ n_sentences_per_batch:
 
     @error_handler(show_exception_logs)
     def statistics_dialog(self):
+        self.added_cards_browser()
+
         statistics_window = self.Toplevel(self)
         statistics_window.withdraw()
 

@@ -1701,6 +1701,9 @@ n_sentences_per_batch:
         else:
             typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
 
+        def change_picked_sentence(index: int):
+            editor_card_data[FIELDS.sentences][0] = editor_sentence_texts[index].get(1.0, "end").rstrip()
+            items_table.set(items_table.selection()[0], "#3", editor_card_data[FIELDS.sentences][0])
 
         @error_handler(self.show_exception_logs)
         def editor_fetch_external_sentences() -> None:
@@ -1741,7 +1744,7 @@ n_sentences_per_batch:
                             text_widgets_frame=editor_text_widgets_frame,
                             text_widgets_sf=editor_text_widgets_sf,
                             sentence_text_widgets_list=editor_sentence_texts,
-                            choose_sentence_action=lambda t: print("qwe")
+                            choose_sentence_action=change_picked_sentence
                         )
 
                     if error_message:
@@ -1996,10 +1999,6 @@ n_sentences_per_batch:
             self.external_sentence_fetcher.force_update(word_data, editor_card_data)
             dict_sentences = editor_card_data.get(FIELDS.sentences, [""])
 
-            def update_sentence(index: int):
-                editor_card_data[FIELDS.sentences] = editor_sentence_texts[index].get(1.0, "end").rstrip()
-                items_table.set(items_table.selection()[0], "#3", editor_card_data[FIELDS.sentences])
-
             for sentence in dict_sentences:
                 self.add_sentence_field(
                     source="",
@@ -2007,7 +2006,7 @@ n_sentences_per_batch:
                     text_widgets_frame=editor_text_widgets_frame,
                     text_widgets_sf=editor_text_widgets_sf,
                     sentence_text_widgets_list=editor_sentence_texts,
-                    choose_sentence_action=update_sentence
+                    choose_sentence_action=change_picked_sentence
                 )
 
             @error_handler(self.show_exception_logs)
@@ -2063,7 +2062,7 @@ n_sentences_per_batch:
                     self.display_audio_getter_results(
                         word=editor_word_text.get(1.0, "end").strip(),
                         card_data=editor_card_data,
-                        show_errors=True,
+                        show_errors=False,
                         audio_sf=editor_audio_sf,
                         audio_inner_frame=editor_audio_inner_frame
                     )
@@ -2214,6 +2213,9 @@ n_sentences_per_batch:
                 error_messages.append((typed_audio_getter_name, error_message))
             if not audio_sources:
                 continue
+
+            if not audio_inner_frame.winfo_exists():
+                return
 
             if audio_inner_frame.last_source != typed_audio_getter_name:
                 audio_inner_frame.last_source = typed_audio_getter_name
@@ -3254,7 +3256,7 @@ n_sentences_per_batch:
                 self.display_audio_getter_results(
                     word=self.word,
                     card_data=self.dict_card_data,
-                    show_errors=True,
+                    show_errors=False,
                     audio_sf=self.audio_sf,
                     audio_inner_frame=self.audio_inner_frame
                 )

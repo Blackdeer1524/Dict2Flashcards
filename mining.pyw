@@ -1141,7 +1141,12 @@ n_sentences_per_batch:
                     for sentence in sent_batch:
                         self.add_sentence_field(
                             source=f"{typed_parser_name}: {self.sentence_search_entry.get()}",
-                            sentence=sentence)
+                            sentence=sentence,
+                            text_widgets_frame=self.text_widgets_frame,
+                            text_widgets_sf=self.text_widgets_sf,
+                            sentence_text_widgets_list=self.sentence_texts,
+                            choose_sentence_action=self.choose_sentence
+                        )
 
                     if error_message:
                         messagebox.showerror(
@@ -1359,7 +1364,14 @@ n_sentences_per_batch:
         @error_handler(self.show_exception_logs)
         def paste_in_sentence_field():
             clipboard_text = self.clipboard_get()
-            self.add_sentence_field(source="<Control + c + Alt>", sentence=clipboard_text)
+            self.add_sentence_field(
+                source="<Control + c + Alt>",
+                sentence=clipboard_text,
+                text_widgets_frame=self.text_widgets_frame,
+                text_widgets_sf=self.text_widgets_sf,
+                sentence_text_widgets_list=self.sentence_texts,
+                choose_sentence_action=self.choose_sentence
+            )
 
         self.gb.bind("Control", "c", "Alt", action=paste_in_sentence_field)
         self.gb.start()
@@ -1635,55 +1647,62 @@ n_sentences_per_batch:
         else:
             typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
 
-        # @error_handler(self.show_exception_logs)
-        # def fetch_external_sentences() -> None:
-        #     results: list[str, SentenceData] = []
-        #
-        #     fill_search_fields()
-        #
-        #     def schedule_sentence_fetcher():
-        #         nonlocal results
-        #         parser_results = self.external_sentence_fetcher.get(
-        #             word=self.sentence_search_entry.get(),
-        #             card_data=self.dict_card_data,
-        #             batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
-        #         if parser_results is None:
-        #             return
-        #
-        #         sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-        #         if sentence_parser_type == parser_types.CHAIN:
-        #             results = parser_results
-        #         elif sentence_parser_type == parser_types.WEB:
-        #             results.append((self.external_sentence_fetcher.data_generator.name, parser_results))
-        #         else:
-        #             raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
-        #
-        #     def wait_sentence_fetcher(thread: Thread):
-        #         if thread.is_alive():
-        #             self.after(100, lambda: wait_sentence_fetcher(thread))
-        #             return
-        #
-        #         nonlocal results
-        #
-        #         for (typed_parser_name, (sent_batch, error_message)) in results:
-        #             sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-        #             for sentence in sent_batch:
-        #                 self.add_sentence_field(
-        #                     source=f"{typed_parser_name}: {self.sentence_search_entry.get()}",
-        #                     sentence=sentence)
-        #
-        #             if error_message:
-        #                 messagebox.showerror(
-        #                     title=f"[{sentence_parser_type}] {self.external_sentence_fetcher.data_generator.name}",
-        #                     message=error_message)
-        #
-        #     place_sentences_thread = Thread(target=schedule_sentence_fetcher)
-        #     place_sentences_thread.start()
-        #     wait_sentence_fetcher(place_sentences_thread)
+        editor_card_data = {}
+
+        @error_handler(self.show_exception_logs)
+        def editor_fetch_external_sentences() -> None:
+            results: list[str, SentenceData] = []
+
+            editor_fill_search_fields()
+
+            def schedule_sentence_fetcher():
+                nonlocal results, editor_card_data
+                parser_results = self.external_sentence_fetcher.get(
+                    word=editor_sentence_search_entry.get(),
+                    card_data=editor_card_data,
+                    batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
+                if parser_results is None:
+                    return
+
+                sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
+                if sentence_parser_type == parser_types.CHAIN:
+                    results = parser_results
+                elif sentence_parser_type == parser_types.WEB:
+                    results.append((self.external_sentence_fetcher.data_generator.name, parser_results))
+                else:
+                    raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
+
+            def wait_sentence_fetcher(thread: Thread):
+                if thread.is_alive():
+                    self.after(100, lambda: wait_sentence_fetcher(thread))
+                    return
+
+                nonlocal results
+
+                for (typed_parser_name, (sent_batch, error_message)) in results:
+                    sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
+                    for sentence in sent_batch:
+                        self.add_sentence_field(
+                            source=f"{typed_parser_name}: {self.sentence_search_entry.get()}",
+                            sentence=sentence,
+                            text_widgets_frame=editor_text_widgets_frame,
+                            text_widgets_sf=editor_text_widgets_sf,
+                            sentence_text_widgets_list=editor_sentence_texts,
+                            choose_sentence_action=lambda t: print("qwe")
+                        )
+
+                    if error_message:
+                        messagebox.showerror(
+                            title=f"[{sentence_parser_type}] {self.external_sentence_fetcher.data_generator.name}",
+                            message=error_message)
+
+            place_sentences_thread = Thread(target=schedule_sentence_fetcher)
+            place_sentences_thread.start()
+            wait_sentence_fetcher(place_sentences_thread)
 
         editor_fetch_ext_sentences_button = self.Button(item_editor_frame,
                                                 text=self.lang_pack.fetch_ext_sentences_button,
-                                                command=lambda: None)
+                                                command=editor_fetch_external_sentences)
         editor_fetch_ext_sentences_button.grid(row=7, column=0, columnspan=3, sticky="news",
                                        padx=(editor_text_padx, 0), pady=(editor_text_pady, 0))
 
@@ -1813,7 +1832,7 @@ n_sentences_per_batch:
                 focusout_action()
             return "break"
 
-        def fill_search_fields():
+        def editor_fill_search_fields():
             word = editor_word_text.get(1.0, "end").strip()
             if not editor_audio_search_entry.get():
                 editor_audio_search_entry.insert(0, word)
@@ -1823,7 +1842,7 @@ n_sentences_per_batch:
         editor_new_order = [(editor_browse_button, None),
                           (editor_anki_button, None),
 
-                          (editor_word_text, fill_search_fields),
+                          (editor_word_text, editor_fill_search_fields),
 
                           (editor_special_field, None),
 
@@ -1851,7 +1870,7 @@ n_sentences_per_batch:
                           (editor_tag_prefix_field, None),
                           ]
 
-        editor_word_text.bind("<FocusOut>", lambda event: fill_search_fields(), add=True)
+        editor_word_text.bind("<FocusOut>", lambda event: editor_fill_search_fields(), add=True)
         for widget, action in editor_new_order:
             widget.lift()
             widget.bind("<Tab>", partial(focus_next_window, focusout_action=action))
@@ -2883,24 +2902,30 @@ n_sentences_per_batch:
         self.saved_cards_data.append(status=CardStatus.BURY, card_data=self.dict_card_data)
         self.refresh()
 
-    def add_sentence_field(self, source: str, sentence: str):
+    def add_sentence_field(self,
+                           source: str,
+                           sentence: str,
+                           text_widgets_frame,
+                           text_widgets_sf,
+                           sentence_text_widgets_list,
+                           choose_sentence_action: Callable[[int], None]):
         OPTIMAL_TEXT_HEIGHT = 80
 
-        next_index = len(self.sentence_texts) + 1
+        next_index = len(sentence_text_widgets_list) + 1
 
-        if self.text_widgets_frame.last_source != source:
-            self.text_widgets_frame.last_source = source
-            self.text_widgets_frame.source_display_frame = LabelFrame(self.text_widgets_frame,
+        if text_widgets_frame.last_source != source:
+            text_widgets_frame.last_source = source
+            text_widgets_frame.source_display_frame = LabelFrame(text_widgets_frame,
                                                                                text=source,
-                                                                               fg=self.theme.button_cfg.get("foreground"),
+                                                                        nal         fg=self.theme.button_cfg.get("foreground"),
                                                                                **self.theme.frame_cfg)
-            self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame.source_display_frame)
-            self.text_widgets_frame.source_display_frame.grid_columnconfigure(0, weight=1)
-            self.text_widgets_frame.source_display_frame.pack(side="top", fill="both")
+            text_widgets_sf.bind_scroll_wheel(text_widgets_frame.source_display_frame)
+            text_widgets_frame.source_display_frame.grid_columnconfigure(0, weight=1)
+            text_widgets_frame.source_display_frame.pack(side="top", fill="both")
 
-        choose_frame = self.Frame(self.text_widgets_frame.source_display_frame, height=OPTIMAL_TEXT_HEIGHT)
-        choose_frame.grid(row=len(self.sentence_texts), column=0, sticky="we", pady=(0, self.text_pady))
-        self.text_widgets_sf.bind_scroll_wheel(choose_frame)
+        choose_frame = self.Frame(text_widgets_frame.source_display_frame, height=OPTIMAL_TEXT_HEIGHT)
+        choose_frame.grid(row=len(sentence_text_widgets_list), column=0, sticky="we", pady=(0, self.text_pady))
+        text_widgets_sf.bind_scroll_wheel(choose_frame)
         
         choose_frame.grid_columnconfigure(0, weight=1)
         choose_frame.grid_rowconfigure(0, weight=1)
@@ -2911,16 +2936,16 @@ n_sentences_per_batch:
             placeholder=f"{self.lang_pack.sentence_text_placeholder_prefix} {next_index}")
         sentence_text.insert(1.0, sentence)
         sentence_text.grid(row=0, column=0, sticky="we")
-        self.text_widgets_sf.bind_scroll_wheel(sentence_text)
+        text_widgets_sf.bind_scroll_wheel(sentence_text)
 
         choose_button = self.Button(choose_frame,
                                                  text=f"{next_index}",
-                                                 command=lambda x=len(self.sentence_texts): self.choose_sentence(x),
+                                                 command=lambda x=len(sentence_text_widgets_list): choose_sentence_action(x),
                                                  width=3)
         choose_button.grid(row=0, column=1, sticky="ns")
-        self.text_widgets_sf.bind_scroll_wheel(choose_button)
+        text_widgets_sf.bind_scroll_wheel(choose_button)
 
-        self.sentence_texts.append(sentence_text)
+        sentence_text_widgets_list.append(sentence_text)
 
     @error_handler(show_exception_logs)
     def refresh(self) -> bool:
@@ -2962,7 +2987,14 @@ n_sentences_per_batch:
         self.external_sentence_fetcher.force_update(word_data, self.dict_card_data)
         dict_sentences = self.dict_card_data.get(FIELDS.sentences, [""])
         for sentence in dict_sentences:
-            self.add_sentence_field(source="", sentence=sentence)
+            self.add_sentence_field(
+                source="",
+                sentence=sentence,
+                text_widgets_frame=self.text_widgets_frame,
+                text_widgets_sf=self.text_widgets_sf,
+                sentence_text_widgets_list=self.sentence_texts,
+                choose_sentence_action=self.choose_sentence
+            )
 
         @error_handler(self.show_exception_logs)
         def fill_additional_dict_data(widget: Text, text: str):

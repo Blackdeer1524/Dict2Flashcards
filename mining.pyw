@@ -1213,7 +1213,13 @@ n_sentences_per_batch:
         def display_audio_getter_results_on_button_click():
             fill_search_fields()
             self.waiting_for_audio_display = True
-            self.display_audio_getter_results(show_errors=True)
+            self.display_audio_getter_results(
+                word=self.audio_search_entry.get(),
+                card_data=self.dict_card_data,
+                show_errors=True,
+                audio_sf=self.audio_sf,
+                audio_inner_frame=self.audio_inner_frame
+            )
 
         self.fetch_audio_data_button = self.Button(self,
                                                    text=self.lang_pack.fetch_audio_data_button_text,
@@ -1753,14 +1759,20 @@ n_sentences_per_batch:
                                        else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
                                                              self.external_audio_generator.data_generator.name)
 
-        # def display_audio_getter_results_on_button_click():
-        #     fill_search_fields()
-        #     self.waiting_for_audio_display = True
-        #     self.display_audio_getter_results(show_errors=True)
+        def display_audio_getter_results_on_button_click():
+            editor_fill_search_fields()
+            self.waiting_for_audio_display = True
+            self.display_audio_getter_results(
+                word=editor_audio_search_entry.get(),
+                card_data=editor_card_data,
+                show_errors=True,
+                audio_sf=editor_audio_sf,
+                audio_inner_frame=editor_audio_inner_frame
+            )
 
         editor_fetch_audio_data_button = self.Button(item_editor_frame,
                                                    text=self.lang_pack.fetch_audio_data_button_text,
-                                                   command=lambda: None)
+                                                   command=display_audio_getter_results_on_button_click)
 
         if typed_audio_getter == "default":
             editor_fetch_audio_data_button["state"] = "disabled"
@@ -1899,16 +1911,20 @@ n_sentences_per_batch:
         return chaining_data
 
     @error_handler(show_exception_logs)
-    def display_audio_getter_results(self, show_errors: bool):
+    def display_audio_getter_results(self,
+                                     word: str,
+                                     card_data: dict,
+                                     show_errors: bool,
+                                     audio_sf,
+                                     audio_inner_frame):
         parser_results: list[tuple[tuple[str, str], AudioData]] = []
         
         def fill_parser_results() -> None:
-            nonlocal parser_results
+            nonlocal parser_results, word
 
             assert self.external_audio_generator is not None, \
                 "display_audio_getter_results cannot be called because self.external_audio_generator is None"
 
-            word = self.audio_search_entry.get()
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
 
             if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
@@ -1916,7 +1932,7 @@ n_sentences_per_batch:
                                                            self.configurations["scrappers"]["audio"]["name"])
                 audio_data = self.external_audio_generator.get(
                     word=word,
-                    card_data=self.dict_card_data,
+                    card_data=card_data,
                     batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
                 if audio_data is None:
                     parser_results = []
@@ -1925,7 +1941,7 @@ n_sentences_per_batch:
             elif audio_getter_type == parser_types.CHAIN:
                 parser_results = self.external_audio_generator.get(
                     word=word,
-                    card_data=self.dict_card_data,
+                    card_data=card_data,
                     batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
                 if parser_results is None:
                     parser_results = []
@@ -1942,7 +1958,12 @@ n_sentences_per_batch:
             if thread.is_alive():
                 self.after(100, lambda: display_audio_if_done(thread))
             else:
-                self.display_audio_on_frame(word=self.audio_search_entry.get(), parser_results=parser_results, show_errors=show_errors)
+                self.display_audio_on_frame(word=word,
+                                            card_data=card_data,
+                                            parser_results=parser_results,
+                                            show_errors=show_errors,
+                                            audio_sf=audio_sf,
+                                            audio_inner_frame=audio_inner_frame)
 
         th = Thread(target=fill_parser_results)
         th.start()
@@ -1951,8 +1972,11 @@ n_sentences_per_batch:
     @error_handler(show_exception_logs)
     def display_audio_on_frame(self,
                                word: str,
+                               card_data: dict,
                                parser_results: list[tuple[tuple[str, str], AudioData]],
-                               show_errors: bool):
+                               show_errors: bool,
+                               audio_sf,
+                               audio_inner_frame):
         @error_handler(self.show_exception_logs)
         def playsound_in_another_thread(audio_path: str):
             @error_handler(self.show_exception_logs)
@@ -1966,11 +1990,8 @@ n_sentences_per_batch:
             Thread(target=lambda: quite_playsound(audio_path)).start()
 
         @error_handler(self.show_exception_logs)
-        def web_playsound(src: str):
-            audio_name = self.card_processor.get_save_audio_name(word,
-                                                                 self.typed_word_parser_name,
-                                                                 "0",
-                                                                 self.dict_card_data)
+        def web_playsound(audio_url: str, src: str):
+            audio_name = self.card_processor.get_save_audio_name(word, src, "0", card_data)
 
             temp_audio_path = os.path.join(TEMP_DIR, audio_name)
             if os.path.exists(temp_audio_path):
@@ -1980,7 +2001,7 @@ n_sentences_per_batch:
             def show_download_error(exc):
                 messagebox.showerror(message=f"{self.lang_pack.error_title}\n{exc}")
 
-            success = AudioDownloader.fetch_audio(url=src,
+            success = AudioDownloader.fetch_audio(url=audio_url,
                                                   save_path=temp_audio_path,
                                                   timeout=self.configurations["web_audio_downloader"]["timeout"],
                                                   headers=self.headers,
@@ -2003,25 +2024,25 @@ n_sentences_per_batch:
             if not audio_sources:
                 continue
 
-            if self.audio_inner_frame.last_source != typed_audio_getter_name:
-                self.audio_inner_frame.last_source = typed_audio_getter_name
-                self.audio_inner_frame.source_display_frame = LabelFrame(self.audio_inner_frame,
+            if audio_inner_frame.last_source != typed_audio_getter_name:
+                audio_inner_frame.last_source = typed_audio_getter_name
+                audio_inner_frame.source_display_frame = LabelFrame(audio_inner_frame,
                                                                          text=typed_audio_getter_name,
                                                                          fg=self.theme.button_cfg.get("foreground"),
                                                                          **self.theme.frame_cfg)
-                self.audio_sf.bind_scroll_wheel(self.audio_inner_frame.source_display_frame)
-                self.audio_inner_frame.source_display_frame.grid_propagate(False)
-                self.audio_inner_frame.source_display_frame.pack(side="top", fill="x", expand=True)
+                audio_sf.bind_scroll_wheel(audio_inner_frame.source_display_frame)
+                audio_inner_frame.source_display_frame.grid_propagate(False)
+                audio_inner_frame.source_display_frame.pack(side="top", fill="x", expand=True)
 
             if audio_getter_type == parser_types.WEB:
-                play_audio_button_cmd = web_playsound
+                play_audio_button_cmd = partial(web_playsound, src=typed_audio_getter_name)
             elif audio_getter_type == parser_types.LOCAL:
                 play_audio_button_cmd = playsound_in_another_thread
             else:
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 
             for audio, info in zip(audio_sources, additional_info):
-                audio_info_frame = self.Frame(self.audio_inner_frame.source_display_frame)
+                audio_info_frame = self.Frame(audio_inner_frame.source_display_frame)
                 audio_info_frame.pack(side="top", fill="x", expand=True)
                 audio_info_frame.columnconfigure(2, weight=1)
 
@@ -2034,17 +2055,17 @@ n_sentences_per_batch:
                 audio_info_frame.boolvar = var
                 audio_info_frame.audio_data = (typed_audio_getter_name, audio_getter_type, audio)
 
-                self.audio_sf.bind_scroll_wheel(pick_button)
+                audio_sf.bind_scroll_wheel(pick_button)
 
                 play_audio_button = self.Button(audio_info_frame,
                                                 text="▶",
-                                                command=lambda src=audio, a=play_audio_button_cmd: a(src))
+                                                command=lambda audio_url=audio, a=play_audio_button_cmd: a(audio_url))
                 play_audio_button.grid(row=0, column=1, sticky="news")
-                self.audio_sf.bind_scroll_wheel(play_audio_button)
+                audio_sf.bind_scroll_wheel(play_audio_button)
 
                 info_label = self.Label(audio_info_frame, text=info, relief="ridge")
                 info_label.grid(row=0, column=2, sticky="news")
-                self.audio_sf.bind_scroll_wheel(info_label)
+                audio_sf.bind_scroll_wheel(info_label)
 
         if show_errors and error_messages:
             self.show_window(title=self.lang_pack.error_title,
@@ -2917,7 +2938,7 @@ n_sentences_per_batch:
             text_widgets_frame.last_source = source
             text_widgets_frame.source_display_frame = LabelFrame(text_widgets_frame,
                                                                                text=source,
-                                                                        nal         fg=self.theme.button_cfg.get("foreground"),
+                                                                               fg=self.theme.button_cfg.get("foreground"),
                                                                                **self.theme.frame_cfg)
             text_widgets_sf.bind_scroll_wheel(text_widgets_frame.source_display_frame)
             text_widgets_frame.source_display_frame.grid_columnconfigure(0, weight=1)
@@ -3013,7 +3034,14 @@ n_sentences_per_batch:
         if (audio_sources := self.dict_card_data.get(FIELDS.audio_links)) is not None and audio_sources:
             additional_info = ("" for _ in range(len(audio_sources)))
             parser_results = [(("", parser_types.WEB), ((audio_sources, additional_info), ""))]
-            self.display_audio_on_frame(word=self.word, parser_results=parser_results, show_errors=False)
+            self.display_audio_on_frame(
+                word=self.word,
+                card_data=self.dict_card_data,
+                parser_results=parser_results,
+                show_errors=False,
+                audio_sf=self.audio_sf,
+                audio_inner_frame=self.audio_inner_frame
+            )
 
         if not self.dict_card_data:
             self.fetch_images_button["text"] = self.lang_pack.fetch_images_button_normal_text
@@ -3032,7 +3060,13 @@ n_sentences_per_batch:
             if (time.time() - self.last_refresh_call_time) > 0.1:
                 self.waiting_for_audio_display = True
                 self.tried_to_display_audio_getters_on_refresh = True
-                self.display_audio_getter_results(show_errors=False)
+                self.display_audio_getter_results(
+                    word=self.word,
+                    card_data=self.dict_card_data,
+                    show_errors=True,
+                    audio_sf=self.audio_sf,
+                    audio_inner_frame=self.audio_inner_frame
+                )
             else:
                 if self.waiting_for_audio_display:
                     return

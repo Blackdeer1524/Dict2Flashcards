@@ -92,7 +92,7 @@ class PointerList(Generic[_T]):
             return self._data[item]
 
     def __iter__(self):
-        return iter(self._data)
+        return (self._data[i] for i in range(self._starting_position, len(self._data)))
 
     def __repr__(self):
         res = f"Name: {self.__class__.__name__}\n" \

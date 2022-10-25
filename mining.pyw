@@ -993,12 +993,12 @@ n_sentences_per_batch:
 
         self.anki_button = self.Button(additional_search_frame,
                                        text=self.lang_pack.anki_button_text,
-                                       command=self.open_anki_browser)
+                                       command=lambda: self.open_anki_browser(self.word_text.get(1.0, "end").strip()))
         self.anki_button.grid(row=0, column=0, sticky="news")
 
         self.browse_button = self.Button(additional_search_frame,
                                          text=self.lang_pack.browse_button_text,
-                                         command=self.web_search_command)
+                                         command=lambda: self.web_search_command(self.word))
         self.browse_button.grid(row=0, column=1, sticky="news")
 
         self.word_parser_option_menu = self.get_option_menu(
@@ -1042,9 +1042,28 @@ n_sentences_per_batch:
         else:
             typed_image_parser_name = f"[{parser_types.CHAIN}] {self.image_parser.name}"
 
-        self.fetch_images_button = self.Button(self,
-                                             text=self.lang_pack.fetch_images_button_normal_text,
-                                             command=self.start_image_search)
+        def save_images_paths(paths: list[str]):
+            if self.dict_card_data.get(SavedDataDeck.ADDITIONAL_DATA) is None:
+                self.dict_card_data[SavedDataDeck.ADDITIONAL_DATA] = {SavedDataDeck.SAVED_IMAGES_PATHS: []}
+            elif self.dict_card_data[SavedDataDeck.ADDITIONAL_DATA].get(SavedDataDeck.SAVED_IMAGES_PATHS) is None:
+                self.dict_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.SAVED_IMAGES_PATHS] = []
+
+            saving_dst = self.dict_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.SAVED_IMAGES_PATHS]
+            saving_dst.clear()
+            saving_dst.extend(paths)
+
+        self.fetch_images_button = self.Button(
+            self,
+            text=self.lang_pack.fetch_images_button_normal_text,
+            command=lambda: self.start_image_search(
+                word=self.word_text.get(1.0, "end").strip(),
+                card_data=self.dict_card_data,
+                init_urls=self.dict_card_data.get(FIELDS.img_links),
+                init_local_images_paths=self.dict_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {})
+                                                           .get(self.saved_cards_data.SAVED_IMAGES_PATHS, []),
+                image_path_saving_method=save_images_paths
+            )
+        )
         self.fetch_images_button.grid(row=5, column=0, columnspan=3, sticky="news",
                                     padx=(self.text_padx, 0), pady=(0, self.text_pady))
 
@@ -1563,13 +1582,11 @@ n_sentences_per_batch:
         xsb.grid(row=1, column=0, columnspan=2, sticky="ew")
         items_table.configure(xscroll=xsb.set)
 
-        def selectItem(a):
-            curItem = items_table.focus()
-            print(items_table.item(curItem))
-
-        items_table.bind('<Button-1>', selectItem)
-
+        full_saved_card_data = {}
+        editor_card_data = {}
         added_cards_list = []
+        last_selected_index = 0
+
         for i, saved_card_data in enumerate(self.saved_cards_data):
             if saved_card_data[SavedDataDeck.CARD_STATUS] != CardStatus.ADD:
                 continue
@@ -1602,12 +1619,12 @@ n_sentences_per_batch:
 
         editor_anki_button = self.Button(additional_search_frame,
                                        text=self.lang_pack.anki_button_text,
-                                       command=self.open_anki_browser)
+                                       command=lambda: self.open_anki_browser(editor_word_text.get(1.0, "end").strip()))
         editor_anki_button.grid(row=0, column=0, sticky="news")
 
         editor_browse_button = self.Button(additional_search_frame,
                                          text=self.lang_pack.browse_button_text,
-                                         command=self.web_search_command)
+                                         command=lambda: self.web_search_command(editor_word_text.get(1.0, "end").strip()))
         editor_browse_button.grid(row=0, column=1, sticky="news")
 
         editor_word_text = self.Text(item_editor_frame, placeholder=self.lang_pack.word_text_placeholder, height=1)
@@ -1630,9 +1647,28 @@ n_sentences_per_batch:
         else:
             typed_image_parser_name = f"[{parser_types.CHAIN}] {self.image_parser.name}"
 
-        editor_fetch_images_button = self.Button(item_editor_frame,
-                                             text=self.lang_pack.fetch_images_button_normal_text,
-                                             command=self.start_image_search)
+        def edit_saved_images(new_image_urls: list[str]):
+            if full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA) is None:
+                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA] = {SavedDataDeck.SAVED_IMAGES_PATHS: []}
+            elif full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA].get(SavedDataDeck.SAVED_IMAGES_PATHS) is None:
+                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.SAVED_IMAGES_PATHS] = []
+
+            saving_dst = full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.SAVED_IMAGES_PATHS]
+            saving_dst.clear()
+            saving_dst.extend(new_image_urls)
+
+        editor_fetch_images_button = self.Button(
+            item_editor_frame,
+            text=self.lang_pack.fetch_images_button_normal_text,
+            command=lambda: self.start_image_search(
+                word=editor_word_text.get(1.0, "end").strip(),
+                card_data=editor_card_data,
+                init_urls=[],
+                init_local_images_paths=full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {})\
+                                                            .get(SavedDataDeck.SAVED_IMAGES_PATHS, []),
+                image_path_saving_method=edit_saved_images
+            )
+        )
         editor_fetch_images_button.grid(row=5, column=0, columnspan=3, sticky="news",
                                     padx=(editor_text_padx, 0), pady=(0, editor_text_pady))
 
@@ -1665,7 +1701,6 @@ n_sentences_per_batch:
         else:
             typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
 
-        editor_card_data = {}
 
         @error_handler(self.show_exception_logs)
         def editor_fetch_external_sentences() -> None:
@@ -1901,7 +1936,151 @@ n_sentences_per_batch:
             widget.bind("<Shift-Tab>", partial(focus_prev_window, focusout_action=action))
 
 
+
         #=======================================
+        def save_progress(where_to_save: int):
+            pass
+
+        def display_card_in_editor(event):
+            nonlocal \
+                last_selected_index, \
+                full_saved_card_data, \
+                editor_card_data,\
+                editor_audio_inner_frame, \
+                editor_text_widgets_frame
+
+            selected_item_index = items_table.focus()
+            if not selected_item_index:
+                return
+
+            *_, added_card_index = items_table.item(selected_item_index)["values"]
+            full_saved_card_data = self.saved_cards_data[added_card_index]
+            editor_card_data = full_saved_card_data[SavedDataDeck.CARD_DATA]
+            additional_data = full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {})
+
+            if last_selected_index:
+                save_progress(last_selected_index)
+
+            last_selected_index = selected_item_index
+            # ====
+            self.last_refresh_call_time = time.time()
+            self.waiting_for_audio_display = False
+            self.tried_to_display_audio_getters_on_refresh = False
+
+            editor_audio_inner_frame.destroy()
+            editor_audio_inner_frame = editor_audio_sf.display_widget(self.Frame, fit_width=True)
+            editor_audio_sf.bind_scroll_wheel(editor_audio_inner_frame)
+            editor_audio_inner_frame.last_source = None
+            editor_audio_inner_frame.source_display_frame = None
+
+            editor_sentence_texts.clear()
+            editor_text_widgets_frame.destroy()
+            editor_text_widgets_frame = editor_text_widgets_sf.display_widget(self.Frame, fit_width=True)
+            editor_text_widgets_sf.bind_scroll_wheel(editor_text_widgets_frame)
+            editor_text_widgets_frame.last_source = None
+            editor_text_widgets_frame.source_display_frame = None
+
+            editor_word_text.clear()
+            editor_audio_search_entry.clear()
+            editor_sentence_search_entry.clear()
+
+            if (word_data := editor_card_data.get(FIELDS.word, "")):
+                editor_word_text.insert(1.0, word_data)
+                editor_audio_search_entry.insert(0, word_data)
+                editor_sentence_search_entry.insert(0, word_data)
+            else:
+                editor_word_text.fill_placeholder()
+                editor_audio_search_entry.fill_placeholder()
+                editor_sentence_search_entry.fill_placeholder()
+
+            self.external_sentence_fetcher.force_update(word_data, editor_card_data)
+            dict_sentences = editor_card_data.get(FIELDS.sentences, [""])
+
+            def update_sentence(index: int):
+                editor_card_data[FIELDS.sentences] = editor_sentence_texts[index].get(1.0, "end").rstrip()
+                items_table.set(items_table.selection()[0], "#3", editor_card_data[FIELDS.sentences])
+
+            for sentence in dict_sentences:
+                self.add_sentence_field(
+                    source="",
+                    sentence=sentence,
+                    text_widgets_frame=editor_text_widgets_frame,
+                    text_widgets_sf=editor_text_widgets_sf,
+                    sentence_text_widgets_list=editor_sentence_texts,
+                    choose_sentence_action=update_sentence
+                )
+
+            @error_handler(self.show_exception_logs)
+            def fill_additional_dict_data(widget: Text, text: str):
+                widget["state"] = "normal"
+                widget.clear()
+                widget.insert(1.0, text)
+                widget["state"] = "disabled"
+
+            fill_additional_dict_data(editor_dict_tags_field, Card.get_str_dict_tags(editor_card_data))
+            fill_additional_dict_data(editor_special_field, " ".join(editor_card_data.get(FIELDS.special, [])))
+
+            editor_definition_text.clear()
+            editor_definition_text.insert(1.0, editor_card_data.get(FIELDS.definition, ""))
+            editor_definition_text.fill_placeholder()
+
+            picked_audio_data = additional_data.get(SavedDataDeck.AUDIO_DATA, {})
+            if picked_audio_data:
+                audio_sources = picked_audio_data[SavedDataDeck.AUDIO_SRCS]
+                audio_srcs_types = picked_audio_data[SavedDataDeck.AUDIO_SRCS_TYPE]
+                parser_results = []
+                for audio_srcs_type, audio_src in zip(audio_srcs_types, audio_sources):
+                    parser_results.append([("", audio_srcs_type), (([audio_src], [""]), "")])
+
+                # parser_results = \
+                #     [(("", audio_srcs_type), ((audio_sources, ("" for _ in range(len(audio_sources)))), ""))]
+                self.display_audio_on_frame(
+                    word=word_data,
+                    card_data=editor_card_data,
+                    parser_results=parser_results,
+                    show_errors=False,
+                    audio_sf=editor_audio_sf,
+                    audio_inner_frame=editor_audio_inner_frame
+                )
+
+            if not editor_card_data:
+                editor_fetch_images_button["text"] = self.lang_pack.fetch_images_button_normal_text
+                return False
+
+            if additional_data.get(SavedDataDeck.SAVED_IMAGES_PATHS, []):
+                editor_fetch_images_button["text"] = self.lang_pack.fetch_images_button_normal_text + \
+                                                     self.lang_pack.fetch_images_button_image_link_encountered_postfix
+            else:
+                editor_fetch_images_button["text"] = self.lang_pack.fetch_images_button_normal_text
+
+            def display_audio_getters_results_on_refresh():
+                if self.tried_to_display_audio_getters_on_refresh:
+                    return
+
+                if (time.time() - self.last_refresh_call_time) > 0.1:
+                    self.waiting_for_audio_display = True
+                    self.tried_to_display_audio_getters_on_refresh = True
+                    self.display_audio_getter_results(
+                        word=editor_word_text.get(1.0, "end").strip(),
+                        card_data=editor_card_data,
+                        show_errors=True,
+                        audio_sf=editor_audio_sf,
+                        audio_inner_frame=editor_audio_inner_frame
+                    )
+                else:
+                    if self.waiting_for_audio_display:
+                        return
+
+                    self.after(300, display_audio_getters_results_on_refresh)
+                    self.waiting_for_audio_display = True
+
+            if self.external_audio_generator is not None and word_data:
+                self.external_audio_generator.force_update(word_data, editor_card_data)
+                # display_audio_getters_results_on_refresh()
+            return True
+
+        items_table.bind('<ButtonRelease-1>', display_card_in_editor)
+
 
 
     @error_handler(show_exception_logs)
@@ -2536,11 +2715,10 @@ n_sentences_per_batch:
             self.download_audio(closing=True)
 
     @error_handler(show_exception_logs)
-    def web_search_command(self):
-        search_term = self.word
-        definition_search_query = search_term + " definition"
+    def web_search_command(self, word: str):
+        definition_search_query = word + " definition"
         webbrowser.open_new_tab(f"https://www.google.com/search?q={definition_search_query}")
-        sentence_search_query = search_term + " sentence examples"
+        sentence_search_query = word + " sentence examples"
         webbrowser.open_new_tab(f"https://www.google.com/search?q={sentence_search_query}")
 
     @error_handler(show_exception_logs)
@@ -2895,7 +3073,7 @@ n_sentences_per_batch:
         self.refresh()
     
     @error_handler(show_exception_logs)
-    def open_anki_browser(self):
+    def open_anki_browser(self, word: str):
         @error_handler(self.show_exception_logs)
         def invoke(action, **params):
             def request_anki(action, **params):
@@ -2920,7 +3098,6 @@ n_sentences_per_batch:
                 messagebox.showerror(title="Anki", message=response['error'])
             return response['result']
 
-        word = self.word_text.get(1.0, "end").strip()
         query_list = []
         if self.configurations["anki"]["deck"]:
             query_list.append("deck:\"{}\"".format(self.configurations["anki"]["deck"]))
@@ -3094,17 +3271,17 @@ n_sentences_per_batch:
         return True
     
     @error_handler(show_exception_logs)
-    def start_image_search(self):
+    def start_image_search(self,
+                           word: str,
+                           card_data: dict,
+                           init_urls: list[str],
+                           init_local_images_paths: list[str],
+                           image_path_saving_method: Callable[[list[str]], None]):
         @error_handler(self.show_exception_logs)
         def connect_images_to_card(instance: ImageSearch):
-            nonlocal word
-
-            additional = self.dict_card_data.get(SavedDataDeck.ADDITIONAL_DATA)
-            if additional is not None and \
-                    (paths := additional.get(self.saved_cards_data.SAVED_IMAGES_PATHS)) is not None:
-                for path in paths:
-                    if os.path.isfile(path):
-                        os.remove(path)
+            for path in init_local_images_paths:
+                if os.path.isfile(path):
+                    os.remove(path)
 
             names: list[str] = []
             for i in range(len(instance.working_state)):
@@ -3115,7 +3292,7 @@ n_sentences_per_batch:
                                 .get_save_image_name(word,
                                                      instance.images_source[i],
                                                      self.configurations["scrappers"]["image"]["name"],
-                                                     self.dict_card_data))
+                                                     card_data))
                     instance.preprocess_image(img=instance.saving_images[i],
                                               width=self.configurations["image_search"]["saving_image_width"],
                                               height=self.configurations["image_search"]["saving_image_height"])\
@@ -3123,14 +3300,13 @@ n_sentences_per_batch:
                     names.append(saving_name)
 
             if names:
-                if additional is None:
-                    self.dict_card_data[SavedDataDeck.ADDITIONAL_DATA] = {}
-                self.dict_card_data[SavedDataDeck.ADDITIONAL_DATA][self.saved_cards_data.SAVED_IMAGES_PATHS] = names
+                image_path_saving_method(names)
+                # result_dst.clear()
+                # result_dst.extend(names)
 
             x, y = instance.geometry().split(sep="+")[1:]
             self.configurations["image_search"]["starting_position"] = f"+{x}+{y}"
 
-        word = self.word
         button_pady = button_padx = 10
         height_lim = self.winfo_height() * 7 // 8
         image_finder = ImageSearch(master=self,
@@ -3138,11 +3314,8 @@ n_sentences_per_batch:
                                    search_term=word,
                                    saving_dir=self.configurations["directories"]["media_dir"],
                                    url_scrapper=self.image_parser.get,
-                                   init_urls=self.dict_card_data
-                                                 .get(FIELDS.img_links, []),
-                                   local_images=self.dict_card_data
-                                                    .get(SavedDataDeck.ADDITIONAL_DATA, {})
-                                                    .get(self.saved_cards_data.SAVED_IMAGES_PATHS, []),
+                                   init_urls=init_urls,
+                                   local_images=init_local_images_paths,
                                    headers=self.headers,
                                    timeout=self.configurations["image_search"]["timeout"],
                                    max_request_tries=self.configurations["image_search"]["max_request_tries"],

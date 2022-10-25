@@ -1516,11 +1516,16 @@ n_sentences_per_batch:
 
     def added_cards_browser(self):
         added_cards_browser_window = self.Toplevel(self)
-        table_view = PanedWindow(added_cards_browser_window, bg="red")
-        table_view.pack(side="left", anchor="nw", expand=1, fill="both", padx=5, pady=5)
+
+        main_paned_window = PanedWindow(added_cards_browser_window)
+        main_paned_window.pack(fill="both", expand=True, padx=5, pady=5)
+
+        # table_view = PanedWindow(added_cards_browser_window, bg="red")
+        # main_paned_window.add(table_view, stretch="always", sticky="news")
+        # table_view.pack(side="left", anchor="nw", expand=1, fill="both")
 
         table_view_frame = self.Frame(added_cards_browser_window, bg="blue")
-        table_view.add(table_view_frame, stretch="always", sticky="news")
+        main_paned_window.add(table_view_frame, stretch="always", sticky="news")
         table_view_frame.rowconfigure(0, weight=1)
         table_view_frame.columnconfigure(0, weight=1)
 
@@ -1545,15 +1550,315 @@ n_sentences_per_batch:
         for i in range(1000):
             items_table.insert("", "end", values=(i+1, i+2, i+3, i+3, i+3, i+3, i+3))
 
-        item_editor = PanedWindow(table_view, orient="vertical", bg="green", showhandle=True)
-        item_editor_frame = self.Frame(item_editor, bg="yellow")
-        item_editor.add(item_editor_frame)
+        # item_editor = PanedWindow(table_view, orient="vertical", bg="green", showhandle=True)
+        item_editor_frame = self.Frame(added_cards_browser_window, bg="yellow")
+        main_paned_window.add(item_editor_frame, stretch="never")
 
-        test = self.Entry(item_editor)
-        test.pack(fill="x", expand=True)
+        # item_editor_frame.bind("<Configure>",
+        #                        lambda e: print(item_editor_frame.winfo_height(), item_editor_frame.winfo_width()))
+        #=======================================
 
-        table_view.add(item_editor, stretch="always", sticky="news")
+        editor_text_padx = 5
+        editor_text_pady = 5
 
+        for i in range(6):
+            item_editor_frame.grid_columnconfigure(i, weight=1)
+
+        additional_search_frame = self.Frame(item_editor_frame)
+        additional_search_frame.columnconfigure(0, weight=1)
+        additional_search_frame.columnconfigure(1, weight=1)
+        additional_search_frame.grid(row=0, column=0, sticky="news", columnspan=8,
+                                padx=(editor_text_padx, 0), pady=(editor_text_pady, 0))
+
+        editor_anki_button = self.Button(additional_search_frame,
+                                       text=self.lang_pack.anki_button_text,
+                                       command=self.open_anki_browser)
+        editor_anki_button.grid(row=0, column=0, sticky="news")
+
+        editor_browse_button = self.Button(additional_search_frame,
+                                         text=self.lang_pack.browse_button_text,
+                                         command=self.web_search_command)
+        editor_browse_button.grid(row=0, column=1, sticky="news")
+
+        editor_word_text = self.Text(item_editor_frame, placeholder=self.lang_pack.word_text_placeholder, height=1)
+        editor_word_text.grid(row=1, column=0, columnspan=8, sticky="news",
+                            padx=editor_text_padx, pady=editor_text_pady)
+
+        editor_special_field = self.Text(item_editor_frame, relief="ridge", state="disabled", height=1)
+        editor_special_field.grid(row=2, column=0, columnspan=8, sticky="news", padx=editor_text_padx)
+
+        editor_definition_text = self.Text(item_editor_frame, placeholder=self.lang_pack.definition_text_placeholder, height=4)
+        editor_definition_text.grid(row=3, column=0, columnspan=8, sticky="news",
+                                  padx=editor_text_padx, pady=(editor_text_pady, 0))
+
+        editor_dict_tags_field = self.Text(item_editor_frame, relief="ridge", state="disabled", height=2)
+        editor_dict_tags_field.grid(row=4, column=0, columnspan=8, sticky="news",
+                                  padx=editor_text_padx, pady=editor_text_pady)
+
+        if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
+            typed_image_parser_name = self.image_parser.name
+        else:
+            typed_image_parser_name = f"[{parser_types.CHAIN}] {self.image_parser.name}"
+
+        editor_fetch_images_button = self.Button(item_editor_frame,
+                                             text=self.lang_pack.fetch_images_button_normal_text,
+                                             command=self.start_image_search)
+        editor_fetch_images_button.grid(row=5, column=0, columnspan=3, sticky="news",
+                                    padx=(editor_text_padx, 0), pady=(0, editor_text_pady))
+
+        editor_image_parser_option_menu = self.get_option_menu(item_editor_frame,
+                                                             init_text=typed_image_parser_name,
+                                                             values=itertools.chain(
+                                                                 self.image_word_parsers_names,
+                                                                 [f"[{parser_types.CHAIN}] {name}" for name in
+                                                                  self.chaining_data["image_parsers"]]),
+                                                             command=lambda parser_name:
+                                                             self.change_image_parser(parser_name))
+        editor_image_parser_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
+                                           padx=0, pady=(0, editor_text_pady))
+
+        editor_configure_image_parser_button = self.Button(
+            item_editor_frame,
+            text="</>",
+            command=lambda: self.call_configuration_window(
+                plugin_name=self.image_parser.name if self.configurations["scrappers"]["image"][
+                                                          "type"] == parser_types.WEB
+                else f"[{parser_types.CHAIN}] {self.image_parser.name}",
+                plugin_config=self.image_parser.config,
+                plugin_load_function=lambda conf: conf.load(),
+                saving_action=lambda conf: conf.save()))
+        editor_configure_image_parser_button.grid(row=5, column=7, sticky="news",
+                                                padx=(0, editor_text_padx), pady=(0, editor_text_pady))
+
+        if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
+            typed_sentence_parser_name = self.external_sentence_fetcher.data_generator.name
+        else:
+            typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
+
+        # @error_handler(self.show_exception_logs)
+        # def fetch_external_sentences() -> None:
+        #     results: list[str, SentenceData] = []
+        #
+        #     fill_search_fields()
+        #
+        #     def schedule_sentence_fetcher():
+        #         nonlocal results
+        #         parser_results = self.external_sentence_fetcher.get(
+        #             word=self.sentence_search_entry.get(),
+        #             card_data=self.dict_card_data,
+        #             batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
+        #         if parser_results is None:
+        #             return
+        #
+        #         sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
+        #         if sentence_parser_type == parser_types.CHAIN:
+        #             results = parser_results
+        #         elif sentence_parser_type == parser_types.WEB:
+        #             results.append((self.external_sentence_fetcher.data_generator.name, parser_results))
+        #         else:
+        #             raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
+        #
+        #     def wait_sentence_fetcher(thread: Thread):
+        #         if thread.is_alive():
+        #             self.after(100, lambda: wait_sentence_fetcher(thread))
+        #             return
+        #
+        #         nonlocal results
+        #
+        #         for (typed_parser_name, (sent_batch, error_message)) in results:
+        #             sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
+        #             for sentence in sent_batch:
+        #                 self.add_sentence_field(
+        #                     source=f"{typed_parser_name}: {self.sentence_search_entry.get()}",
+        #                     sentence=sentence)
+        #
+        #             if error_message:
+        #                 messagebox.showerror(
+        #                     title=f"[{sentence_parser_type}] {self.external_sentence_fetcher.data_generator.name}",
+        #                     message=error_message)
+        #
+        #     place_sentences_thread = Thread(target=schedule_sentence_fetcher)
+        #     place_sentences_thread.start()
+        #     wait_sentence_fetcher(place_sentences_thread)
+
+        editor_fetch_ext_sentences_button = self.Button(item_editor_frame,
+                                                text=self.lang_pack.fetch_ext_sentences_button,
+                                                command=lambda: None)
+        editor_fetch_ext_sentences_button.grid(row=7, column=0, columnspan=3, sticky="news",
+                                       padx=(editor_text_padx, 0), pady=(editor_text_pady, 0))
+
+        editor_sentence_parser_option_menu = self.get_option_menu(item_editor_frame,
+                                                                init_text=typed_sentence_parser_name,
+                                                                values=itertools.chain(
+                                                                    loaded_plugins.web_sent_parsers.loaded,
+                                                                    [f"[{parser_types.CHAIN}] {name}" for name in
+                                                                     self.chaining_data["sentence_parsers"]]),
+                                                                command=lambda parser_name:
+                                                                self.change_sentence_parser(parser_name))
+        editor_sentence_parser_option_menu.grid(row=7, column=3, columnspan=4, sticky="news",
+                                              pady=(editor_text_pady, 0))
+
+        editor_configure_sentence_parser_button = self.Button(
+            item_editor_frame,
+            text="</>",
+            command=lambda: self.call_configuration_window(
+                plugin_name=self.external_sentence_fetcher.data_generator.name
+                if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB
+                else f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}",
+                plugin_config=self.external_sentence_fetcher.data_generator.config,
+                plugin_load_function=lambda conf: conf.load(),
+                saving_action=lambda conf: conf.save()),
+            width=6)
+        editor_configure_sentence_parser_button.grid(row=7, column=7, sticky="news",
+                                                   padx=(0, editor_text_padx), pady=(editor_text_pady, 0))
+        # ======
+        editor_sentence_search_entry = self.Entry(item_editor_frame, placeholder=self.lang_pack.sentence_search_entry_text)
+        editor_sentence_search_entry.grid(row=8, column=0, columnspan=8, sticky="news",
+                                        padx=editor_text_padx, pady=(0, 0))
+
+        editor_sentence_texts = []
+
+        editor_text_widgets_sf = ScrolledFrame(item_editor_frame, scrollbars="vertical",
+                                             canvas_bg=self.theme.frame_cfg.get("bg"))
+        editor_text_widgets_sf.grid(row=9, column=0, columnspan=8, sticky="news",
+                                  padx=editor_text_padx, pady=(0, editor_text_pady))
+        item_editor_frame.grid_rowconfigure(9, weight=1)
+
+        editor_text_widgets_frame = editor_text_widgets_sf.display_widget(self.Frame, fit_width=True)
+        editor_text_widgets_sf.bind_scroll_wheel(editor_text_widgets_frame)
+
+        editor_text_widgets_frame.last_source = None
+        editor_text_widgets_frame.source_display_frame = None
+
+        typed_audio_getter = "default" if self.external_audio_generator is None \
+                                       else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                                             self.external_audio_generator.data_generator.name)
+
+        # def display_audio_getter_results_on_button_click():
+        #     fill_search_fields()
+        #     self.waiting_for_audio_display = True
+        #     self.display_audio_getter_results(show_errors=True)
+
+        editor_fetch_audio_data_button = self.Button(item_editor_frame,
+                                                   text=self.lang_pack.fetch_audio_data_button_text,
+                                                   command=lambda: None)
+
+        if typed_audio_getter == "default":
+            editor_fetch_audio_data_button["state"] = "disabled"
+
+        editor_fetch_audio_data_button.grid(row=10, column=0, columnspan=3,
+                                          sticky="news",
+                                          padx=(editor_text_padx, 0), pady=0)
+
+        editor_audio_getter_option_menu = self.get_option_menu(
+            item_editor_frame,
+            init_text=typed_audio_getter,
+            values=["default"] +
+                   [f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
+                   [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                   [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
+            command=lambda parser_name: self.change_audio_getter(parser_name))
+        editor_audio_getter_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
+                                           padx=0, pady=0)
+
+        editor_configure_audio_getter_button = self.Button(item_editor_frame, text="</>")
+
+        if self.external_audio_generator is not None:
+            cmd = lambda: self.call_configuration_window(plugin_name=typed_audio_getter,
+                                                         plugin_config=self.external_audio_generator.data_generator.config,
+                                                         plugin_load_function=lambda conf: conf.load(),
+                                                         saving_action=lambda conf: conf.save())
+            editor_configure_audio_getter_button["command"] = cmd
+        else:
+            editor_configure_audio_getter_button["state"] = "disabled"
+
+        editor_configure_audio_getter_button.grid(row=10, column=7, sticky="news",
+                                                padx=(0, editor_text_padx), pady=0)
+
+        editor_audio_search_entry = self.Entry(item_editor_frame, placeholder=self.lang_pack.audio_search_entry_text)
+        editor_audio_search_entry.grid(row=11, column=0, columnspan=8, sticky="news",
+                                     padx=editor_text_padx, pady=0)
+
+        editor_audio_sf = ScrolledFrame(item_editor_frame, scrollbars="vertical",
+                                      canvas_bg=self.theme.frame_cfg.get("bg"),
+                                      height=110)
+
+        editor_audio_sf.grid(row=12, column=0, columnspan=8, sticky="news",
+                                   padx=editor_text_padx, pady=(0, editor_text_pady))
+
+        editor_audio_inner_frame = editor_audio_sf.display_widget(self.Frame, fit_width=True)
+        editor_audio_sf.bind_scroll_wheel(editor_audio_inner_frame)
+        editor_audio_inner_frame.last_source = None
+        editor_audio_inner_frame.source_display_frame = None
+
+        editor_user_tags_field = self.Entry(item_editor_frame, placeholder=self.lang_pack.user_tags_field_placeholder)
+        editor_user_tags_field.fill_placeholder()
+        editor_user_tags_field.grid(row=13, column=0, columnspan=6, sticky="news",
+                                  padx=(editor_text_padx, 0), pady=(0, editor_text_pady))
+
+        editor_tag_prefix_field = self.Entry(item_editor_frame, justify="center", width=8)
+        editor_tag_prefix_field.insert(0, self.configurations["deck"]["tags_hierarchical_pref"])
+        editor_tag_prefix_field.grid(row=13, column=7, columnspan=1, sticky="news",
+                                   padx=(0, editor_text_padx), pady=(0, editor_text_pady))
+
+        def focus_next_window(event, focusout_action: Callable[[], None] = None):
+            event.widget.tk_focusNext().focus()
+            if focusout_action is not None:
+                focusout_action()
+            return "break"
+
+        def focus_prev_window(event, focusout_action: Callable[[], None] = None):
+            event.widget.tk_focusPrev().focus()
+            if focusout_action is not None:
+                focusout_action()
+            return "break"
+
+        def fill_search_fields():
+            word = editor_word_text.get(1.0, "end").strip()
+            if not editor_audio_search_entry.get():
+                editor_audio_search_entry.insert(0, word)
+            if not editor_sentence_search_entry.get():
+                editor_sentence_search_entry.insert(0, word)
+
+        editor_new_order = [(editor_browse_button, None),
+                          (editor_anki_button, None),
+
+                          (editor_word_text, fill_search_fields),
+
+                          (editor_special_field, None),
+
+                          (editor_definition_text, None),
+
+                          (editor_dict_tags_field, None),
+
+                          (editor_fetch_ext_sentences_button, None),
+                          (editor_sentence_parser_option_menu, None),
+                          (editor_configure_sentence_parser_button, None),
+
+                          (editor_sentence_search_entry, None),
+
+                          (editor_fetch_images_button, None),
+                          (editor_image_parser_option_menu, None),
+                          (editor_configure_image_parser_button, None),
+
+                          (editor_fetch_audio_data_button, None),
+                          (editor_audio_getter_option_menu, None),
+                          (editor_configure_audio_getter_button, None),
+
+                          (editor_audio_search_entry, None),
+
+                          (editor_user_tags_field, None),
+                          (editor_tag_prefix_field, None),
+                          ]
+
+        editor_word_text.bind("<FocusOut>", lambda event: fill_search_fields(), add=True)
+        for widget, action in editor_new_order:
+            widget.lift()
+            widget.bind("<Tab>", partial(focus_next_window, focusout_action=action))
+            widget.bind("<Shift-Tab>", partial(focus_prev_window, focusout_action=action))
+
+
+        #=======================================
 
 
     @error_handler(show_exception_logs)

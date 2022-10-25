@@ -252,7 +252,7 @@ class SavedDataDeck(PointerList):
             if additional_data:
                 res[SavedDataDeck.ADDITIONAL_DATA] = additional_data
 
-        self._data.append(FrozenDict(res))
+        self._data.append(res)
         self._pointer_position += 1
         self._statistics[status.value] += 1
 
@@ -263,11 +263,11 @@ class SavedDataDeck(PointerList):
                 self._statistics[self[i][SavedDataDeck.CARD_STATUS].value] -= 1
             del self._data[self.get_pointer_position():]
             return
-        self._data.extend((FrozenDict({SavedDataDeck.CARD_STATUS: CardStatus.SKIP}) for _ in range(n)))
+        self._data.extend(({SavedDataDeck.CARD_STATUS: CardStatus.SKIP} for _ in range(n)))
         self._pointer_position = len(self)
         self._statistics[CardStatus.SKIP.value] += n
 
-    def get_audio_data(self, saving_card_status: CardStatus) -> list[FrozenDict]:
+    def get_audio_data(self, saving_card_status: CardStatus) -> list[dict]:
         if not self.get_card_status_stats(saving_card_status):
             return []
 
@@ -280,7 +280,7 @@ class SavedDataDeck(PointerList):
                 saving_object.append(audio_data)
         return saving_object
 
-    def get_card_data(self, saving_card_status: CardStatus) -> list[FrozenDict]:
+    def get_card_data(self, saving_card_status: CardStatus) -> list[dict]:
         if not self.get_card_status_stats(saving_card_status):
             return []
 

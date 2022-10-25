@@ -1517,7 +1517,7 @@ n_sentences_per_batch:
     def added_cards_browser(self):
         added_cards_browser_window = self.Toplevel(self)
 
-        main_paned_window = PanedWindow(added_cards_browser_window)
+        main_paned_window = PanedWindow(added_cards_browser_window, showhandle=True, orient="horizontal")
         main_paned_window.pack(fill="both", expand=True, padx=5, pady=5)
 
         # table_view = PanedWindow(added_cards_browser_window, bg="red")
@@ -1568,7 +1568,7 @@ n_sentences_per_batch:
         additional_search_frame.columnconfigure(0, weight=1)
         additional_search_frame.columnconfigure(1, weight=1)
         additional_search_frame.grid(row=0, column=0, sticky="news", columnspan=8,
-                                padx=(editor_text_padx, 0), pady=(editor_text_pady, 0))
+                                padx=(editor_text_padx), pady=(editor_text_pady, 0))
 
         editor_anki_button = self.Button(additional_search_frame,
                                        text=self.lang_pack.anki_button_text,

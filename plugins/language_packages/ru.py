@@ -17,6 +17,7 @@ file_master_menu_label = "Файл"
 
 add_card_menu_label = "Добавить"
 search_inside_deck_menu_label = "Перейти"
+added_cards_browser_menu_label = "Добавленные"
 statistics_menu_label = "Статистика"
 settings_themes_label_text = "Тема"
 settings_language_label_text = "Язык"
@@ -110,6 +111,7 @@ buttons_hotkeys_help_message = """
 * Ctrl + q: откладывает текущую карточку в отдельный файл
 * Ctrl + Shift + a: вызов окна добавления слова в колоду
 * Ctrl + e: вызов окна статистики
+* Ctrl + b: просмотр добавленных карточек
 * Ctrl + f: вызов окна поиска по колоде
 * Ctrl + v: вставляет изображение в окно поиска изображений
 

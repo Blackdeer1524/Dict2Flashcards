@@ -204,6 +204,7 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
 
         object.__setattr__(self, "add_card_menu_label", source_module.add_card_menu_label)
         object.__setattr__(self, "search_inside_deck_menu_label", source_module.search_inside_deck_menu_label)
+        object.__setattr__(self, "added_cards_browser_menu_label", source_module.added_cards_browser_menu_label)
         object.__setattr__(self, "statistics_menu_label", source_module.statistics_menu_label)
         object.__setattr__(self, "settings_themes_label_text", source_module.settings_themes_label_text)
         object.__setattr__(self, "settings_language_label_text", source_module.settings_language_label_text)

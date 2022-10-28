@@ -47,7 +47,7 @@ from plugins_loading.containers import LanguagePackageContainer
 from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig, Config
 from plugins_management.parsers_return_types import AudioData, SentenceData
-
+from app_utils.cards import FrozenDict
 
 class App(Tk):
     def __init__(self, *args, **kwargs):
@@ -156,22 +156,6 @@ class App(Tk):
         file_menu.add_command(label=self.lang_pack.save_files_menu_label, command=self.save_button)
         file_menu.add_separator()
 
-        help_menu = Menu(file_menu, tearoff=0)
-        help_menu.add_command(label=self.lang_pack.hotkeys_and_buttons_help_menu_label, command=self.help_command)
-        help_menu.add_command(label=self.lang_pack.query_settings_language_label_text, command=self.get_query_language_help)
-        file_menu.add_cascade(label=self.lang_pack.help_master_menu_label, menu=help_menu)
-
-        file_menu.add_separator()
-        file_menu.add_command(label=self.lang_pack.download_audio_menu_label,
-                              command=partial(self.download_audio, choose_file=True))
-        file_menu.add_separator()
-        file_menu.add_command(label=self.lang_pack.change_media_folder_menu_label, command=self.change_media_dir)
-        main_menu.add_cascade(label=self.lang_pack.file_master_menu_label, menu=file_menu)
-
-        main_menu.add_command(label=self.lang_pack.add_card_menu_label, command=self.add_word_dialog)
-        main_menu.add_command(label=self.lang_pack.search_inside_deck_menu_label, command=self.find_dialog)
-        main_menu.add_command(label=self.lang_pack.statistics_menu_label, command=self.statistics_dialog)
-
         @error_handler(self.show_exception_logs)
         def settings_dialog():
             settings_window = self.Toplevel(self)
@@ -189,7 +173,7 @@ class App(Tk):
                                                      init_text=self.configurations["app"]["theme"],
                                                      values=loaded_plugins.themes.loaded,
                                                      command=lambda theme_name:
-                                                             change_theme(theme_name))
+                                                     change_theme(theme_name))
             theme_option_menu.grid(row=0, column=1, sticky="news")
 
             @error_handler(self.show_exception_logs)
@@ -204,59 +188,59 @@ class App(Tk):
                                                         init_text=self.configurations["app"]["language_package"],
                                                         values=loaded_plugins.language_packages.loaded,
                                                         command=lambda language:
-                                                                change_language(language))
+                                                        change_language(language))
             language_option_menu.grid(row=1, column=1, sticky="news")
 
             image_search_configuration_label = self.Label(settings_window,
                                                           text=self.lang_pack
-                                                                   .settings_image_search_configuration_label_text)
+                                                          .settings_image_search_configuration_label_text)
             image_search_configuration_label.grid(row=2, column=0, sticky="news")
 
             image_search_conf_validation_scheme = copy.deepcopy(self.configurations.validation_scheme["image_search"])
             image_search_conf_validation_scheme.pop("starting_position", None)  # type: ignore
             image_search_conf_docs = """
-timeout
-    Image request timeout
-    type: integer | float
-    default: 1
-    
-max_request_tries
-    Max image request retries per <Show more> rotation
-    type: integer
-    default: 5
-    
-n_images_in_row
-    Maximum images in one row per <Show more> rotation
-    type: integer
-    default: 3
-    
-n_rows
-    Maximum number of rows per <Show more> rotation
-    type: integer
-    default: 2
-    
-show_image_width
-    Maximum button image width to which image would be scaled
-    type: integer | null
-    no scaling if null
-    default: 250
-    
-show_image_height
-    Maximum button image height to which image would be scaled
-    type: integer | null
-    no scaling if null
-    
-saving_image_width
-    Maximum saving image width to which image would be scaled
-    type: integer | null
-    no scaling if null
-    default: 300
-    
-saving_image_height
-    Maximum saving image height to which image would be scaled
-    type: integer | null
-    no scaling if null
-"""
+        timeout
+            Image request timeout
+            type: integer | float
+            default: 1
+
+        max_request_tries
+            Max image request retries per <Show more> rotation
+            type: integer
+            default: 5
+
+        n_images_in_row
+            Maximum images in one row per <Show more> rotation
+            type: integer
+            default: 3
+
+        n_rows
+            Maximum number of rows per <Show more> rotation
+            type: integer
+            default: 2
+
+        show_image_width
+            Maximum button image width to which image would be scaled
+            type: integer | null
+            no scaling if null
+            default: 250
+
+        show_image_height
+            Maximum button image height to which image would be scaled
+            type: integer | null
+            no scaling if null
+
+        saving_image_width
+            Maximum saving image width to which image would be scaled
+            type: integer | null
+            no scaling if null
+            default: 300
+
+        saving_image_height
+            Maximum saving image height to which image would be scaled
+            type: integer | null
+            no scaling if null
+        """
 
             @error_handler(self.show_exception_logs)
             def get_image_search_conf() -> Config:
@@ -271,16 +255,16 @@ saving_image_height
             def save_image_search_conf(config):
                 for key, value in config.items():
                     self.configurations["image_search"][key] = value
-            
+
             image_search_configuration_button = self.Button(settings_window,
                                                             text="</>",
                                                             command=lambda: self.call_configuration_window(
                                                                 plugin_name=self.lang_pack
-                                                                   .settings_image_search_configuration_label_text,
+                                                                    .settings_image_search_configuration_label_text,
                                                                 plugin_config=get_image_search_conf(),
                                                                 plugin_load_function=lambda conf: None,
                                                                 saving_action=lambda config:
-                                                                    save_image_search_conf(config))
+                                                                save_image_search_conf(config))
                                                             )
             image_search_configuration_button.grid(row=2, column=1, sticky="news")
 
@@ -289,18 +273,19 @@ saving_image_height
                 text=self.lang_pack.setting_web_audio_downloader_configuration_label_text)
             web_audio_downloader_configuration_label.grid(row=3, column=0, sticky="news")
 
-            web_audio_downloader_conf_validation_scheme = copy.deepcopy(self.configurations.validation_scheme["web_audio_downloader"])
+            web_audio_downloader_conf_validation_scheme = copy.deepcopy(
+                self.configurations.validation_scheme["web_audio_downloader"])
             web_audio_downloader_conf_docs = """
-timeout:
-    Audio file request timeout
-    type: integer    
-    default: 1
-    
-request_delay:
-    [Bulk donwload only] Delay between each request in milliseconds
-    type: integer
-    default: 3000
-"""
+        timeout:
+            Audio file request timeout
+            type: integer    
+            default: 1
+
+        request_delay:
+            [Bulk donwload only] Delay between each request in milliseconds
+            type: integer
+            default: 3000
+        """
 
             @error_handler(self.show_exception_logs)
             def get_web_audio_downloader_conf():
@@ -324,7 +309,7 @@ request_delay:
                     plugin_load_function=lambda conf: None,
                     saving_action=lambda config:
                     save_web_audio_downloader_conf(config))
-                )
+            )
             web_audio_downloader_configuration_button.grid(row=3, column=1, sticky="news")
 
             extern_audio_placer_configuration_label = self.Label(
@@ -335,11 +320,11 @@ request_delay:
             extern_audio_placer_conf_validation_scheme = copy.deepcopy(
                 self.configurations.validation_scheme["extern_audio_placer"])
             extern_audio_placer_conf_docs = """
-n_audios_per_batch:
-    A number of external-source audios that would be placed per button click
-    type: integer    
-    default: 5
-"""
+        n_audios_per_batch:
+            A number of external-source audios that would be placed per button click
+            type: integer    
+            default: 5
+        """
 
             @error_handler(self.show_exception_logs)
             def get_extern_audio_placer_conf():
@@ -371,13 +356,15 @@ n_audios_per_batch:
                 text=self.lang_pack.settings_extern_sentence_placer_configuration_label)
             extern_sentence_placer_configuration_label.grid(row=5, column=0, sticky="news")
 
-            extern_sentence_placer_conf_validation_scheme = copy.deepcopy(self.configurations.validation_scheme["extern_sentence_placer"])
+            extern_sentence_placer_conf_validation_scheme = copy.deepcopy(
+                self.configurations.validation_scheme["extern_sentence_placer"])
             extern_sentence_placer_conf_docs = """
-n_sentences_per_batch:
-    A number of external-source sentences that would be placed per button click
-    type: integer    
-    default: 5
-"""
+        n_sentences_per_batch:
+            A number of external-source sentences that would be placed per button click
+            type: integer    
+            default: 5
+        """
+
             @error_handler(self.show_exception_logs)
             def get_extern_sentence_placer_conf():
                 extern_sentence_placer_conf = copy.deepcopy(self.configurations["extern_sentence_placer"])
@@ -385,12 +372,12 @@ n_sentences_per_batch:
                               docs=extern_sentence_placer_conf_docs,
                               initial_value=extern_sentence_placer_conf)
                 return conf
-            
+
             @error_handler(self.show_exception_logs)
             def save_extern_sentence_placer_conf(config):
                 for key, value in config.items():
                     self.configurations["extern_sentence_placer"][key] = value
-                    
+
             extern_sentence_placer_configuration_button = self.Button(
                 settings_window,
                 text="</>",
@@ -399,7 +386,7 @@ n_sentences_per_batch:
                     plugin_config=get_extern_sentence_placer_conf(),
                     plugin_load_function=lambda conf: None,
                     saving_action=lambda config:
-                        save_extern_sentence_placer_conf(config))
+                    save_extern_sentence_placer_conf(config))
             )
             extern_sentence_placer_configuration_button.grid(row=5, column=1, sticky="news")
 
@@ -530,7 +517,25 @@ n_sentences_per_batch:
             settings_window.bind("<Escape>", lambda event: settings_window.destroy())
             settings_window.bind("<Return>", lambda event: settings_window.destroy())
 
-        main_menu.add_command(label=self.lang_pack.settings_menu_label, command=settings_dialog)
+        file_menu.add_command(label=self.lang_pack.settings_menu_label, command=settings_dialog)
+        file_menu.add_separator()
+
+        help_menu = Menu(file_menu, tearoff=0)
+        help_menu.add_command(label=self.lang_pack.hotkeys_and_buttons_help_menu_label, command=self.help_command)
+        help_menu.add_command(label=self.lang_pack.query_settings_language_label_text, command=self.get_query_language_help)
+        file_menu.add_cascade(label=self.lang_pack.help_master_menu_label, menu=help_menu)
+
+        file_menu.add_separator()
+        file_menu.add_command(label=self.lang_pack.download_audio_menu_label,
+                              command=partial(self.download_audio, choose_file=True))
+        file_menu.add_separator()
+        file_menu.add_command(label=self.lang_pack.change_media_folder_menu_label, command=self.change_media_dir)
+        main_menu.add_cascade(label=self.lang_pack.file_master_menu_label, menu=file_menu)
+
+        main_menu.add_command(label=self.lang_pack.add_card_menu_label, command=self.add_word_dialog)
+        main_menu.add_command(label=self.lang_pack.search_inside_deck_menu_label, command=self.find_dialog)
+        main_menu.add_command(label=self.lang_pack.added_cards_browser_menu_label, command=self.added_cards_browser)
+        main_menu.add_command(label=self.lang_pack.statistics_menu_label, command=self.statistics_dialog)
 
         @error_handler(self.show_exception_logs)
         def chain_dialog():
@@ -616,7 +621,8 @@ n_sentences_per_batch:
                                                                             command=lambda parser_name:
                                                                             self.change_sentence_parser(
                                                                                 parser_name))
-                    self.sentence_parser_option_menu.grid(row=8, column=3, columnspan=4, sticky="news")
+                    self.sentence_parser_option_menu.grid(row=7, column=3, columnspan=4, sticky="news",
+                                                          pady=(self.text_pady, 0))
 
                 elif chosen_parser_type == "image_parsers":
                     self.image_parser_option_menu.destroy()
@@ -634,8 +640,8 @@ n_sentences_per_batch:
                                                                               self.chaining_data["image_parsers"]]),
                                                                          command=lambda parser_name:
                                                                          self.change_image_parser(parser_name))
-                    self.image_parser_option_menu.grid(row=3, column=3, columnspan=4, sticky="news",
-                                                       padx=0, pady=self.text_pady)
+                    self.image_parser_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
+                                                       padx=0, pady=(0, self.text_pady))
 
                 elif chosen_parser_type == "audio_getters":
                     self.audio_getter_option_menu.destroy()
@@ -649,8 +655,8 @@ n_sentences_per_batch:
                                [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
                                [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
                         command=lambda parser_name: self.change_audio_getter(parser_name))
-                    self.audio_getter_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
-                                                       pady=(self.text_pady, 0))
+                    self.audio_getter_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
+                                                       padx=0, pady=0)
                 else:
                     raise NotImplementedError(f"Unknown chosen parser type: {chosen_parser_type}")
 
@@ -1374,6 +1380,7 @@ n_sentences_per_batch:
         self.bind("<Control-Shift_L><A>", lambda event: self.add_word_dialog())
         self.bind("<Control-f>", lambda event: self.find_dialog())
         self.bind("<Control-e>", lambda event: self.statistics_dialog())
+        self.bind("<Control-b>", lambda event: self.added_cards_browser())
 
         for i in range(0, 9):
             self.bind(f"<Control-Key-{i + 1}>", lambda event, index=i: self.choose_sentence(index))
@@ -1551,15 +1558,18 @@ n_sentences_per_batch:
 
     def added_cards_browser(self):
         added_cards_browser_window = self.Toplevel(self)
+        added_cards_browser_window.grab_set()
+
+        def close_added_cards_browser():
+            save_progress()
+            added_cards_browser_window.destroy()
+
+        added_cards_browser_window.bind("<Escape>", lambda event: close_added_cards_browser())
 
         main_paned_window = PanedWindow(added_cards_browser_window, showhandle=True, orient="horizontal")
         main_paned_window.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # table_view = PanedWindow(added_cards_browser_window, bg="red")
-        # main_paned_window.add(table_view, stretch="always", sticky="news")
-        # table_view.pack(side="left", anchor="nw", expand=1, fill="both")
-
-        table_view_frame = self.Frame(added_cards_browser_window, bg="blue")
+        table_view_frame = self.Frame(added_cards_browser_window)
         main_paned_window.add(table_view_frame, stretch="always", sticky="news")
         table_view_frame.rowconfigure(0, weight=1)
         table_view_frame.columnconfigure(0, weight=1)
@@ -1567,12 +1577,12 @@ n_sentences_per_batch:
         columns = ("#1", "#2", "#3")
         items_table = Treeview(table_view_frame, show="headings", columns=columns)
         items_table.grid(row=0, column=0, sticky="news")
-        items_table.heading("#1", text="Word")
-        items_table.heading("#2", text="Definition")
-        items_table.heading("#3", text="Sentence")
-        items_table.column("#1",anchor="w", stretch=False)
-        items_table.column("#2",anchor="w", stretch=False)
-        items_table.column("#3",anchor="w", stretch=True)
+        items_table.heading("#1", text=self.lang_pack.word_text_placeholder)
+        items_table.heading("#2", text=self.lang_pack.definition_text_placeholder)
+        items_table.heading("#3", text=self.lang_pack.sentence_text_placeholder_prefix)
+        items_table.column("#1", anchor="w", stretch=False, minwidth=200)
+        items_table.column("#2", anchor="w", stretch=False, minwidth=200)
+        items_table.column("#3", anchor="w", stretch=True, minwidth=200)
 
         ysb = Scrollbar(table_view_frame, orient="vertical", command=items_table.yview)
         ysb.grid(row=0, column=1, sticky="ns")
@@ -1582,10 +1592,9 @@ n_sentences_per_batch:
         xsb.grid(row=1, column=0, columnspan=2, sticky="ew")
         items_table.configure(xscroll=xsb.set)
 
-        full_saved_card_data = {}
-        editor_card_data = {}
+        full_saved_card_data: FrozenDict = {}
+        editor_card_data: Card = {}
         added_cards_list = []
-        last_selected_index = 0
 
         for i, saved_card_data in enumerate(self.saved_cards_data):
             if saved_card_data[SavedDataDeck.CARD_STATUS] != CardStatus.ADD:
@@ -1601,7 +1610,7 @@ n_sentences_per_batch:
         # for i in range(1000):
         #     items_table.insert("", "end", values=(i+1, i+2, i+3, i+3, i+3, i+3, i+3))
 
-        item_editor_frame = self.Frame(added_cards_browser_window, bg="yellow")
+        item_editor_frame = self.Frame(added_cards_browser_window)
         main_paned_window.add(item_editor_frame, stretch="never")
 
         #=======================================
@@ -1619,12 +1628,12 @@ n_sentences_per_batch:
 
         editor_anki_button = self.Button(additional_search_frame,
                                        text=self.lang_pack.anki_button_text,
-                                       command=lambda: self.open_anki_browser(editor_word_text.get(1.0, "end").strip()))
+                                       command=lambda: self.open_anki_browser(editor_word_text.get(1.0, "end").rstrip()))
         editor_anki_button.grid(row=0, column=0, sticky="news")
 
         editor_browse_button = self.Button(additional_search_frame,
                                          text=self.lang_pack.browse_button_text,
-                                         command=lambda: self.web_search_command(editor_word_text.get(1.0, "end").strip()))
+                                         command=lambda: self.web_search_command(editor_word_text.get(1.0, "end").rstrip()))
         editor_browse_button.grid(row=0, column=1, sticky="news")
 
         editor_word_text = self.Text(item_editor_frame, placeholder=self.lang_pack.word_text_placeholder, height=1)
@@ -1649,9 +1658,9 @@ n_sentences_per_batch:
 
         def edit_saved_images(new_image_urls: list[str]):
             if full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA) is None:
-                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA] = {SavedDataDeck.SAVED_IMAGES_PATHS: []}
-            elif full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA].get(SavedDataDeck.SAVED_IMAGES_PATHS) is None:
-                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.SAVED_IMAGES_PATHS] = []
+                full_saved_card_data._data[SavedDataDeck.ADDITIONAL_DATA] = {SavedDataDeck.SAVED_IMAGES_PATHS: []}
+            elif full_saved_card_data._data[SavedDataDeck.ADDITIONAL_DATA].get(SavedDataDeck.SAVED_IMAGES_PATHS) is None:
+                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA]._data[SavedDataDeck.SAVED_IMAGES_PATHS] = []
 
             saving_dst = full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.SAVED_IMAGES_PATHS]
             saving_dst.clear()
@@ -1661,7 +1670,7 @@ n_sentences_per_batch:
             item_editor_frame,
             text=self.lang_pack.fetch_images_button_normal_text,
             command=lambda: self.start_image_search(
-                word=editor_word_text.get(1.0, "end").strip(),
+                word=editor_word_text.get(1.0, "end").rstrip(),
                 card_data=editor_card_data,
                 init_urls=[],
                 init_local_images_paths=full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {})\
@@ -1670,7 +1679,26 @@ n_sentences_per_batch:
             )
         )
         editor_fetch_images_button.grid(row=5, column=0, columnspan=3, sticky="news",
-                                    padx=(editor_text_padx, 0), pady=(0, editor_text_pady))
+                                    padx=(editor_text_padx, 0), pady=0)
+
+        def global_change_image_parser(parser_name):
+            self.change_image_parser(parser_name)
+            self.image_parser_option_menu.destroy()
+            if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
+                typed_image_parser_name = self.image_parser.name
+            else:
+                typed_image_parser_name = f"[{parser_types.CHAIN}] {self.image_parser.name}"
+            self.image_parser_option_menu = self.get_option_menu(self,
+                                                                 init_text=typed_image_parser_name,
+                                                                 values=itertools.chain(
+                                                                     self.image_word_parsers_names,
+                                                                     [f"[{parser_types.CHAIN}] {name}" for name
+                                                                      in
+                                                                      self.chaining_data["image_parsers"]]),
+                                                                 command=lambda parser_name:
+                                                                 self.change_image_parser(parser_name))
+            self.image_parser_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
+                                               padx=0, pady=(0, self.text_pady))
 
         editor_image_parser_option_menu = self.get_option_menu(item_editor_frame,
                                                              init_text=typed_image_parser_name,
@@ -1678,10 +1706,9 @@ n_sentences_per_batch:
                                                                  self.image_word_parsers_names,
                                                                  [f"[{parser_types.CHAIN}] {name}" for name in
                                                                   self.chaining_data["image_parsers"]]),
-                                                             command=lambda parser_name:
-                                                             self.change_image_parser(parser_name))
+                                                             command=global_change_image_parser)
         editor_image_parser_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
-                                           padx=0, pady=(0, editor_text_pady))
+                                           padx=0, pady=0)
 
         editor_configure_image_parser_button = self.Button(
             item_editor_frame,
@@ -1694,7 +1721,7 @@ n_sentences_per_batch:
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()))
         editor_configure_image_parser_button.grid(row=5, column=7, sticky="news",
-                                                padx=(0, editor_text_padx), pady=(0, editor_text_pady))
+                                                padx=(0, editor_text_padx), pady=0)
 
         if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
             typed_sentence_parser_name = self.external_sentence_fetcher.data_generator.name
@@ -1702,8 +1729,12 @@ n_sentences_per_batch:
             typed_sentence_parser_name = f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
 
         def change_picked_sentence(index: int):
-            editor_card_data[FIELDS.sentences][0] = editor_sentence_texts[index].get(1.0, "end").rstrip()
-            items_table.set(items_table.selection()[0], "#3", editor_card_data[FIELDS.sentences][0])
+            selected_item = items_table.selection()
+            if not selected_item:
+                return
+
+            editor_card_data._data[FIELDS.sentences][0] = editor_sentence_texts[index].get(1.0, "end").rstrip()
+            items_table.set(selected_item[0], "#3", editor_card_data[FIELDS.sentences][0])
 
         @error_handler(self.show_exception_logs)
         def editor_fetch_external_sentences() -> None:
@@ -1739,7 +1770,7 @@ n_sentences_per_batch:
                     sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
                     for sentence in sent_batch:
                         self.add_sentence_field(
-                            source=f"{typed_parser_name}: {self.sentence_search_entry.get()}",
+                            source=f"{typed_parser_name}: {editor_sentence_search_entry.get()}",
                             sentence=sentence,
                             text_widgets_frame=editor_text_widgets_frame,
                             text_widgets_sf=editor_text_widgets_sf,
@@ -1762,14 +1793,36 @@ n_sentences_per_batch:
         editor_fetch_ext_sentences_button.grid(row=7, column=0, columnspan=3, sticky="news",
                                        padx=(editor_text_padx, 0), pady=(editor_text_pady, 0))
 
+        def global_change_sentence_parser(parser_name):
+            self.change_sentence_parser(parser_name)
+            self.sentence_parser_option_menu.destroy()
+            if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
+                typed_sentence_parser_name = self.external_sentence_fetcher.data_generator.name
+            else:
+                typed_sentence_parser_name = \
+                    f"[{parser_types.CHAIN}] {self.external_sentence_fetcher.data_generator.name}"
+
+            self.sentence_parser_option_menu = self.get_option_menu(self,
+                                                                    init_text=typed_sentence_parser_name,
+                                                                    values=itertools.chain(
+                                                                        loaded_plugins.web_sent_parsers.loaded,
+                                                                        [f"[{parser_types.CHAIN}] {name}" for
+                                                                         name in
+                                                                         self.chaining_data[
+                                                                             "sentence_parsers"]]),
+                                                                    command=lambda parser_name:
+                                                                    self.change_sentence_parser(
+                                                                        parser_name))
+            self.sentence_parser_option_menu.grid(row=7, column=3, columnspan=4, sticky="news",
+                                                  pady=(self.text_pady, 0))
+
         editor_sentence_parser_option_menu = self.get_option_menu(item_editor_frame,
                                                                 init_text=typed_sentence_parser_name,
                                                                 values=itertools.chain(
                                                                     loaded_plugins.web_sent_parsers.loaded,
                                                                     [f"[{parser_types.CHAIN}] {name}" for name in
                                                                      self.chaining_data["sentence_parsers"]]),
-                                                                command=lambda parser_name:
-                                                                self.change_sentence_parser(parser_name))
+                                                                command=global_change_sentence_parser)
         editor_sentence_parser_option_menu.grid(row=7, column=3, columnspan=4, sticky="news",
                                               pady=(editor_text_pady, 0))
 
@@ -1805,10 +1858,6 @@ n_sentences_per_batch:
         editor_text_widgets_frame.last_source = None
         editor_text_widgets_frame.source_display_frame = None
 
-        typed_audio_getter = "default" if self.external_audio_generator is None \
-                                       else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                                             self.external_audio_generator.data_generator.name)
-
         def display_audio_getter_results_on_button_click():
             editor_fill_search_fields()
             self.waiting_for_audio_display = True
@@ -1824,12 +1873,40 @@ n_sentences_per_batch:
                                                    text=self.lang_pack.fetch_audio_data_button_text,
                                                    command=display_audio_getter_results_on_button_click)
 
+        typed_audio_getter = "default" if self.external_audio_generator is None \
+                                       else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                                             self.external_audio_generator.data_generator.name)
+
         if typed_audio_getter == "default":
             editor_fetch_audio_data_button["state"] = "disabled"
 
         editor_fetch_audio_data_button.grid(row=10, column=0, columnspan=3,
                                           sticky="news",
                                           padx=(editor_text_padx, 0), pady=0)
+
+        def global_change_audio_getter(parser_name):
+            self.change_audio_getter(parser_name)
+            self.audio_getter_option_menu.destroy()
+            typed_audio_getter = "default" if self.external_audio_generator is None \
+                else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                      self.external_audio_generator.data_generator.name)
+            if typed_audio_getter == "default":
+                editor_fetch_audio_data_button["state"] = "disabled"
+                editor_configure_audio_getter_button["state"] = "disabled"
+            else:
+                editor_fetch_audio_data_button["state"] = "normal"
+                editor_configure_audio_getter_button["state"] = "normal"
+
+            self.audio_getter_option_menu = self.get_option_menu(
+                self,
+                init_text=typed_audio_getter,
+                values=["default"] +
+                       [f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
+                       [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                       [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
+                command=lambda parser_name: self.change_audio_getter(parser_name))
+            self.audio_getter_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
+                                               padx=0, pady=0)
 
         editor_audio_getter_option_menu = self.get_option_menu(
             item_editor_frame,
@@ -1838,7 +1915,7 @@ n_sentences_per_batch:
                    [f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
                    [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
                    [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
-            command=lambda parser_name: self.change_audio_getter(parser_name))
+            command=global_change_audio_getter)
         editor_audio_getter_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
                                            padx=0, pady=0)
 
@@ -1878,7 +1955,9 @@ n_sentences_per_batch:
                                   padx=(editor_text_padx, 0), pady=(0, editor_text_pady))
 
         editor_tag_prefix_field = self.Entry(item_editor_frame, justify="center", width=8)
-        editor_tag_prefix_field.insert(0, self.configurations["deck"]["tags_hierarchical_pref"])
+        editor_tag_prefix_field.insert(
+            0,
+            full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {}).get(SavedDataDeck.HIERARCHICAL_PREFIX, ""))
         editor_tag_prefix_field.grid(row=13, column=7, columnspan=1, sticky="news",
                                    padx=(0, editor_text_padx), pady=(0, editor_text_pady))
 
@@ -1895,7 +1974,7 @@ n_sentences_per_batch:
             return "break"
 
         def editor_fill_search_fields():
-            word = editor_word_text.get(1.0, "end").strip()
+            word = editor_word_text.get(1.0, "end").rstrip()
             if not editor_audio_search_entry.get():
                 editor_audio_search_entry.insert(0, word)
             if not editor_sentence_search_entry.get():
@@ -1938,15 +2017,92 @@ n_sentences_per_batch:
             widget.bind("<Tab>", partial(focus_next_window, focusout_action=action))
             widget.bind("<Shift-Tab>", partial(focus_prev_window, focusout_action=action))
 
-
-
         #=======================================
-        def save_progress(where_to_save: int):
-            pass
+        @error_handler(self.show_exception_logs)
+        def save_progress():
+            if not full_saved_card_data:
+                return
+
+            table_selected_item = items_table.selection()[0]
+
+            editor_card_data._data[FIELDS.word] = editor_word_text.get(1.0, "end").rstrip()
+            items_table.set(table_selected_item, "#1", editor_card_data[FIELDS.word])
+            editor_card_data._data[FIELDS.definition] = editor_definition_text.get(1.0, "end")
+            items_table.set(table_selected_item, "#2", editor_card_data[FIELDS.definition])
+
+            user_tags = editor_user_tags_field.get().strip()
+            editor_user_tags_field.clear()
+            hierarchical_prefix = editor_tag_prefix_field.get().strip()
+            editor_tag_prefix_field.clear()
+
+            if user_tags or hierarchical_prefix:
+                if full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA) is None:
+                    full_saved_card_data._data[SavedDataDeck.ADDITIONAL_DATA] = {}
+                if user_tags:
+                    full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA]._data[SavedDataDeck.USER_TAGS] = user_tags
+                if hierarchical_prefix:
+                    full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA]._data[SavedDataDeck.HIERARCHICAL_PREFIX] = hierarchical_prefix
+
+            @error_handler(self.show_exception_logs)
+            def add_audio_data_to_card(
+                    getter_name: str,
+                    getter_type: str,
+                    audio_links: list[str],
+                    add_type_prefix: bool):
+                if not audio_links:
+                    return
+
+                if full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA].get(SavedDataDeck.AUDIO_DATA) is None:
+                    full_saved_card_data._data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA] = {
+                        SavedDataDeck.AUDIO_SRCS: [],
+                        SavedDataDeck.AUDIO_SRCS_TYPE: [],
+                        SavedDataDeck.AUDIO_SAVING_PATHS: []
+                    }
+
+                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS].extend(audio_links)
+                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE].extend(
+                    (getter_type for _ in range(len(audio_links))))
+                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SAVING_PATHS].extend((
+                    os.path.join(self.configurations["directories"]["media_dir"],
+                                 self.card_processor
+                                 .get_save_audio_name(
+                                     editor_word_text.get(1.0, "end").rstrip(),
+                                     "[{}] {}".format(getter_type, getter_name) if add_type_prefix else getter_name,
+                                     str(i),
+                                     self.dict_card_data))
+                    for i in range(len(audio_links))
+                ))
+
+            last_audio_getter_data = ()
+            audio_getters_audios = []
+            for labeled_frame in editor_audio_inner_frame.winfo_children():
+                current_audio_getter_data = (typed_audio_getter_name, audio_getter_type) = labeled_frame.audio_getter_data
+                if last_audio_getter_data != current_audio_getter_data:
+                    if audio_getters_audios:
+                        add_audio_data_to_card(getter_name=typed_audio_getter_name,
+                                               getter_type=audio_getter_type,
+                                               audio_links=audio_getters_audios,
+                                               add_type_prefix=False)
+                    last_audio_getter_data = current_audio_getter_data
+                    audio_getters_audios = []
+
+                for i, audio_frame in enumerate(labeled_frame.winfo_children()):
+                    if not typed_audio_getter_name:  # chosen previously
+                        if not audio_frame.boolvar.get():
+                            full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS].pop(i)
+                            full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE].pop(i)
+                            full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SAVING_PATHS].pop(i)
+                    elif audio_frame.boolvar.get():
+                        audio_getters_audios.append(audio_frame.audio_data)
+
+            if audio_getters_audios:
+                add_audio_data_to_card(getter_name=last_audio_getter_data[0],
+                                       getter_type=last_audio_getter_data[1],
+                                       audio_links=audio_getters_audios,
+                                       add_type_prefix=False)
 
         def display_card_in_editor(event):
             nonlocal \
-                last_selected_index, \
                 full_saved_card_data, \
                 editor_card_data,\
                 editor_audio_inner_frame, \
@@ -1956,6 +2112,8 @@ n_sentences_per_batch:
             if not selected_item_index:
                 return
 
+            save_progress()
+
             *_, added_card_index = items_table.item(selected_item_index)["values"]
             full_saved_card_data = self.saved_cards_data[added_card_index]
             if full_saved_card_data is None:
@@ -1964,16 +2122,7 @@ n_sentences_per_batch:
                 return
 
             editor_card_data = full_saved_card_data[SavedDataDeck.CARD_DATA]
-            additional_data = full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {})
-
-            if last_selected_index:
-                save_progress(last_selected_index)
-
-            last_selected_index = selected_item_index
             # ====
-            self.last_refresh_call_time = time.time()
-            self.waiting_for_audio_display = False
-            self.tried_to_display_audio_getters_on_refresh = False
 
             editor_audio_inner_frame.destroy()
             editor_audio_inner_frame = editor_audio_sf.display_widget(self.Frame, fit_width=True)
@@ -2025,8 +2174,13 @@ n_sentences_per_batch:
             fill_additional_dict_data(editor_special_field, " ".join(editor_card_data.get(FIELDS.special, [])))
 
             editor_definition_text.clear()
-            editor_definition_text.insert(1.0, editor_card_data.get(FIELDS.definition, ""))
+            editor_definition_text.insert(1.0, editor_card_data.get(FIELDS.definition, "").rstrip())
             editor_definition_text.fill_placeholder()
+
+            additional_data = full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {})
+
+            editor_user_tags_field.insert(0, additional_data.get(SavedDataDeck.USER_TAGS, ""))
+            editor_tag_prefix_field.insert(0, additional_data.get(SavedDataDeck.HIERARCHICAL_PREFIX, ""))
 
             picked_audio_data = additional_data.get(SavedDataDeck.AUDIO_DATA, {})
             if picked_audio_data:
@@ -2036,15 +2190,14 @@ n_sentences_per_batch:
                 for audio_srcs_type, audio_src in zip(audio_srcs_types, audio_sources):
                     parser_results.append([("", audio_srcs_type), (([audio_src], [""]), "")])
 
-                # parser_results = \
-                #     [(("", audio_srcs_type), ((audio_sources, ("" for _ in range(len(audio_sources)))), ""))]
                 self.display_audio_on_frame(
                     word=word_data,
                     card_data=editor_card_data,
                     parser_results=parser_results,
-                    show_errors=False,
                     audio_sf=editor_audio_sf,
-                    audio_inner_frame=editor_audio_inner_frame
+                    audio_inner_frame=editor_audio_inner_frame,
+                    show_errors=False,
+                    is_picked=True
                 )
 
             if not editor_card_data:
@@ -2057,30 +2210,8 @@ n_sentences_per_batch:
             else:
                 editor_fetch_images_button["text"] = self.lang_pack.fetch_images_button_normal_text
 
-            def display_audio_getters_results_on_refresh():
-                if self.tried_to_display_audio_getters_on_refresh:
-                    return
-
-                if (time.time() - self.last_refresh_call_time) > 0.1:
-                    self.waiting_for_audio_display = True
-                    self.tried_to_display_audio_getters_on_refresh = True
-                    self.display_audio_getter_results(
-                        word=editor_word_text.get(1.0, "end").strip(),
-                        card_data=editor_card_data,
-                        show_errors=False,
-                        audio_sf=editor_audio_sf,
-                        audio_inner_frame=editor_audio_inner_frame
-                    )
-                else:
-                    if self.waiting_for_audio_display:
-                        return
-
-                    self.after(300, display_audio_getters_results_on_refresh)
-                    self.waiting_for_audio_display = True
-
             if self.external_audio_generator is not None and word_data:
                 self.external_audio_generator.force_update(word_data, editor_card_data)
-                # display_audio_getters_results_on_refresh()
             return True
 
         items_table.bind('<ButtonRelease-1>', display_card_in_editor)
@@ -2156,9 +2287,11 @@ n_sentences_per_batch:
                 self.display_audio_on_frame(word=word,
                                             card_data=card_data,
                                             parser_results=parser_results,
-                                            show_errors=show_errors,
                                             audio_sf=audio_sf,
-                                            audio_inner_frame=audio_inner_frame)
+                                            audio_inner_frame=audio_inner_frame,
+                                            show_errors=show_errors,
+                                            is_picked=False
+                                            )
 
         th = Thread(target=fill_parser_results)
         th.start()
@@ -2169,9 +2302,11 @@ n_sentences_per_batch:
                                word: str,
                                card_data: dict,
                                parser_results: list[tuple[tuple[str, str], AudioData]],
-                               show_errors: bool,
                                audio_sf,
-                               audio_inner_frame):
+                               audio_inner_frame,
+                               show_errors: bool,
+                               is_picked: bool
+                               ):
         @error_handler(self.show_exception_logs)
         def playsound_in_another_thread(audio_path: str):
             @error_handler(self.show_exception_logs)
@@ -2228,6 +2363,7 @@ n_sentences_per_batch:
                                                                          text=typed_audio_getter_name,
                                                                          fg=self.theme.button_cfg.get("foreground"),
                                                                          **self.theme.frame_cfg)
+                audio_inner_frame.source_display_frame.audio_getter_data = (typed_audio_getter_name, audio_getter_type)
                 audio_sf.bind_scroll_wheel(audio_inner_frame.source_display_frame)
                 audio_inner_frame.source_display_frame.grid_propagate(False)
                 audio_inner_frame.source_display_frame.pack(side="top", fill="x", expand=True)
@@ -2245,13 +2381,13 @@ n_sentences_per_batch:
                 audio_info_frame.columnconfigure(2, weight=1)
 
                 var = BooleanVar()
-                var.set(False)
+                var.set(is_picked)
                 pick_button = Checkbutton(audio_info_frame,
                                           variable=var,
                                           **self.theme.checkbutton_cfg)
                 pick_button.grid(row=0, column=0, sticky="news")
                 audio_info_frame.boolvar = var
-                audio_info_frame.audio_data = (typed_audio_getter_name, audio_getter_type, audio)
+                audio_info_frame.audio_data = audio
 
                 audio_sf.bind_scroll_wheel(pick_button)
 
@@ -2272,7 +2408,7 @@ n_sentences_per_batch:
     @property
     @error_handler(show_exception_logs)
     def word(self):
-        return self.word_text.get(1.0, "end").strip()
+        return self.word_text.get(1.0, "end").rstrip()
 
     @property
     @error_handler(show_exception_logs)
@@ -2672,8 +2808,6 @@ n_sentences_per_batch:
 
     @error_handler(show_exception_logs)
     def statistics_dialog(self):
-        self.added_cards_browser()
-
         statistics_window = self.Toplevel(self)
         statistics_window.withdraw()
 
@@ -2977,7 +3111,7 @@ n_sentences_per_batch:
                 os.path.join(self.configurations["directories"]["media_dir"],
                              self.card_processor
                              .get_save_audio_name(
-                                 word_for_audio_query,
+                                 saving_word,
                                  "[{}] {}".format(getter_type, getter_name) if add_type_prefix else getter_name,
                                  str(i),
                                  self.dict_card_data))
@@ -2985,15 +3119,29 @@ n_sentences_per_batch:
             ))
 
         chosen_smth = False
+        last_audio_getter_data = ()
+        audio_getters_audios = []
         for labeled_frame in self.audio_inner_frame.winfo_children():
-            for audio_frame in labeled_frame.winfo_children():
-                if audio_frame.boolvar.get():
-                    typed_audio_getter_name, audio_getter_type, audio = audio_frame.audio_data
-                    chosen_smth = True
+            current_audio_getter_data = (typed_audio_getter_name, audio_getter_type) = labeled_frame.audio_getter_data
+            if last_audio_getter_data != current_audio_getter_data:
+                if audio_getters_audios:
                     add_audio_data_to_card(getter_name=typed_audio_getter_name,
                                            getter_type=audio_getter_type,
-                                           audio_links=[audio],
+                                           audio_links=audio_getters_audios,
                                            add_type_prefix=False)
+                last_audio_getter_data = current_audio_getter_data
+                audio_getters_audios = []
+
+            for audio_frame in labeled_frame.winfo_children():
+                if audio_frame.boolvar.get():
+                    chosen_smth = True
+                    audio_getters_audios.append(audio_frame.audio_data)
+
+        if audio_getters_audios:
+            add_audio_data_to_card(getter_name=last_audio_getter_data[0],
+                                   getter_type=last_audio_getter_data[1],
+                                   audio_links=audio_getters_audios,
+                                   add_type_prefix=False)
 
         if not chosen_smth and (audio_autochoose_mode := self.configurations["app"]["audio_autochoose_mode"]) != "off":
             if audio_autochoose_mode in ("first_default_audio", "first_available_audio"):
@@ -3238,7 +3386,8 @@ n_sentences_per_batch:
                 parser_results=parser_results,
                 show_errors=False,
                 audio_sf=self.audio_sf,
-                audio_inner_frame=self.audio_inner_frame
+                audio_inner_frame=self.audio_inner_frame,
+                is_picked=False
             )
 
         if not self.dict_card_data:
@@ -3306,10 +3455,7 @@ n_sentences_per_batch:
                             .save(saving_name)
                     names.append(saving_name)
 
-            if names:
-                image_path_saving_method(names)
-                # result_dst.clear()
-                # result_dst.extend(names)
+            image_path_saving_method(names)
 
             x, y = instance.geometry().split(sep="+")[1:]
             self.configurations["image_search"]["starting_position"] = f"+{x}+{y}"

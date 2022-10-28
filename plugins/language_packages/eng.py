@@ -17,6 +17,7 @@ file_master_menu_label = "File"
 
 add_card_menu_label = "Add"
 search_inside_deck_menu_label = "Find"
+added_cards_browser_menu_label = "Browse added"
 statistics_menu_label = "Statistics"
 settings_themes_label_text = "Theme"
 settings_language_label_text = "Language"
@@ -110,6 +111,7 @@ Hotkeys (local):
 * Ctrl + q: moves current card to a separate file
 * Ctrl + Shift + a: calls <add word> window
 * Ctrl + e: calls <statistics> window
+* Ctrl + e: invoke added cards browser
 * Ctrl + f: calls <find> window
 * Ctrl + v: pastes image in image browser
 

@@ -26,6 +26,7 @@ class LanguagePackageInterface(Protocol):
 
     add_card_menu_label: str
     search_inside_deck_menu_label: str
+    added_cards_browser_menu_label: str
     statistics_menu_label: str
 
     settings_menu_label: str

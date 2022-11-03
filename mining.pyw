@@ -1561,7 +1561,9 @@ class App(Tk):
         added_cards_browser_window.grab_set()
 
         def close_added_cards_browser():
-            save_progress()
+            table_selected_items = items_table.selection()
+            if table_selected_items:
+                save_progress(table_selected_items[0])
             added_cards_browser_window.destroy()
 
         added_cards_browser_window.bind("<Escape>", lambda event: close_added_cards_browser())
@@ -2018,17 +2020,16 @@ class App(Tk):
             widget.bind("<Shift-Tab>", partial(focus_prev_window, focusout_action=action))
 
         #=======================================
+
         @error_handler(self.show_exception_logs)
-        def save_progress():
+        def save_progress(selection_index: str):
             if not full_saved_card_data:
                 return
 
-            table_selected_item = items_table.selection()[0]
-
             editor_card_data._data[FIELDS.word] = editor_word_text.get(1.0, "end").rstrip()
-            items_table.set(table_selected_item, "#1", editor_card_data[FIELDS.word])
+            items_table.set(selection_index, "#1", editor_card_data[FIELDS.word])
             editor_card_data._data[FIELDS.definition] = editor_definition_text.get(1.0, "end")
-            items_table.set(table_selected_item, "#2", editor_card_data[FIELDS.definition])
+            items_table.set(selection_index, "#2", editor_card_data[FIELDS.definition])
 
             user_tags = editor_user_tags_field.get().strip()
             editor_user_tags_field.clear()
@@ -2101,8 +2102,11 @@ class App(Tk):
                                        audio_links=audio_getters_audios,
                                        add_type_prefix=False)
 
+        previously_selected_item: str = ""
+
         def display_card_in_editor(event):
             nonlocal \
+                previously_selected_item, \
                 full_saved_card_data, \
                 editor_card_data,\
                 editor_audio_inner_frame, \
@@ -2112,7 +2116,9 @@ class App(Tk):
             if not selected_item_index:
                 return
 
-            save_progress()
+            if previously_selected_item:
+                save_progress(previously_selected_item)
+            previously_selected_item = selected_item_index
 
             *_, added_card_index = items_table.item(selected_item_index)["values"]
             full_saved_card_data = self.saved_cards_data[added_card_index]
@@ -2214,7 +2220,7 @@ class App(Tk):
                 self.external_audio_generator.force_update(word_data, editor_card_data)
             return True
 
-        items_table.bind('<ButtonRelease-1>', display_card_in_editor)
+        items_table.bind("<<TreeviewSelect>>", display_card_in_editor)
 
 
 

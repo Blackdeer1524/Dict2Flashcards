@@ -111,7 +111,7 @@ Hotkeys (local):
 * Ctrl + q: moves current card to a separate file
 * Ctrl + Shift + a: calls <add word> window
 * Ctrl + e: calls <statistics> window
-* Ctrl + e: invoke added cards browser
+* Ctrl + b: invoke added cards browser
 * Ctrl + f: calls <find> window
 * Ctrl + v: pastes image in image browser
 

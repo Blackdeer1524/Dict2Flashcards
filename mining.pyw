@@ -1604,9 +1604,9 @@ class App(Tk):
             added_cards_list.append(saved_card_data)
             main_card_data = saved_card_data[SavedDataDeck.CARD_DATA]
 
-            word = main_card_data.get(FIELDS.word, "")
-            definition = main_card_data.get(FIELDS.definition, "")
-            sentence = main_card_data.get(FIELDS.sentences, [""])[0]
+            word = main_card_data.get(FIELDS.word, "").replace("\n", " ")
+            definition = main_card_data.get(FIELDS.definition, "").replace("\n", " ")
+            sentence = main_card_data.get(FIELDS.sentences, [""])[0].replace("\n", " ")
             items_table.insert("", "end", values=(word, definition, sentence, i))
 
         # for i in range(1000):
@@ -1736,7 +1736,7 @@ class App(Tk):
                 return
 
             editor_card_data._data[FIELDS.sentences][0] = editor_sentence_texts[index].get(1.0, "end").rstrip()
-            items_table.set(selected_item[0], "#3", editor_card_data[FIELDS.sentences][0])
+            items_table.set(selected_item[0], "#3", editor_card_data[FIELDS.sentences][0].replace("\n", " "))
 
         @error_handler(self.show_exception_logs)
         def editor_fetch_external_sentences() -> None:
@@ -2027,9 +2027,9 @@ class App(Tk):
                 return
 
             editor_card_data._data[FIELDS.word] = editor_word_text.get(1.0, "end").rstrip()
-            items_table.set(selection_index, "#1", editor_card_data[FIELDS.word])
-            editor_card_data._data[FIELDS.definition] = editor_definition_text.get(1.0, "end")
-            items_table.set(selection_index, "#2", editor_card_data[FIELDS.definition])
+            items_table.set(selection_index, "#1", editor_card_data[FIELDS.word].replace("\n", " "))
+            editor_card_data._data[FIELDS.definition] = editor_definition_text.get(1.0, "end").rstrip()
+            items_table.set(selection_index, "#2", editor_card_data[FIELDS.definition].replace("\n", " "))
 
             user_tags = editor_user_tags_field.get().strip()
             editor_user_tags_field.clear()

@@ -2456,8 +2456,16 @@ class App(Tk):
     def create_file_dialog(self):
         @error_handler(self.show_exception_logs)
         def create_file():
-            def foo():
-                skip_var.set(True)
+            cancel_flag = rewrite_flag = False
+
+            def cancel_creation_if_already_exists():
+                nonlocal cancel_flag
+                cancel_flag = True
+                copy_encounter.destroy()
+
+            def rewrite_if_already_exists():
+                nonlocal rewrite_flag
+                rewrite_flag = True
                 copy_encounter.destroy()
 
             new_file_name = remove_special_chars(name_entry.get().strip(), sep="_")
@@ -2467,19 +2475,18 @@ class App(Tk):
                 return
 
             new_file_path = f"{new_file_dir}/{new_file_name}.json"
-            skip_var = BooleanVar()
-            skip_var.set(False)
             if os.path.exists(new_file_path):
                 copy_encounter = self.Toplevel(create_file_win)
                 copy_encounter.withdraw()
-                message = self.lang_pack.create_file_file_already_exists_message
-                encounter_label = self.Label(copy_encounter, text=message, relief="ridge")
+                encounter_label = self.Label(copy_encounter,
+                                             text=self.lang_pack.create_file_file_already_exists_message,
+                                             relief="ridge")
                 skip_encounter_button = self.Button(copy_encounter,
                                                     text=self.lang_pack.create_file_skip_encounter_button_text,
-                                                    command=lambda: foo())
+                                                    command=cancel_creation_if_already_exists)
                 rewrite_encounter_button = self.Button(copy_encounter,
                                                        text=self.lang_pack.create_file_rewrite_encounter_button_text,
-                                                       command=lambda: copy_encounter.destroy())
+                                                       command=rewrite_if_already_exists)
 
                 encounter_label.grid(row=0, column=0, padx=5, pady=5)
                 skip_encounter_button.grid(row=1, column=0, padx=5, pady=5, sticky="news")
@@ -2491,16 +2498,17 @@ class App(Tk):
                 create_file_win.wait_window(copy_encounter)
 
             create_file_win.destroy()
-
-            if not skip_var.get():
-                with open(new_file_path, "w", encoding="UTF-8") as new_file:
-                    json.dump([], new_file)
+            if cancel_flag:
+                return
 
             new_save_dir = askdirectory(title=self.lang_pack.choose_save_dir_message, initialdir=ROOT_DIR)
             if not new_save_dir:
                 return
 
-            self.save_files()
+            with open(new_file_path, "w", encoding="UTF-8") as new_file:
+                json.dump([], new_file)
+
+            self.save_files(not rewrite_flag)
             self.session_start = datetime.now()
             self.str_session_start = self.session_start.strftime("%d-%m-%Y-%H-%M-%S")
             self.configurations["directories"]["last_save_dir"] = new_save_dir
@@ -2536,31 +2544,36 @@ class App(Tk):
         create_file_win.bind("<Return>", lambda event: create_file())
 
     @error_handler(show_exception_logs)
-    def save_files(self):
+    def save_files(self, card_deck_saving_flag=True):
         self.configurations["app"]["main_window_geometry"] = self.geometry()
         self.configurations["deck"]["tags_hierarchical_pref"] = self.tag_prefix_field.get().strip()
         self.configurations.save()
 
-        self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position() - 1
-        with open(HISTORY_FILE_PATH, "w") as saving_f:
-            json.dump(self.history, saving_f, indent=4)
-
         self.chaining_data.save()
-        self.deck.save()
+
+        if card_deck_saving_flag:
+            self.history[self.configurations["directories"]["last_open_file"]] = self.deck.get_pointer_position() - 1
+            with open(HISTORY_FILE_PATH, "w") as saving_f:
+                json.dump(self.history, saving_f, indent=4)
+
+            self.deck.save()
 
         deck_name = os.path.basename(self.configurations["directories"]["last_open_file"]).split(sep=".")[0]
         saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name)
-        self.deck_saver.save(self.saved_cards_data, CardStatus.ADD,
+        self.deck_saver.save(self.saved_cards_data,
+                             CardStatus.ADD,
                              f"{saving_path}_{self.str_session_start}",
                              self.card_processor.get_card_image_name,
                              self.card_processor.get_card_audio_name)
 
-        self.audio_saver.save(self.saved_cards_data, CardStatus.ADD,
-                               f"{saving_path}_{self.str_session_start}_audios",
-                               self.card_processor.get_card_image_name,
-                               self.card_processor.get_card_audio_name)
+        self.audio_saver.save(self.saved_cards_data,
+                              CardStatus.ADD,
+                              f"{saving_path}_{self.str_session_start}_audios",
+                              self.card_processor.get_card_image_name,
+                              self.card_processor.get_card_audio_name)
 
-        self.buried_saver.save(self.saved_cards_data, CardStatus.BURY,
+        self.buried_saver.save(self.saved_cards_data,
+                               CardStatus.BURY,
                                f"{saving_path}_{self.str_session_start}_buried",
                                self.card_processor.get_card_image_name,
                                self.card_processor.get_card_audio_name)

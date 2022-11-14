@@ -92,6 +92,10 @@ create_file_rewrite_encounter_button_text = "Заменить"
 # save files
 save_files_message = "Файлы сохранены"
 
+# word definition
+card_insertion_limit_exceed_title = "Найдено слишком много карточек"
+card_insertion_limit_exceed_message = "Найдено слишком много карточек. Вы уверены что хотите добавить {} карточек?"
+
 # help
 buttons_hotkeys_help_message = """
 Назначения кнопок:

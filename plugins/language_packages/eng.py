@@ -92,6 +92,10 @@ create_file_rewrite_encounter_button_text = "Replace"
 # save files
 save_files_message = "Files were saved"
 
+# word definition
+card_insertion_limit_exceed_title = "Found too many cards"
+card_insertion_limit_exceed_message = "Found too many cards. Are you sure you want to add {} cards?"
+
 # help
 buttons_hotkeys_help_message = """
 Buttons:

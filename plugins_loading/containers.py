@@ -315,6 +315,10 @@ class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
         # save files
         object.__setattr__(self, "save_files_message", source_module.save_files_message)
 
+        # word definition
+        object.__setattr__(self, "card_insertion_limit_exceed_title", source_module.card_insertion_limit_exceed_title)
+        object.__setattr__(self, "card_insertion_limit_exceed_message", source_module.card_insertion_limit_exceed_message)
+
         # help
         object.__setattr__(self, "buttons_hotkeys_help_message", source_module.buttons_hotkeys_help_message)
         object.__setattr__(self, "buttons_hotkeys_help_window_title",

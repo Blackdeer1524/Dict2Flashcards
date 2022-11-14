@@ -49,6 +49,7 @@ from plugins_management.config_management import LoadableConfig, Config
 from plugins_management.parsers_return_types import AudioData, SentenceData
 from app_utils.cards import FrozenDict
 
+
 class App(Tk):
     def __init__(self, *args, **kwargs):
         super(App, self).__init__(*args, **kwargs)
@@ -75,12 +76,12 @@ class App(Tk):
 
         self.theme = loaded_plugins.get_theme(self.configurations["app"]["theme"])
         self.configure(**self.theme.root_cfg)
-        self.Label    = partial(Label,    **self.theme.label_cfg)
-        self.Button   = partial(Button,   **self.theme.button_cfg)
-        self.Text     = partial(Text,     **self.theme.text_cfg)
-        self.Entry    = partial(Entry,    **self.theme.entry_cfg)
+        self.Label = partial(Label, **self.theme.label_cfg)
+        self.Button = partial(Button, **self.theme.button_cfg)
+        self.Text = partial(Text, **self.theme.text_cfg)
+        self.Entry = partial(Entry, **self.theme.entry_cfg)
         self.Toplevel = partial(Toplevel, **self.theme.toplevel_cfg)
-        self.Frame    = partial(Frame,    **self.theme.frame_cfg)
+        self.Frame = partial(Frame, **self.theme.frame_cfg)
         self.get_option_menu = partial(get_option_menu,
                                        option_menu_cfg=self.theme.option_menu_cfg,
                                        option_submenu_cfg=self.theme.option_submenus_cfg)
@@ -135,7 +136,7 @@ class App(Tk):
                 self.external_audio_generator = ExternalDataGeneratorWrapper(data_generator=audio_getter)
             elif self.configurations["scrappers"]["audio"]["type"] == parser_types.CHAIN:
                 audio_getter = AudioGettersChain(name=audio_getter_name,
-                                                      chain_data=self.chaining_data["audio_getters"][audio_getter_name])
+                                                 chain_data=self.chaining_data["audio_getters"][audio_getter_name])
                 self.external_audio_generator = ExternalDataGeneratorWrapper(data_generator=audio_getter)
             else:
                 self.configurations["scrappers"]["audio"]["type"] = "default"
@@ -522,7 +523,8 @@ class App(Tk):
 
         help_menu = Menu(file_menu, tearoff=0)
         help_menu.add_command(label=self.lang_pack.hotkeys_and_buttons_help_menu_label, command=self.help_command)
-        help_menu.add_command(label=self.lang_pack.query_settings_language_label_text, command=self.get_query_language_help)
+        help_menu.add_command(label=self.lang_pack.query_settings_language_label_text,
+                              command=self.get_query_language_help)
         file_menu.add_cascade(label=self.lang_pack.help_master_menu_label, menu=help_menu)
 
         file_menu.add_separator()
@@ -544,10 +546,10 @@ class App(Tk):
             chain_type_window.title(self.lang_pack.chain_management_menu_label)
             chain_type_window.bind("<Escape>", lambda event: chain_type_window.destroy())
 
-            chaining_options = {self.lang_pack.chain_management_word_parsers_option     : "word_parsers",
-                                self.lang_pack.chain_management_sentence_parsers_option : "sentence_parsers",
-                                self.lang_pack.chain_management_image_parsers_option    : "image_parsers",
-                                self.lang_pack.chain_management_audio_getters_option    : "audio_getters"}
+            chaining_options = {self.lang_pack.chain_management_word_parsers_option: "word_parsers",
+                                self.lang_pack.chain_management_sentence_parsers_option: "sentence_parsers",
+                                self.lang_pack.chain_management_image_parsers_option: "image_parsers",
+                                self.lang_pack.chain_management_audio_getters_option: "audio_getters"}
 
             @error_handler(self.show_exception_logs)
             def select_chain_type(picked_value: str) -> None:
@@ -574,8 +576,8 @@ class App(Tk):
                 chain_type_window,
                 columns=[self.lang_pack.chain_management_existing_chains_treeview_name_column,
                          self.lang_pack.chain_management_existing_chains_treeview_chain_column],
-                         show="headings",
-                         selectmode="browse")
+                show="headings",
+                selectmode="browse")
             existing_chains_treeview.grid(row=2, column=0, sticky="news", padx=10, pady=(0, 10))
             chain_type_window.grid_rowconfigure(2, weight=1)
 
@@ -648,11 +650,12 @@ class App(Tk):
                     self.audio_getter_option_menu = self.get_option_menu(
                         self,
                         init_text="default" if self.external_audio_generator is None
-                                            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                                                  self.external_audio_generator.data_generator.name),
+                        else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                              self.external_audio_generator.data_generator.name),
                         values=["default"] +
                                [f"{parser_types.WEB_PREF} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
-                               [f"{parser_types.LOCAL_PREF} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                               [f"{parser_types.LOCAL_PREF} {item}" for item in
+                                loaded_plugins.local_audio_getters.loaded] +
                                [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
                         command=lambda parser_name: self.change_audio_getter(parser_name))
                     self.audio_getter_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
@@ -794,7 +797,7 @@ class App(Tk):
                     up_button = self.Button(built_chain_inner_frame, text="∧")
                     built_chain_main_frame.bind_scroll_wheel(up_button)
                     deselect_button = self.Button(built_chain_inner_frame, text="✕",
-                                       command=lambda ind=new_chain_ind: remove_from_chain(ind // 3))
+                                                  command=lambda ind=new_chain_ind: remove_from_chain(ind // 3))
                     built_chain_main_frame.bind_scroll_wheel(deselect_button)
                     down_button = self.Button(built_chain_inner_frame, text="∨")
                     built_chain_main_frame.bind_scroll_wheel(down_button)
@@ -831,7 +834,7 @@ class App(Tk):
                                                     canvas_bg=self.theme.frame_cfg.get("bg"))
                 choosing_main_frame.grid(row=1, column=0, sticky="news", padx=10, pady=(0, 10))
                 choosing_inner_frame = choosing_main_frame.display_widget(self.Frame,
-                                                                  fit_width=True)
+                                                                          fit_width=True)
                 choosing_main_frame.bind_scroll_wheel(choosing_inner_frame)
                 choosing_inner_frame.grid_columnconfigure(0, weight=1)
 
@@ -870,7 +873,7 @@ class App(Tk):
                                                        canvas_bg=self.theme.frame_cfg.get("bg"))
                 built_chain_main_frame.grid(row=1, column=1, sticky="news", padx=10, pady=(0, 10))
                 built_chain_inner_frame = built_chain_main_frame.display_widget(self.Frame,
-                                                                  fit_width=True)
+                                                                                fit_width=True)
                 built_chain_main_frame.bind_scroll_wheel(built_chain_inner_frame)
                 built_chain_inner_frame.grid_columnconfigure(0, weight=1)
 
@@ -928,13 +931,15 @@ class App(Tk):
                             if self.external_audio_generator is not None and \
                                     chain_name == self.external_audio_generator.data_generator.name:
                                 old_get_all_val = self.external_audio_generator.data_generator.config["get_all"]
-                                old_error_verbosity_val = self.external_audio_generator.data_generator.config["error_verbosity"]
+                                old_error_verbosity_val = self.external_audio_generator.data_generator.config[
+                                    "error_verbosity"]
                                 self.external_audio_generator = ExternalDataGeneratorWrapper(
                                     data_generator=AudioGettersChain(
                                         name=new_chain_name,
                                         chain_data=chosen_chain_config))
                                 self.external_audio_generator.data_generator.config["get_all"] = old_get_all_val
-                                self.external_audio_generator.data_generator.config["error_verbosity"] = old_error_verbosity_val
+                                self.external_audio_generator.data_generator.config[
+                                    "error_verbosity"] = old_error_verbosity_val
                                 self.configurations["scrappers"]["audio"]["name"] = new_chain_name
                         else:
                             raise NotImplementedError(f"Unknown chosen parser type: {chain_type}")
@@ -970,7 +975,7 @@ class App(Tk):
                 text=self.lang_pack.chain_management_call_chain_building_button_text,
                 command=lambda: build_chain(chain_name="",
                                             initial_chain=[]),
-                                            state="disabled")
+                state="disabled")
             call_chain_building_button.pack(side="right", padx=10, pady=(0, 10))
 
             close_chain_type_selection_button = self.Button(
@@ -995,7 +1000,7 @@ class App(Tk):
         additional_search_frame.columnconfigure(0, weight=1)
         additional_search_frame.columnconfigure(1, weight=1)
         additional_search_frame.grid(row=0, column=0, sticky="news", columnspan=3,
-                                padx=(self.text_padx, 0), pady=(self.text_pady, 0))
+                                     padx=(self.text_padx, 0), pady=(self.text_pady, 0))
 
         self.anki_button = self.Button(additional_search_frame,
                                        text=self.lang_pack.anki_button_text,
@@ -1066,12 +1071,12 @@ class App(Tk):
                 card_data=self.dict_card_data,
                 init_urls=self.dict_card_data.get(FIELDS.img_links),
                 init_local_images_paths=self.dict_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {})
-                                                           .get(self.saved_cards_data.SAVED_IMAGES_PATHS, []),
+                    .get(self.saved_cards_data.SAVED_IMAGES_PATHS, []),
                 image_path_saving_method=save_images_paths
             )
         )
         self.fetch_images_button.grid(row=5, column=0, columnspan=3, sticky="news",
-                                    padx=(self.text_padx, 0), pady=(0, self.text_pady))
+                                      padx=(self.text_padx, 0), pady=(0, self.text_pady))
 
         self.image_parser_option_menu = self.get_option_menu(self,
                                                              init_text=typed_image_parser_name,
@@ -1183,10 +1188,10 @@ class App(Tk):
             wait_sentence_fetcher(place_sentences_thread)
 
         self.fetch_ext_sentences_button = self.Button(self,
-                                                text=self.lang_pack.fetch_ext_sentences_button,
-                                                command=fetch_external_sentences)
+                                                      text=self.lang_pack.fetch_ext_sentences_button,
+                                                      command=fetch_external_sentences)
         self.fetch_ext_sentences_button.grid(row=7, column=0, columnspan=3, sticky="news",
-                                       padx=(self.text_padx, 0), pady=(self.text_pady, 0))
+                                             padx=(self.text_padx, 0), pady=(self.text_pady, 0))
 
         self.sentence_parser_option_menu = self.get_option_menu(self,
                                                                 init_text=typed_sentence_parser_name,
@@ -1232,8 +1237,8 @@ class App(Tk):
         self.text_widgets_frame.source_display_frame = None
 
         typed_audio_getter = "default" if self.external_audio_generator is None \
-                                       else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                                             self.external_audio_generator.data_generator.name)
+            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                  self.external_audio_generator.data_generator.name)
 
         def display_audio_getter_results_on_button_click():
             fill_search_fields()
@@ -1291,7 +1296,7 @@ class App(Tk):
                                       height=110)
 
         self.audio_sf.grid(row=12, column=0, columnspan=8, sticky="news",
-                                   padx=self.text_padx, pady=(0, self.text_pady))
+                           padx=self.text_padx, pady=(0, self.text_pady))
 
         self.audio_inner_frame = self.audio_sf.display_widget(self.Frame, fit_width=True)
         self.audio_sf.bind_scroll_wheel(self.audio_inner_frame)
@@ -1449,73 +1454,74 @@ class App(Tk):
     @error_handler(show_exception_logs)
     def load_conf_file(self) -> tuple[LoadableConfig, LanguagePackageContainer, bool]:
         validation_scheme = \
-        {
-            "scrappers": {
-                "word": {
-                    "type": (parser_types.WEB, [str], [parser_types.WEB, parser_types.LOCAL, parser_types.CHAIN]),
-                    "name": ("cambridge", [str], [])
+            {
+                "scrappers": {
+                    "word": {
+                        "type": (parser_types.WEB, [str], [parser_types.WEB, parser_types.LOCAL, parser_types.CHAIN]),
+                        "name": ("cambridge", [str], [])
+                    },
+                    "sentence": {
+                        "type": (parser_types.WEB, [str], [parser_types.WEB, parser_types.CHAIN]),
+                        "name": ("sentencedict", [str], [])
+                    },
+                    "image": {
+                        "type": (parser_types.WEB, [str], [parser_types.WEB, parser_types.CHAIN]),
+                        "name": ("google", [str], [])
+                    },
+                    "audio": {
+                        "type": (
+                            "default", [str], ["default", parser_types.WEB, parser_types.LOCAL, parser_types.CHAIN]),
+                        "name": ("", [str], [])
+                    }
                 },
-                "sentence": {
-                    "type": (parser_types.WEB, [str], [parser_types.WEB, parser_types.CHAIN]),
-                    "name": ("sentencedict", [str], [])
+                "anki": {
+                    "deck": ("", [str], []),
+                    "field": ("", [str], [])
                 },
-                "image": {
-                    "type": (parser_types.WEB, [str], [parser_types.WEB, parser_types.CHAIN]),
-                    "name": ("google", [str], [])
+                "directories": {
+                    "media_dir": ("", [str], []),
+                    "last_open_file": ("", [str], []),
+                    "last_save_dir": ("", [str], [])
                 },
-                "audio": {
-                    "type": ("default", [str], ["default", parser_types.WEB, parser_types.LOCAL, parser_types.CHAIN]),
-                    "name": ("", [str], [])
+                "app": {
+                    "theme": ("dark", [str], []),
+                    "main_window_geometry": ("500x800+0+0", [str], []),
+                    "language_package": ("eng", [str], []),
+                    "audio_autochoose_mode": ("all_default_audios", [str], ["off",
+                                                                            "first_default_audio",
+                                                                            "all_default_audios",
+                                                                            "first_available_audio",
+                                                                            "first_available_audio_source",
+                                                                            "all"])
+                },
+                "image_search": {
+                    "starting_position": ("+0+0", [str], []),
+                    "saving_image_width": (300, [int, type(None)], []),
+                    "saving_image_height": (None, [int, type(None)], []),
+                    "max_request_tries": (1, [int], []),
+                    "timeout": (1, [int, float], []),
+                    "show_image_width": (250, [int, type(None)], []),
+                    "show_image_height": (None, [int, type(None)], []),
+                    "n_images_in_row": (3, [int], []),
+                    "n_rows": (2, [int], [])
+                },
+                "extern_sentence_placer": {
+                    "n_sentences_per_batch": (5, [int], [])
+                },
+                "extern_audio_placer": {
+                    "n_audios_per_batch": (5, [int], [])
                 }
-            },
-            "anki": {
-                "deck":  ("", [str], []),
-                "field": ("", [str], [])
-            },
-            "directories": {
-                "media_dir":      ("", [str], []),
-                "last_open_file": ("", [str], []),
-                "last_save_dir":  ("", [str], [])
-            },
-            "app": {
-                "theme":                ("dark", [str], []),
-                "main_window_geometry": ("500x800+0+0", [str], []),
-                "language_package":     ("eng", [str], []),
-                "audio_autochoose_mode":  ("all_default_audios", [str], ["off",
-                                                                         "first_default_audio",
-                                                                         "all_default_audios",
-                                                                         "first_available_audio",
-                                                                         "first_available_audio_source",
-                                                                         "all"])
-            },
-            "image_search": {
-                "starting_position":   ("+0+0", [str], []),
-                "saving_image_width":  (300, [int, type(None)], []),
-                "saving_image_height": (None, [int, type(None)], []),
-                "max_request_tries":   (1, [int], []),
-                "timeout":             (1, [int, float], []),
-                "show_image_width":    (250, [int, type(None)], []),
-                "show_image_height":   (None, [int, type(None)], []),
-                "n_images_in_row":     (3, [int], []),
-                "n_rows":              (2, [int], [])
-            },
-            "extern_sentence_placer": {
-                "n_sentences_per_batch": (5, [int], [])
-            },
-            "extern_audio_placer": {
-                "n_audios_per_batch": (5, [int], [])
+                ,
+                "web_audio_downloader": {
+                    "timeout": (1, [int], []),
+                    "request_delay": (3000, [int], [])
+                },
+                "deck": {
+                    "tags_hierarchical_pref": ("", [str], []),
+                    "saving_format": ("csv", [str], []),
+                    "card_processor": ("Anki", [str], [])
+                }
             }
-            ,
-            "web_audio_downloader": {
-                "timeout": (1, [int], []),
-                "request_delay": (3000, [int], [])
-            },
-            "deck": {
-                "tags_hierarchical_pref": ("", [str], []),
-                "saving_format":          ("csv", [str], []),
-                "card_processor":         ("Anki", [str], [])
-            }
-        }
         conf_file = LoadableConfig(config_location=os.path.dirname(CONFIG_FILE_PATH),
                                    validation_scheme=validation_scheme,  # type: ignore
                                    docs="")
@@ -1615,7 +1621,7 @@ class App(Tk):
         item_editor_frame = self.Frame(added_cards_browser_window)
         main_paned_window.add(item_editor_frame, stretch="never")
 
-        #=======================================
+        # =======================================
         editor_text_padx = 5
         editor_text_pady = 5
 
@@ -1626,32 +1632,35 @@ class App(Tk):
         additional_search_frame.columnconfigure(0, weight=1)
         additional_search_frame.columnconfigure(1, weight=1)
         additional_search_frame.grid(row=0, column=0, sticky="news", columnspan=8,
-                                padx=(editor_text_padx), pady=(editor_text_pady, 0))
+                                     padx=(editor_text_padx), pady=(editor_text_pady, 0))
 
         editor_anki_button = self.Button(additional_search_frame,
-                                       text=self.lang_pack.anki_button_text,
-                                       command=lambda: self.open_anki_browser(editor_word_text.get(1.0, "end").rstrip()))
+                                         text=self.lang_pack.anki_button_text,
+                                         command=lambda: self.open_anki_browser(
+                                             editor_word_text.get(1.0, "end").rstrip()))
         editor_anki_button.grid(row=0, column=0, sticky="news")
 
         editor_browse_button = self.Button(additional_search_frame,
-                                         text=self.lang_pack.browse_button_text,
-                                         command=lambda: self.web_search_command(editor_word_text.get(1.0, "end").rstrip()))
+                                           text=self.lang_pack.browse_button_text,
+                                           command=lambda: self.web_search_command(
+                                               editor_word_text.get(1.0, "end").rstrip()))
         editor_browse_button.grid(row=0, column=1, sticky="news")
 
         editor_word_text = self.Text(item_editor_frame, placeholder=self.lang_pack.word_text_placeholder, height=1)
         editor_word_text.grid(row=1, column=0, columnspan=8, sticky="news",
-                            padx=editor_text_padx, pady=editor_text_pady)
+                              padx=editor_text_padx, pady=editor_text_pady)
 
         editor_special_field = self.Text(item_editor_frame, relief="ridge", state="disabled", height=1)
         editor_special_field.grid(row=2, column=0, columnspan=8, sticky="news", padx=editor_text_padx)
 
-        editor_definition_text = self.Text(item_editor_frame, placeholder=self.lang_pack.definition_text_placeholder, height=4)
+        editor_definition_text = self.Text(item_editor_frame, placeholder=self.lang_pack.definition_text_placeholder,
+                                           height=4)
         editor_definition_text.grid(row=3, column=0, columnspan=8, sticky="news",
-                                  padx=editor_text_padx, pady=(editor_text_pady, 0))
+                                    padx=editor_text_padx, pady=(editor_text_pady, 0))
 
         editor_dict_tags_field = self.Text(item_editor_frame, relief="ridge", state="disabled", height=2)
         editor_dict_tags_field.grid(row=4, column=0, columnspan=8, sticky="news",
-                                  padx=editor_text_padx, pady=editor_text_pady)
+                                    padx=editor_text_padx, pady=editor_text_pady)
 
         if self.configurations["scrappers"]["image"]["type"] == parser_types.WEB:
             typed_image_parser_name = self.image_parser.name
@@ -1661,7 +1670,8 @@ class App(Tk):
         def edit_saved_images(new_image_urls: list[str]):
             if full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA) is None:
                 full_saved_card_data._data[SavedDataDeck.ADDITIONAL_DATA] = {SavedDataDeck.SAVED_IMAGES_PATHS: []}
-            elif full_saved_card_data._data[SavedDataDeck.ADDITIONAL_DATA].get(SavedDataDeck.SAVED_IMAGES_PATHS) is None:
+            elif full_saved_card_data._data[SavedDataDeck.ADDITIONAL_DATA].get(
+                    SavedDataDeck.SAVED_IMAGES_PATHS) is None:
                 full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA]._data[SavedDataDeck.SAVED_IMAGES_PATHS] = []
 
             saving_dst = full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.SAVED_IMAGES_PATHS]
@@ -1675,13 +1685,13 @@ class App(Tk):
                 word=editor_word_text.get(1.0, "end").rstrip(),
                 card_data=editor_card_data,
                 init_urls=[],
-                init_local_images_paths=full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {})\
-                                                            .get(SavedDataDeck.SAVED_IMAGES_PATHS, []),
+                init_local_images_paths=full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {}) \
+                    .get(SavedDataDeck.SAVED_IMAGES_PATHS, []),
                 image_path_saving_method=edit_saved_images
             )
         )
         editor_fetch_images_button.grid(row=5, column=0, columnspan=3, sticky="news",
-                                    padx=(editor_text_padx, 0), pady=0)
+                                        padx=(editor_text_padx, 0), pady=0)
 
         def global_change_image_parser(parser_name):
             self.change_image_parser(parser_name)
@@ -1703,14 +1713,14 @@ class App(Tk):
                                                padx=0, pady=(0, self.text_pady))
 
         editor_image_parser_option_menu = self.get_option_menu(item_editor_frame,
-                                                             init_text=typed_image_parser_name,
-                                                             values=itertools.chain(
-                                                                 self.image_word_parsers_names,
-                                                                 [f"[{parser_types.CHAIN}] {name}" for name in
-                                                                  self.chaining_data["image_parsers"]]),
-                                                             command=global_change_image_parser)
+                                                               init_text=typed_image_parser_name,
+                                                               values=itertools.chain(
+                                                                   self.image_word_parsers_names,
+                                                                   [f"[{parser_types.CHAIN}] {name}" for name in
+                                                                    self.chaining_data["image_parsers"]]),
+                                                               command=global_change_image_parser)
         editor_image_parser_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
-                                           padx=0, pady=0)
+                                             padx=0, pady=0)
 
         editor_configure_image_parser_button = self.Button(
             item_editor_frame,
@@ -1723,7 +1733,7 @@ class App(Tk):
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()))
         editor_configure_image_parser_button.grid(row=5, column=7, sticky="news",
-                                                padx=(0, editor_text_padx), pady=0)
+                                                  padx=(0, editor_text_padx), pady=0)
 
         if self.configurations["scrappers"]["sentence"]["type"] == parser_types.WEB:
             typed_sentence_parser_name = self.external_sentence_fetcher.data_generator.name
@@ -1790,10 +1800,10 @@ class App(Tk):
             wait_sentence_fetcher(place_sentences_thread)
 
         editor_fetch_ext_sentences_button = self.Button(item_editor_frame,
-                                                text=self.lang_pack.fetch_ext_sentences_button,
-                                                command=editor_fetch_external_sentences)
+                                                        text=self.lang_pack.fetch_ext_sentences_button,
+                                                        command=editor_fetch_external_sentences)
         editor_fetch_ext_sentences_button.grid(row=7, column=0, columnspan=3, sticky="news",
-                                       padx=(editor_text_padx, 0), pady=(editor_text_pady, 0))
+                                               padx=(editor_text_padx, 0), pady=(editor_text_pady, 0))
 
         def global_change_sentence_parser(parser_name):
             self.change_sentence_parser(parser_name)
@@ -1819,14 +1829,14 @@ class App(Tk):
                                                   pady=(self.text_pady, 0))
 
         editor_sentence_parser_option_menu = self.get_option_menu(item_editor_frame,
-                                                                init_text=typed_sentence_parser_name,
-                                                                values=itertools.chain(
-                                                                    loaded_plugins.web_sent_parsers.loaded,
-                                                                    [f"[{parser_types.CHAIN}] {name}" for name in
-                                                                     self.chaining_data["sentence_parsers"]]),
-                                                                command=global_change_sentence_parser)
+                                                                  init_text=typed_sentence_parser_name,
+                                                                  values=itertools.chain(
+                                                                      loaded_plugins.web_sent_parsers.loaded,
+                                                                      [f"[{parser_types.CHAIN}] {name}" for name in
+                                                                       self.chaining_data["sentence_parsers"]]),
+                                                                  command=global_change_sentence_parser)
         editor_sentence_parser_option_menu.grid(row=7, column=3, columnspan=4, sticky="news",
-                                              pady=(editor_text_pady, 0))
+                                                pady=(editor_text_pady, 0))
 
         editor_configure_sentence_parser_button = self.Button(
             item_editor_frame,
@@ -1840,18 +1850,19 @@ class App(Tk):
                 saving_action=lambda conf: conf.save()),
             width=6)
         editor_configure_sentence_parser_button.grid(row=7, column=7, sticky="news",
-                                                   padx=(0, editor_text_padx), pady=(editor_text_pady, 0))
+                                                     padx=(0, editor_text_padx), pady=(editor_text_pady, 0))
         # ======
-        editor_sentence_search_entry = self.Entry(item_editor_frame, placeholder=self.lang_pack.sentence_search_entry_text)
+        editor_sentence_search_entry = self.Entry(item_editor_frame,
+                                                  placeholder=self.lang_pack.sentence_search_entry_text)
         editor_sentence_search_entry.grid(row=8, column=0, columnspan=8, sticky="news",
-                                        padx=editor_text_padx, pady=(0, 0))
+                                          padx=editor_text_padx, pady=(0, 0))
 
         editor_sentence_texts = []
 
         editor_text_widgets_sf = ScrolledFrame(item_editor_frame, scrollbars="vertical",
-                                             canvas_bg=self.theme.frame_cfg.get("bg"))
+                                               canvas_bg=self.theme.frame_cfg.get("bg"))
         editor_text_widgets_sf.grid(row=9, column=0, columnspan=8, sticky="news",
-                                  padx=editor_text_padx, pady=(0, editor_text_pady))
+                                    padx=editor_text_padx, pady=(0, editor_text_pady))
         item_editor_frame.grid_rowconfigure(9, weight=1)
 
         editor_text_widgets_frame = editor_text_widgets_sf.display_widget(self.Frame, fit_width=True)
@@ -1872,19 +1883,19 @@ class App(Tk):
             )
 
         editor_fetch_audio_data_button = self.Button(item_editor_frame,
-                                                   text=self.lang_pack.fetch_audio_data_button_text,
-                                                   command=display_audio_getter_results_on_button_click)
+                                                     text=self.lang_pack.fetch_audio_data_button_text,
+                                                     command=display_audio_getter_results_on_button_click)
 
         typed_audio_getter = "default" if self.external_audio_generator is None \
-                                       else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                                             self.external_audio_generator.data_generator.name)
+            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                  self.external_audio_generator.data_generator.name)
 
         if typed_audio_getter == "default":
             editor_fetch_audio_data_button["state"] = "disabled"
 
         editor_fetch_audio_data_button.grid(row=10, column=0, columnspan=3,
-                                          sticky="news",
-                                          padx=(editor_text_padx, 0), pady=0)
+                                            sticky="news",
+                                            padx=(editor_text_padx, 0), pady=0)
 
         def global_change_audio_getter(parser_name):
             self.change_audio_getter(parser_name)
@@ -1919,7 +1930,7 @@ class App(Tk):
                    [f"{parser_types.CHAIN_PREF} {name}" for name in self.chaining_data["audio_getters"]],
             command=global_change_audio_getter)
         editor_audio_getter_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
-                                           padx=0, pady=0)
+                                             padx=0, pady=0)
 
         editor_configure_audio_getter_button = self.Button(item_editor_frame, text="</>")
 
@@ -1933,18 +1944,18 @@ class App(Tk):
             editor_configure_audio_getter_button["state"] = "disabled"
 
         editor_configure_audio_getter_button.grid(row=10, column=7, sticky="news",
-                                                padx=(0, editor_text_padx), pady=0)
+                                                  padx=(0, editor_text_padx), pady=0)
 
         editor_audio_search_entry = self.Entry(item_editor_frame, placeholder=self.lang_pack.audio_search_entry_text)
         editor_audio_search_entry.grid(row=11, column=0, columnspan=8, sticky="news",
-                                     padx=editor_text_padx, pady=0)
+                                       padx=editor_text_padx, pady=0)
 
         editor_audio_sf = ScrolledFrame(item_editor_frame, scrollbars="vertical",
-                                      canvas_bg=self.theme.frame_cfg.get("bg"),
-                                      height=110)
+                                        canvas_bg=self.theme.frame_cfg.get("bg"),
+                                        height=110)
 
         editor_audio_sf.grid(row=12, column=0, columnspan=8, sticky="news",
-                                   padx=editor_text_padx, pady=(0, editor_text_pady))
+                             padx=editor_text_padx, pady=(0, editor_text_pady))
 
         editor_audio_inner_frame = editor_audio_sf.display_widget(self.Frame, fit_width=True)
         editor_audio_sf.bind_scroll_wheel(editor_audio_inner_frame)
@@ -1954,14 +1965,14 @@ class App(Tk):
         editor_user_tags_field = self.Entry(item_editor_frame, placeholder=self.lang_pack.user_tags_field_placeholder)
         editor_user_tags_field.fill_placeholder()
         editor_user_tags_field.grid(row=13, column=0, columnspan=6, sticky="news",
-                                  padx=(editor_text_padx, 0), pady=(0, editor_text_pady))
+                                    padx=(editor_text_padx, 0), pady=(0, editor_text_pady))
 
         editor_tag_prefix_field = self.Entry(item_editor_frame, justify="center", width=8)
         editor_tag_prefix_field.insert(
             0,
             full_saved_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {}).get(SavedDataDeck.HIERARCHICAL_PREFIX, ""))
         editor_tag_prefix_field.grid(row=13, column=7, columnspan=1, sticky="news",
-                                   padx=(0, editor_text_padx), pady=(0, editor_text_pady))
+                                     padx=(0, editor_text_padx), pady=(0, editor_text_pady))
 
         def focus_next_window(event, focusout_action: Callable[[], None] = None):
             event.widget.tk_focusNext().focus()
@@ -1983,35 +1994,35 @@ class App(Tk):
                 editor_sentence_search_entry.insert(0, word)
 
         editor_new_order = [(editor_browse_button, None),
-                          (editor_anki_button, None),
+                            (editor_anki_button, None),
 
-                          (editor_word_text, editor_fill_search_fields),
+                            (editor_word_text, editor_fill_search_fields),
 
-                          (editor_special_field, None),
+                            (editor_special_field, None),
 
-                          (editor_definition_text, None),
+                            (editor_definition_text, None),
 
-                          (editor_dict_tags_field, None),
+                            (editor_dict_tags_field, None),
 
-                          (editor_fetch_ext_sentences_button, None),
-                          (editor_sentence_parser_option_menu, None),
-                          (editor_configure_sentence_parser_button, None),
+                            (editor_fetch_ext_sentences_button, None),
+                            (editor_sentence_parser_option_menu, None),
+                            (editor_configure_sentence_parser_button, None),
 
-                          (editor_sentence_search_entry, None),
+                            (editor_sentence_search_entry, None),
 
-                          (editor_fetch_images_button, None),
-                          (editor_image_parser_option_menu, None),
-                          (editor_configure_image_parser_button, None),
+                            (editor_fetch_images_button, None),
+                            (editor_image_parser_option_menu, None),
+                            (editor_configure_image_parser_button, None),
 
-                          (editor_fetch_audio_data_button, None),
-                          (editor_audio_getter_option_menu, None),
-                          (editor_configure_audio_getter_button, None),
+                            (editor_fetch_audio_data_button, None),
+                            (editor_audio_getter_option_menu, None),
+                            (editor_configure_audio_getter_button, None),
 
-                          (editor_audio_search_entry, None),
+                            (editor_audio_search_entry, None),
 
-                          (editor_user_tags_field, None),
-                          (editor_tag_prefix_field, None),
-                          ]
+                            (editor_user_tags_field, None),
+                            (editor_tag_prefix_field, None),
+                            ]
 
         editor_word_text.bind("<FocusOut>", lambda event: editor_fill_search_fields(), add=True)
         for widget, action in editor_new_order:
@@ -2019,7 +2030,7 @@ class App(Tk):
             widget.bind("<Tab>", partial(focus_next_window, focusout_action=action))
             widget.bind("<Shift-Tab>", partial(focus_prev_window, focusout_action=action))
 
-        #=======================================
+        # =======================================
 
         @error_handler(self.show_exception_logs)
         def save_progress(selection_index: str):
@@ -2042,7 +2053,8 @@ class App(Tk):
                 if user_tags:
                     full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA]._data[SavedDataDeck.USER_TAGS] = user_tags
                 if hierarchical_prefix:
-                    full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA]._data[SavedDataDeck.HIERARCHICAL_PREFIX] = hierarchical_prefix
+                    full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA]._data[
+                        SavedDataDeck.HIERARCHICAL_PREFIX] = hierarchical_prefix
 
             @error_handler(self.show_exception_logs)
             def add_audio_data_to_card(
@@ -2060,10 +2072,13 @@ class App(Tk):
                         SavedDataDeck.AUDIO_SAVING_PATHS: []
                     }
 
-                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS].extend(audio_links)
-                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE].extend(
+                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][
+                    SavedDataDeck.AUDIO_SRCS].extend(audio_links)
+                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][
+                    SavedDataDeck.AUDIO_SRCS_TYPE].extend(
                     (getter_type for _ in range(len(audio_links))))
-                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SAVING_PATHS].extend((
+                full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][
+                    SavedDataDeck.AUDIO_SAVING_PATHS].extend((
                     os.path.join(self.configurations["directories"]["media_dir"],
                                  self.card_processor
                                  .get_save_audio_name(
@@ -2077,7 +2092,8 @@ class App(Tk):
             last_audio_getter_data = ()
             audio_getters_audios = []
             for labeled_frame in editor_audio_inner_frame.winfo_children():
-                current_audio_getter_data = (typed_audio_getter_name, audio_getter_type) = labeled_frame.audio_getter_data
+                current_audio_getter_data = (
+                    typed_audio_getter_name, audio_getter_type) = labeled_frame.audio_getter_data
                 if last_audio_getter_data != current_audio_getter_data:
                     if audio_getters_audios:
                         add_audio_data_to_card(getter_name=typed_audio_getter_name,
@@ -2090,9 +2106,12 @@ class App(Tk):
                 for i, audio_frame in enumerate(labeled_frame.winfo_children()):
                     if not typed_audio_getter_name:  # chosen previously
                         if not audio_frame.boolvar.get():
-                            full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS].pop(i)
-                            full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE].pop(i)
-                            full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SAVING_PATHS].pop(i)
+                            full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][
+                                SavedDataDeck.AUDIO_SRCS].pop(i)
+                            full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][
+                                SavedDataDeck.AUDIO_SRCS_TYPE].pop(i)
+                            full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][
+                                SavedDataDeck.AUDIO_SAVING_PATHS].pop(i)
                     elif audio_frame.boolvar.get():
                         audio_getters_audios.append(audio_frame.audio_data)
 
@@ -2108,7 +2127,7 @@ class App(Tk):
             nonlocal \
                 previously_selected_item, \
                 full_saved_card_data, \
-                editor_card_data,\
+                editor_card_data, \
                 editor_audio_inner_frame, \
                 editor_text_widgets_frame
 
@@ -2222,17 +2241,15 @@ class App(Tk):
 
         items_table.bind("<<TreeviewSelect>>", display_card_in_editor)
 
-
-
     @error_handler(show_exception_logs)
     def load_chaining_data(self) -> LoadableConfig:
         validation_scheme = \
-        {
-            "word_parsers":     ({}, [dict], []),
-            "sentence_parsers": ({}, [dict], []),
-            "image_parsers":    ({}, [dict], []),
-            "audio_getters":    ({}, [dict], [])
-        }
+            {
+                "word_parsers": ({}, [dict], []),
+                "sentence_parsers": ({}, [dict], []),
+                "image_parsers": ({}, [dict], []),
+                "audio_getters": ({}, [dict], [])
+            }
         chaining_data_file_dir = os.path.dirname(CHAIN_DATA_FILE_PATH)
         chaining_data_file_name = os.path.basename(CHAIN_DATA_FILE_PATH)
 
@@ -2250,7 +2267,7 @@ class App(Tk):
                                      audio_sf,
                                      audio_inner_frame):
         parser_results: list[tuple[tuple[str, str], AudioData]] = []
-        
+
         def fill_parser_results() -> None:
             nonlocal parser_results, word
 
@@ -2354,7 +2371,8 @@ class App(Tk):
             )
 
         error_messages: list[tuple[str, str]] = []
-        for (typed_audio_getter_name, audio_getter_type), ((audio_sources, additional_info), error_message) in parser_results:
+        for (typed_audio_getter_name, audio_getter_type), (
+                (audio_sources, additional_info), error_message) in parser_results:
             if error_message:
                 error_messages.append((typed_audio_getter_name, error_message))
             if not audio_sources:
@@ -2366,9 +2384,9 @@ class App(Tk):
             if audio_inner_frame.last_source != typed_audio_getter_name:
                 audio_inner_frame.last_source = typed_audio_getter_name
                 audio_inner_frame.source_display_frame = LabelFrame(audio_inner_frame,
-                                                                         text=typed_audio_getter_name,
-                                                                         fg=self.theme.button_cfg.get("foreground"),
-                                                                         **self.theme.frame_cfg)
+                                                                    text=typed_audio_getter_name,
+                                                                    fg=self.theme.button_cfg.get("foreground"),
+                                                                    **self.theme.frame_cfg)
                 audio_inner_frame.source_display_frame.audio_getter_data = (typed_audio_getter_name, audio_getter_type)
                 audio_sf.bind_scroll_wheel(audio_inner_frame.source_display_frame)
                 audio_inner_frame.source_display_frame.grid_propagate(False)
@@ -2428,8 +2446,8 @@ class App(Tk):
     @error_handler(show_exception_logs)
     def change_file(self):
         new_file_path = askopenfilename(title=self.lang_pack.choose_deck_file_message,
-                                   filetypes=(("JSON", ".json"),),
-                                   initialdir=ROOT_DIR)
+                                        filetypes=(("JSON", ".json"),),
+                                        initialdir=ROOT_DIR)
         if not new_file_path:
             return
 
@@ -2629,7 +2647,8 @@ class App(Tk):
                                            checkbutton_cfg=self.theme.checkbutton_cfg,
                                            lang_pack=self.lang_pack)
         if closing:
-            audio_downloader.bind("<Destroy>", lambda event: self.destroy() if isinstance(event.widget, Toplevel) else None)
+            audio_downloader.bind("<Destroy>",
+                                  lambda event: self.destroy() if isinstance(event.widget, Toplevel) else None)
         spawn_window_in_center(self, audio_downloader)
         audio_downloader.resizable(False, False)
         audio_downloader.grab_set()
@@ -2637,9 +2656,9 @@ class App(Tk):
 
     @error_handler(show_exception_logs)
     def change_media_dir(self):
-        media_dir =  askdirectory(title=self.lang_pack.choose_media_dir_message,
-                                  mustexist=True,
-                                  initialdir=MEDIA_DOWNLOADING_LOCATION)
+        media_dir = askdirectory(title=self.lang_pack.choose_media_dir_message,
+                                 mustexist=True,
+                                 initialdir=MEDIA_DOWNLOADING_LOCATION)
         if media_dir:
             self.configurations["directories"]["media_dir"] = media_dir
 
@@ -2657,7 +2676,10 @@ class App(Tk):
                                  message=self.lang_pack.define_word_wrong_regex_message)
             return True
 
-        exact_word_filter = lambda comparable: re.search(exact_pattern, comparable)
+        def exact_word_filter(comparable):
+            nonlocal exact_pattern
+            return re.search(exact_pattern, comparable)
+
         try:
             additional_filter = get_card_filter(additional_query) if additional_query else None
             n_definitions_added_to_deck, error_message = self.deck.add_card_to_deck(query=word_query,
@@ -2669,8 +2691,12 @@ class App(Tk):
                                      message=error_message)
                 message_already_shown = True
             if n_definitions_added_to_deck:
-                self.refresh()
-                return False
+                card_insertion_limit_exceed = n_definitions_added_to_deck >= 2000
+                if not card_insertion_limit_exceed or card_insertion_limit_exceed and messagebox.askokcancel(
+                        title=self.lang_pack.card_insertion_limit_exceed_title,
+                        message=self.lang_pack.card_insertion_limit_exceed_message.format(n_definitions_added_to_deck)):
+                    self.refresh()
+                    return False
             elif not message_already_shown:
                 messagebox.showerror(
                     title=self.typed_word_parser_name,
@@ -2717,7 +2743,7 @@ class App(Tk):
         add_word_window.bind("<Return>", lambda event: get_word())
         add_word_window.deiconify()
         spawn_window_in_center(master=self, toplevel_widget=add_word_window,
-                                 desired_window_width=self.winfo_width())
+                               desired_window_width=self.winfo_width())
         add_word_window.resizable(False, False)
         add_word_window.grab_set()
 
@@ -2793,8 +2819,8 @@ class App(Tk):
                 right.grid(row=0, column=2, sticky="we")
 
                 end_rotation_button = self.Button(rotation_buttons_frame,
-                                               text=self.lang_pack.find_dialog_end_rotation_button_text,
-                                               command=lambda: rotate_window.destroy())
+                                                  text=self.lang_pack.find_dialog_end_rotation_button_text,
+                                                  command=lambda: rotate_window.destroy())
                 end_rotation_button.grid(row=0, column=1, sticky="we")
                 spawn_window_in_center(self, rotate_window)
                 rotate_window.resizable(False, False)
@@ -3125,7 +3151,8 @@ class App(Tk):
                 return
 
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS].extend(audio_links)
-            additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE].extend((getter_type for _ in range(len(audio_links))))
+            additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE].extend(
+                (getter_type for _ in range(len(audio_links))))
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SAVING_PATHS].extend((
                 os.path.join(self.configurations["directories"]["media_dir"],
                              self.card_processor
@@ -3190,17 +3217,19 @@ class App(Tk):
                 if audio_getter_type in (parser_types.WEB, parser_types.LOCAL):
                     if audio_data_pack is not None:
                         ((audio_links, additional_info), error_message) = audio_data_pack
-                        add_audio_data_to_card(getter_name=f"extern_{self.external_audio_generator.data_generator.name}",
-                                               getter_type=audio_getter_type,
-                                               audio_links=audio_links,
-                                               add_type_prefix=True)
+                        add_audio_data_to_card(
+                            getter_name=f"extern_{self.external_audio_generator.data_generator.name}",
+                            getter_type=audio_getter_type,
+                            audio_links=audio_links,
+                            add_type_prefix=True)
                 elif audio_getter_type == parser_types.CHAIN:
                     if audio_data_pack is not None:
                         audio_gen = (i for i in audio_data_pack)
 
                         if audio_autochoose_mode in ("first_available_audio", "first_available_audio_source"):
                             try:
-                                ((getter_name, getter_type), ((audio_links, additional_info), error_message)) = next(audio_gen)
+                                ((getter_name, getter_type), ((audio_links, additional_info), error_message)) = next(
+                                    audio_gen)
                                 add_audio_data_to_card(
                                     getter_name=f"extern_{getter_name}",
                                     getter_type=getter_type,
@@ -3210,7 +3239,9 @@ class App(Tk):
                             except StopIteration:
                                 pass
                         elif audio_autochoose_mode == "all":
-                            for ((getter_name, getter_type), ((audio_links, additional_info), error_message)) in audio_gen:
+                            for (
+                                    (getter_name, getter_type),
+                                    ((audio_links, additional_info), error_message)) in audio_gen:
                                 add_audio_data_to_card(
                                     getter_name=f"extern_{getter_name}",
                                     getter_type=getter_type,
@@ -3232,7 +3263,7 @@ class App(Tk):
         if not self.deck.get_n_cards_left():
             self.deck.append(Card(self.dict_card_data))
         self.refresh()
-    
+
     @error_handler(show_exception_logs)
     def skip_command(self):
         self.move_decks_pointers(1)
@@ -3245,13 +3276,14 @@ class App(Tk):
         self.saved_cards_data.move(min(n, self.deck.get_n_cards_left()))
         self.deck.move(n - 1)
         self.refresh()
-    
+
     @error_handler(show_exception_logs)
     def open_anki_browser(self, word: str):
         @error_handler(self.show_exception_logs)
         def invoke(action, **params):
             def request_anki(action, **params):
                 return {'action': action, 'params': params, 'version': 6}
+
             import requests
 
             request_json = json.dumps(request_anki(action, **params)).encode('utf-8')
@@ -3282,7 +3314,7 @@ class App(Tk):
             query_list.append(f"*{word}*")
         result_query = " and ".join(query_list)
         invoke('guiBrowse', query=result_query)
-    
+
     @error_handler(show_exception_logs)
     def bury_command(self):
         self.saved_cards_data.append(status=CardStatus.BURY, card_data=self.dict_card_data)
@@ -3302,9 +3334,9 @@ class App(Tk):
         if text_widgets_frame.last_source != source:
             text_widgets_frame.last_source = source
             text_widgets_frame.source_display_frame = LabelFrame(text_widgets_frame,
-                                                                               text=source,
-                                                                               fg=self.theme.button_cfg.get("foreground"),
-                                                                               **self.theme.frame_cfg)
+                                                                 text=source,
+                                                                 fg=self.theme.button_cfg.get("foreground"),
+                                                                 **self.theme.frame_cfg)
             text_widgets_sf.bind_scroll_wheel(text_widgets_frame.source_display_frame)
             text_widgets_frame.source_display_frame.grid_columnconfigure(0, weight=1)
             text_widgets_frame.source_display_frame.pack(side="top", fill="both")
@@ -3312,7 +3344,7 @@ class App(Tk):
         choose_frame = self.Frame(text_widgets_frame.source_display_frame, height=OPTIMAL_TEXT_HEIGHT)
         choose_frame.grid(row=len(sentence_text_widgets_list), column=0, sticky="we", pady=(0, self.text_pady))
         text_widgets_sf.bind_scroll_wheel(choose_frame)
-        
+
         choose_frame.grid_columnconfigure(0, weight=1)
         choose_frame.grid_rowconfigure(0, weight=1)
         choose_frame.grid_propagate(False)
@@ -3325,9 +3357,9 @@ class App(Tk):
         text_widgets_sf.bind_scroll_wheel(sentence_text)
 
         choose_button = self.Button(choose_frame,
-                                                 text=f"{next_index}",
-                                                 command=lambda x=len(sentence_text_widgets_list): choose_sentence_action(x),
-                                                 width=3)
+                                    text=f"{next_index}",
+                                    command=lambda x=len(sentence_text_widgets_list): choose_sentence_action(x),
+                                    width=3)
         choose_button.grid(row=0, column=1, sticky="ns")
         text_widgets_sf.bind_scroll_wheel(choose_button)
 
@@ -3415,7 +3447,7 @@ class App(Tk):
 
         if self.dict_card_data.get(FIELDS.img_links, []):
             self.fetch_images_button["text"] = self.lang_pack.fetch_images_button_normal_text + \
-                                             self.lang_pack.fetch_images_button_image_link_encountered_postfix
+                                               self.lang_pack.fetch_images_button_image_link_encountered_postfix
         else:
             self.fetch_images_button["text"] = self.lang_pack.fetch_images_button_normal_text
 
@@ -3439,12 +3471,12 @@ class App(Tk):
 
                 self.after(300, display_audio_getters_results_on_refresh)
                 self.waiting_for_audio_display = True
-        
+
         if self.external_audio_generator is not None and word_data:
             self.external_audio_generator.force_update(word_data, self.dict_card_data)
             display_audio_getters_results_on_refresh()
         return True
-    
+
     @error_handler(show_exception_logs)
     def start_image_search(self,
                            word: str,
@@ -3461,7 +3493,7 @@ class App(Tk):
             names: list[str] = []
             for i in range(len(instance.working_state)):
                 if instance.working_state[i]:
-                    saving_name = "{}/{}"\
+                    saving_name = "{}/{}" \
                         .format(self.configurations["directories"]["media_dir"],
                                 self.card_processor
                                 .get_save_image_name(word,
@@ -3470,8 +3502,8 @@ class App(Tk):
                                                      card_data))
                     instance.preprocess_image(img=instance.saving_images[i],
                                               width=self.configurations["image_search"]["saving_image_width"],
-                                              height=self.configurations["image_search"]["saving_image_height"])\
-                            .save(saving_name)
+                                              height=self.configurations["image_search"]["saving_image_height"]) \
+                        .save(saving_name)
                     names.append(saving_name)
 
             image_path_saving_method(names)

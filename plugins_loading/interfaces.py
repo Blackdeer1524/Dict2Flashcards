@@ -102,6 +102,10 @@ class LanguagePackageInterface(Protocol):
     # save files
     save_files_message: str
 
+    # word definition
+    card_insertion_limit_exceed_title: str
+    card_insertion_limit_exceed_message: str
+
     # help
     buttons_hotkeys_help_message: str
     buttons_hotkeys_help_window_title: str

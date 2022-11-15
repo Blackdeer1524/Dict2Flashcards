@@ -2334,10 +2334,7 @@ class App(Tk):
         def playsound_in_another_thread(audio_path: str):
             @error_handler(self.show_exception_logs)
             def quite_playsound(_audio_path: str):
-                try:
-                    playsound(_audio_path)
-                except UnicodeDecodeError:
-                    pass
+                playsound(os.path.relpath(_audio_path, ROOT_DIR))
 
             # cross-platform analog of playsound with block=False
             Thread(target=lambda: quite_playsound(audio_path)).start()

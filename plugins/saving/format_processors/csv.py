@@ -4,7 +4,7 @@ from typing import Callable
 from app_utils.cards import CardStatus
 from app_utils.cards import SavedDataDeck
 from app_utils.string_utils import remove_special_chars
-from consts.card_fields import FIELDS
+from consts import CardFields
 
 
 def save(deck: SavedDataDeck,
@@ -32,9 +32,9 @@ def save(deck: SavedDataDeck,
                 audios = " ".join([audio_names_wrapper(name) for name in audio_data[SavedDataDeck.AUDIO_SAVING_PATHS]])
             hierarchical_prefix = additional.get(SavedDataDeck.HIERARCHICAL_PREFIX, "")
 
-        sentence_example = card_data.get(FIELDS.sentences, [""])[0]
-        saving_word = card_data.get(FIELDS.word, "")
-        definition = card_data.get(FIELDS.definition, "")
+        sentence_example = card_data.get(CardFields.sentences, [""])[0]
+        saving_word = card_data.get(CardFields.word, "")
+        definition = card_data.get(CardFields.definition, "")
         dict_tags = card_data.get_str_dict_tags(card_data=card_data,
                                                 prefix=hierarchical_prefix,
                                                 sep="::",

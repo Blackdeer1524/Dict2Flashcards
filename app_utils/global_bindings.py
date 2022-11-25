@@ -1,4 +1,4 @@
-from consts.paths import SYSTEM
+from consts import SYSTEM
 
 
 __all__ = "Binder"

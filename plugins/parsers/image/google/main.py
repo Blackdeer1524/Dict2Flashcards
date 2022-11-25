@@ -28,7 +28,7 @@ config = LoadableConfig(config_location=os.path.dirname(__file__),
 
 def get(word: str) -> ImageGenerator:
     link = f"https://www.google.com/search?tbm=isch&q={word}"
-    user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " \
+    user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) ApplewebKit/537.36 (KHTML, like Gecko) " \
                  "Chrome/70.0.3538.67 Safari/537.36"
     headers = {'User-Agent': user_agent}
     try:

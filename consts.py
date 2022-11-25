@@ -1,9 +1,30 @@
+from enum import StrEnum, auto
 import os
 from pathlib import Path
 from platform import system
 
 
-ROOT_DIR = Path(os.path.abspath(__file__)).parent.parent
+class CardFields(StrEnum):
+    word: str = "word"
+    special: str = "special"
+    definition: str = "definition"
+    sentences: str = "examples"
+    img_links: str = "image_links"
+    audio_links: str = "audio_links"
+    dict_tags: str = "tags"
+
+
+class ParserTypes(StrEnum):
+    web = auto()
+    local = auto()
+    chain = auto()
+
+    def prefix(self):
+        return f"[{self}]"
+
+
+# Project structure
+ROOT_DIR = Path(os.path.abspath(__file__)).parent
 CARDS_DIR = ROOT_DIR / "Cards"
 os.makedirs(CARDS_DIR, exist_ok=True)
 WORDS_DIR = ROOT_DIR / "Words"

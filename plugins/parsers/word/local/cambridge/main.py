@@ -1,7 +1,7 @@
 import os
 
 from app_utils.preprocessing import remove_empty_keys
-from consts.card_fields import FIELDS
+from consts import CardFields
 from plugins_management.config_management import LoadableConfig
 
 DICTIONARY_NAME = "cambridge"
@@ -48,13 +48,13 @@ def translate(word: str, word_dict: dict):
                        word_dict[pos]["image_links"],
                        word_dict[pos]["alt_terms"],
                        word_dict[pos]["irregular_forms"]):
-            current_word_dict = {FIELDS.word: word.strip(),
-                                 FIELDS.special: irreg_forms + alt_terms,
-                                 FIELDS.definition: definition,
-                                 FIELDS.sentences: examples,
-                                 FIELDS.audio_links: audio,
-                                 FIELDS.img_links: [image] if image else [],
-                                 FIELDS.dict_tags: {"domain": domain,
+            current_word_dict = {CardFields.word: word.strip(),
+                                 CardFields.special: irreg_forms + alt_terms,
+                                 CardFields.definition: definition,
+                                 CardFields.sentences: examples,
+                                 CardFields.audio_links: audio,
+                                 CardFields.img_links: [image] if image else [],
+                                 CardFields.dict_tags: {"domain": domain,
                                                     "level": level,
                                                     "region": region,
                                                     "usage": usage,

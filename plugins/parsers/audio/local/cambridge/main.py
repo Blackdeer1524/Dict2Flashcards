@@ -1,8 +1,8 @@
 import os
 
 from app_utils.string_utils import remove_special_chars
-from consts.card_fields import FIELDS
-from consts.paths import LOCAL_AUDIO_DIR
+from consts import CardFields
+from consts import LOCAL_AUDIO_DIR
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import AudioData
 
@@ -47,7 +47,7 @@ def get(word, card_data: dict) -> AudioData:
     extension = ".mp3"
     filename_with_extension = filename_without_extension + extension
 
-    pos = card_data.get(FIELDS.dict_tags, {}).get("pos", "")
+    pos = card_data.get(CardFields.dict_tags, {}).get("pos", "")
     clear_pos = remove_special_chars(pos.lower(), '-', _AUDIO_NAME_SPEC_CHARS)
 
     batch_size = yield

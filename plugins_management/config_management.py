@@ -3,9 +3,13 @@ import os
 from collections import UserDict
 from dataclasses import dataclass, field
 from typing import ClassVar, Any, Type, Sequence, Optional
-
+from typing import Self, Union
 
 class Config(UserDict):
+    _JSONVal = None | bool | str | float | int
+    ValidationScheme = dict[str | int | float, 
+                            Union["ValidationScheme", tuple[_JSONVal, Sequence[Type], Sequence[_JSONVal]]]]
+
     @dataclass(slots=True, frozen=True)
     class SchemeCheckResults:
         wrong_type: list =   field(default_factory=list)
@@ -20,10 +24,10 @@ class Config(UserDict):
                    bool(self.missing_keys)
 
     def __init__(self,
-                 validation_scheme: dict[Any, dict | tuple[Any, Sequence[Type], Sequence[Any]]],
+                 validation_scheme: ValidationScheme,
                  docs: str,
                  initial_value: Optional[dict] = None):
-        self.default_scheme = {}
+        self.default_scheme: Config.ValidationScheme = {}
         self.validation_scheme = validation_scheme
         Config.__assign_recursively(self.default_scheme, self.validation_scheme)
         self.docs = docs
@@ -98,7 +102,7 @@ class LoadableConfig(Config):
     ENCODING: ClassVar[str] = "UTF-8"
 
     def __init__(self,
-                 validation_scheme: dict[Any, tuple[Any, Sequence[Type], Sequence[Any]]],
+                 validation_scheme: Config.ValidationScheme,
                  docs: str,
                  config_location: str,
                  _config_file_name: str = "config.json"):
@@ -108,18 +112,18 @@ class LoadableConfig(Config):
         self._conf_file_path = os.path.join(config_location, _config_file_name)
         self.load()
 
-    def load(self) -> Optional["Config.SchemeCheckResults"]:
+    def load(self) -> Optional[Config.SchemeCheckResults]:
         if not os.path.exists(self._conf_file_path):
             self.restore_defaults()
             self.save()
-            return
+            return None
         try:
             with open(self._conf_file_path, "r", encoding=LoadableConfig.ENCODING) as conf_file:
                 self.data = json.load(conf_file)
         except (ValueError, TypeError):  # Catches JSON decoding exceptions
             self.restore_defaults()
             self.save()
-            return
+            return None
         return self.validate_config(self.data, self.validation_scheme)
 
     def save(self):

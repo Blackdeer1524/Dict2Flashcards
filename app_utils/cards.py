@@ -6,7 +6,7 @@ from typing import Callable, Union, Any, Protocol, runtime_checkable
 
 from app_utils.storages import FrozenDictJSONEncoder
 from app_utils.storages import PointerList, FrozenDict
-from consts.card_fields import FIELDS
+from consts import CardFields
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import DictionaryFormat
 
@@ -14,7 +14,7 @@ from plugins_management.parsers_return_types import DictionaryFormat
 class Card(FrozenDict):
     __slots__ = ()
 
-    def __init__(self, card_fields: dict[str, Any] = None):
+    def __init__(self, card_fields: dict[str, Any] | None = None):
         if card_fields is None:
             super(Card, self).__init__(data={})
             return
@@ -29,7 +29,7 @@ class Card(FrozenDict):
                           prefix: str = "",
                           sep: str = "::",
                           tag_processor: Callable[[str], str] = lambda x: x) -> str:
-        if (dictionary_tags := card_data.get(FIELDS.dict_tags)) is None:
+        if (dictionary_tags := card_data.get(CardFields.dict_tags)) is None:
             return ""
 
         def traverse_tags_dict(res_container: list[str], current_item: dict, cur_stage_prefix: str = ""):
@@ -64,14 +64,14 @@ class CardGeneratorProtocol(Protocol):
     def get(self,
             query: str,
             word_filter: Callable[[str], bool],
-            additional_filter: Callable[[Card], bool] = None) -> tuple[list[Card], str]:
+            additional_filter: Callable[[Card], bool] | None = None) -> tuple[list[Card], str]:
         ...
 
 
 class CardGenerator(ABC):
     def __init__(self,
                  name: str,
-                 item_converter: Callable[[str, dict], dict],
+                 item_converter: Callable[[str, dict], list[dict]],
                  config: LoadableConfig,
                  scheme_docs: str):
         self.name = name
@@ -86,7 +86,7 @@ class CardGenerator(ABC):
     def get(self,
             query: str,
             word_filter: Callable[[str], bool],
-            additional_filter: Callable[[Card], bool] = None) -> tuple[list[Card], str]:
+            additional_filter: Callable[[Card], bool] | None = None) -> tuple[list[Card], str]:
         if additional_filter is None:
             additional_filter = lambda _: True
 
@@ -99,7 +99,7 @@ class CardGenerator(ABC):
                         res.append(card)
 
         def sorting_key(card: Card) -> tuple[int, int, str]:
-            word = card[FIELDS.word]
+            word = card[CardFields.word]
             return len(word.split()), len(word), word
 
         return sorted(res, key=sorting_key), error_message
@@ -109,7 +109,7 @@ class LocalCardGenerator(CardGenerator):
     def __init__(self,
                  name: str,
                  local_dict_path: str,
-                 item_converter: Callable[[(str, dict)], dict],
+                 item_converter: Callable[[str, dict], list[dict]],
                  config: LoadableConfig,
                  scheme_docs: str):
         super(LocalCardGenerator, self).__init__(name=name,
@@ -131,7 +131,7 @@ class WebCardGenerator(CardGenerator):
     def __init__(self,
                  name: str,
                  parsing_function: Callable[[str], tuple[DictionaryFormat, str]],
-                 item_converter: Callable[[(str, dict)], dict],
+                 item_converter: Callable[[str, dict], list[dict]],
                  config: LoadableConfig,
                  scheme_docs: str):
         super(WebCardGenerator, self).__init__(name=name,
@@ -240,7 +240,7 @@ class SavedDataDeck(PointerList):
     def get_card_status_stats(self, status: CardStatus):
         return self._statistics[status.value]
 
-    def append(self, status: CardStatus, card_data: dict[str, str | list[str]] = None):
+    def append(self, status: CardStatus, card_data: dict[str, str | list[str]] | None = None):
         if card_data is None:
             card_data = {}
 

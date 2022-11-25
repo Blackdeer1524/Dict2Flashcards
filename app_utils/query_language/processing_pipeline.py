@@ -221,7 +221,7 @@ from typing import Type
 
 from app_utils.query_language.exceptions import *
 from app_utils.storages import FrozenDict
-from consts.card_fields import FIELDS
+from consts import CardFields
 
 
 class Computable(ABC):
@@ -432,7 +432,7 @@ def keyword_factory(keyword_name: str) -> Callable[[Any], int]:
     raise WrongKeywordError(f"Unknown keyword: {keyword_name}")
 
 
-FIELD_NAMES_SET = frozenset(FIELDS)
+FIELD_NAMES_SET = frozenset(CardFields)
 DIGIT_FORCE_PREFIX = "d_$"
 FIELD_FORCE_PREFIX = "f_$"
 

@@ -2,7 +2,7 @@ from typing import Protocol, runtime_checkable, Callable
 
 from app_utils.cards import SavedDataDeck, CardStatus
 from plugins_management.config_management import LoadableConfig
-from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator
+from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator, DictionaryFormat
 
 
 @runtime_checkable
@@ -221,16 +221,16 @@ class ThemeInterface(Protocol):
 
 
 @runtime_checkable
-class WebWordParserInterface(Protocol):
+class webWordParserInterface(Protocol):
     SCHEME_DOCS: str
     config: LoadableConfig
 
     @staticmethod
-    def define(word: str) -> dict:
+    def define(word: str) -> tuple[DictionaryFormat, str]:
         ...
 
     @staticmethod
-    def translate(word: str, word_dict: dict) -> dict:
+    def translate(word: str, word_dict: dict) -> list[dict]:
         ...
 
 
@@ -246,7 +246,7 @@ class LocalWordParserInterface(Protocol):
 
 
 @runtime_checkable
-class WebSentenceParserInterface(Protocol):
+class webSentenceParserInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
@@ -273,7 +273,7 @@ class LocalAudioGetterInterface(Protocol):
 
 
 @runtime_checkable
-class WebAudioGetterInterface(Protocol):
+class webAudioGetterInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod

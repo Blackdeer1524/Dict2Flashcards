@@ -11,13 +11,13 @@ from plugins_loading.interfaces import LanguagePackageInterface
 from plugins_loading.interfaces import LocalAudioGetterInterface
 from plugins_loading.interfaces import LocalWordParserInterface
 from plugins_loading.interfaces import ThemeInterface
-from plugins_loading.interfaces import WebAudioGetterInterface
-from plugins_loading.interfaces import WebSentenceParserInterface
-from plugins_loading.interfaces import WebWordParserInterface
+from plugins_loading.interfaces import webAudioGetterInterface
+from plugins_loading.interfaces import webSentenceParserInterface
+from plugins_loading.interfaces import webWordParserInterface
 from plugins_management.config_management import LoadableConfig
-from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator
+from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator, DictionaryFormat
 from plugins_loading.exceptions import LoaderError, WrongPluginProtocol
-from consts.paths import LOCAL_AUDIO_DIR, LOCAL_DICTIONARIES_DIR
+from consts import LOCAL_AUDIO_DIR, LOCAL_DICTIONARIES_DIR
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
@@ -29,17 +29,17 @@ class _PluginContainer:
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class WebWordParserContainer(_PluginContainer):
+class webWordParserContainer(_PluginContainer):
     scheme_docs: str
     config: LoadableConfig
-    define: Callable[[str], list[(str, dict)]]
-    translate: Callable[[str, dict], dict]
+    define: Callable[[str], tuple[DictionaryFormat, str]]
+    translate: Callable[[str, dict], list[dict]]
 
-    def __init__(self, name: str, source_module: WebWordParserInterface):
-        if not isinstance(source_module, WebWordParserInterface):
-            raise WrongPluginProtocol(f"{source_module} should have WebWordParserInterface protocol!")
+    def __init__(self, name: str, source_module: webWordParserInterface):
+        if not isinstance(source_module, webWordParserInterface):
+            raise WrongPluginProtocol(f"{source_module} should have webWordParserInterface protocol!")
 
-        super(WebWordParserContainer, self).__init__(name)
+        super(webWordParserContainer, self).__init__(name)
         object.__setattr__(self, "scheme_docs", source_module.SCHEME_DOCS)
         object.__setattr__(self, "config", source_module.config)
         object.__setattr__(self, "define", source_module.define)
@@ -51,7 +51,7 @@ class LocalWordParserContainer(_PluginContainer):
     scheme_docs: str
     config: LoadableConfig
     local_dict_name: str
-    translate: Callable[[str], dict]
+    translate: Callable[[str, dict], list[dict]]
 
     def __init__(self, name: str, source_module: LocalWordParserInterface):
         if not isinstance(source_module, LocalWordParserInterface):
@@ -72,9 +72,9 @@ class WebAudioGetterContainer(_PluginContainer):
     config: LoadableConfig
     get: Callable[[str, dict], AudioGenerator]
 
-    def __init__(self, name: str, source_module: WebAudioGetterInterface):
-        if not isinstance(source_module, WebAudioGetterInterface):
-            raise WrongPluginProtocol(f"{source_module} should have WebAudioGetterInterface protocol!")
+    def __init__(self, name: str, source_module: webAudioGetterInterface):
+        if not isinstance(source_module, webAudioGetterInterface):
+            raise WrongPluginProtocol(f"{source_module} should have webAudioGetterInterface protocol!")
 
         super(WebAudioGetterContainer, self).__init__(name)
         object.__setattr__(self, "config", source_module.config)
@@ -103,9 +103,9 @@ class WebSentenceParserContainer(_PluginContainer):
     config: LoadableConfig
     get: Callable[[str], SentenceGenerator]
 
-    def __init__(self, name: str, source_module: WebSentenceParserInterface):
-        if not isinstance(source_module, WebSentenceParserInterface):
-            raise WrongPluginProtocol(f"{source_module} should have WebSentenceParserInterface protocol!")
+    def __init__(self, name: str, source_module: webSentenceParserInterface):
+        if not isinstance(source_module, webSentenceParserInterface):
+            raise WrongPluginProtocol(f"{source_module} should have webSentenceParserInterface protocol!")
 
         super(WebSentenceParserContainer, self).__init__(name)
         object.__setattr__(self, "config", source_module.config)

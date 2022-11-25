@@ -2,7 +2,7 @@ from typing import Protocol, runtime_checkable, Callable
 
 from app_utils.cards import SavedDataDeck, CardStatus
 from plugins_management.config_management import LoadableConfig
-from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator
+from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator, DictionaryFormat
 
 
 @runtime_checkable
@@ -222,11 +222,11 @@ class WebWordParserInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def define(word: str) -> dict:
+    def define(word: str) -> tuple[DictionaryFormat, str]:
         ...
 
     @staticmethod
-    def translate(word: str, word_dict: dict) -> dict:
+    def translate(word: str, word_dict: dict) -> list[dict]:
         ...
 
 

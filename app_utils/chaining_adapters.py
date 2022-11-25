@@ -4,8 +4,8 @@ from typing import Iterable
 from typing import Optional, Callable
 
 from app_utils.cards import Card, CardGenerator
-from consts import parser_types
-from consts.paths import *
+from consts import ParserTypes
+from consts import *
 from plugins_loading.factory import loaded_plugins
 from plugins_management.config_management import LoadableConfig
 from plugins_management.parsers_return_types import ImageGenerator, SentenceData, SentenceGenerator, AudioData, AudioGenerator
@@ -94,10 +94,10 @@ class CardGeneratorsChain:
         parser_configs = []
         scheme_docs_list = []
         for parser_name, enum_parser_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
-            if parser_name.startswith(f"[{parser_types.WEB}]"):
-                generator = loaded_plugins.get_web_card_generator(parser_name[3 + len(parser_types.WEB):])
-            elif parser_name.startswith(f"[{parser_types.LOCAL}]"):
-                generator = loaded_plugins.get_local_card_generator(parser_name[3 + len(parser_types.LOCAL):])
+            if parser_name.startswith(f"[{ParserTypes.WEB}]"):
+                generator = loaded_plugins.get_web_card_generator(parser_name[3 + len(ParserTypes.WEB):])
+            elif parser_name.startswith(f"[{ParserTypes.LOCAL}]"):
+                generator = loaded_plugins.get_local_card_generator(parser_name[3 + len(ParserTypes.LOCAL):])
             else:
                 raise NotImplementedError(f"Word parser of unknown type: {parser_name}")
 
@@ -253,12 +253,12 @@ class AudioGettersChain:
         parser_configs = []
         for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
             names.append(parser_name)
-            if parser_name.startswith(f"[{parser_types.WEB}]"):
-                parser_type = parser_types.WEB
-                getter = loaded_plugins.get_web_audio_getter(parser_name[3 + len(parser_types.WEB):])
-            elif parser_name.startswith(f"[{parser_types.LOCAL}]"):
-                parser_type = parser_types.LOCAL
-                getter = loaded_plugins.get_local_audio_getter(parser_name[3 + len(parser_types.LOCAL):])
+            if parser_name.startswith(f"[{ParserTypes.WEB}]"):
+                parser_type = ParserTypes.WEB
+                getter = loaded_plugins.get_web_audio_getter(parser_name[3 + len(ParserTypes.WEB):])
+            elif parser_name.startswith(f"[{ParserTypes.LOCAL}]"):
+                parser_type = ParserTypes.LOCAL
+                getter = loaded_plugins.get_local_audio_getter(parser_name[3 + len(ParserTypes.LOCAL):])
             else:
                 raise NotImplementedError(f"Audio getter of unknown type: {parser_name}")
             self.enum_name2parsers_data[enum_name] = (parser_type, getter.get)

@@ -15,9 +15,9 @@ from plugins_loading.interfaces import WebAudioGetterInterface
 from plugins_loading.interfaces import WebSentenceParserInterface
 from plugins_loading.interfaces import WebWordParserInterface
 from plugins_management.config_management import LoadableConfig
-from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator
+from plugins_management.parsers_return_types import SentenceGenerator, ImageGenerator, AudioGenerator, DictionaryFormat
 from plugins_loading.exceptions import LoaderError, WrongPluginProtocol
-from consts.paths import LOCAL_AUDIO_DIR, LOCAL_DICTIONARIES_DIR
+from consts import LOCAL_AUDIO_DIR, LOCAL_DICTIONARIES_DIR
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
@@ -32,8 +32,8 @@ class _PluginContainer:
 class WebWordParserContainer(_PluginContainer):
     scheme_docs: str
     config: LoadableConfig
-    define: Callable[[str], list[(str, dict)]]
-    translate: Callable[[str, dict], dict]
+    define: Callable[[str], tuple[DictionaryFormat, str]]
+    translate: Callable[[str, dict], list[dict]]
 
     def __init__(self, name: str, source_module: WebWordParserInterface):
         if not isinstance(source_module, WebWordParserInterface):
@@ -51,7 +51,7 @@ class LocalWordParserContainer(_PluginContainer):
     scheme_docs: str
     config: LoadableConfig
     local_dict_name: str
-    translate: Callable[[str], dict]
+    translate: Callable[[str, dict], list[dict]]
 
     def __init__(self, name: str, source_module: LocalWordParserInterface):
         if not isinstance(source_module, LocalWordParserInterface):

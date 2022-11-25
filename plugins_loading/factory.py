@@ -4,8 +4,10 @@ import pkgutil
 from dataclasses import dataclass
 from types import ModuleType
 from typing import Callable
-from typing import ClassVar
+from typing import ClassVar, Literal
 from typing import TypeVar, Generic
+
+from consts import ParserTypes
 
 import plugins.language_packages
 import plugins.parsers.audio.local
@@ -18,7 +20,7 @@ import plugins.saving.card_processors
 import plugins.saving.format_processors
 import plugins.themes
 from app_utils.cards import WebCardGenerator, LocalCardGenerator
-from consts.paths import LOCAL_DICTIONARIES_DIR, LOCAL_AUDIO_DIR
+from consts import LOCAL_DICTIONARIES_DIR, LOCAL_AUDIO_DIR
 from plugins_loading.containers import CardProcessorContainer
 from plugins_loading.containers import DeckSavingFormatContainer
 from plugins_loading.containers import ImageParserContainer
@@ -49,7 +51,7 @@ def parse_namespace(namespace, postfix: str = "") -> dict:
 
 
 PluginContainer = TypeVar("PluginContainer")
-
+from typing import Type
 
 @dataclass(slots=True, init=False, frozen=True)
 class PluginLoader(Generic[PluginContainer]):
@@ -63,7 +65,7 @@ class PluginLoader(Generic[PluginContainer]):
                  plugin_type: str,
                  module: ModuleType,
                  configurable: bool,
-                 container_type: PluginContainer,
+                 container_type: Type[PluginContainer],
                  error_callback: Callable[[Exception, str, str], None] = lambda *_: None):
         if (module_name := module.__name__) in PluginLoader._already_initialized:
             raise LoaderError(f"{module_name} loader was created earlier!")
@@ -75,7 +77,7 @@ class PluginLoader(Generic[PluginContainer]):
         namespace_parsed_results = parse_namespace(module, postfix=".main") if configurable else parse_namespace(module)
         for name, module in namespace_parsed_results.items():
             try:
-                _loaded_plugin_data[name] = container_type(name, module)
+                _loaded_plugin_data[name] = container_type(name, module)  # type: ignore [call-arg]
             except Exception as e:
                 error_callback(e, plugin_type, name)
                 not_loaded.append(name)
@@ -101,7 +103,7 @@ class PluginFactory:
     web_word_parsers:    PluginLoader[WebWordParserContainer]
     local_word_parsers:  PluginLoader[LocalWordParserContainer]
     web_sent_parsers:    PluginLoader[WebSentenceParserContainer]
-    web_image_parsers:       PluginLoader[ImageParserContainer]
+    web_image_parsers:   PluginLoader[ImageParserContainer]
     local_audio_getters: PluginLoader[LocalAudioGetterContainer]
     web_audio_getters:   PluginLoader[WebAudioGetterContainer]
     card_processors:     PluginLoader[CardProcessorContainer]
@@ -162,24 +164,25 @@ class PluginFactory:
             raise UnknownPluginName(f"Unknown theme: {name}")
         return theme
 
-    def get_web_card_generator(self, name: str) -> WebCardGenerator:
-        if (web_parser := self.web_word_parsers.get(name)) is None:
-            raise UnknownPluginName(f"Unknown web word parser: {name}")
-        return WebCardGenerator(name=web_parser.name,
-                                parsing_function=web_parser.define,
-                                item_converter=web_parser.translate,
-                                config=web_parser.config,
-                                scheme_docs=web_parser.scheme_docs)
-
-    def get_local_card_generator(self, name: str) -> LocalCardGenerator:
-        if (local_parser := self.local_word_parsers.get(name)) is None:
-            raise UnknownPluginName(f"Unknown local word parser: {name}")
-        return LocalCardGenerator(name=local_parser.name,
-                                  local_dict_path=os.path.join(LOCAL_DICTIONARIES_DIR,
-                                                               f"{local_parser.local_dict_name}.json"),
-                                  item_converter=local_parser.translate,
-                                  config=local_parser.config,
-                                  scheme_docs=local_parser.scheme_docs)
+    def get_card_generator(self, name: str, gen_type: ParserTypes) -> WebCardGenerator | LocalCardGenerator:
+        if gen_type == ParserTypes.web:
+            if (web_parser := self.web_word_parsers.get(name)) is None:
+                raise UnknownPluginName(f"Unknown web word parser: {name}")
+            return WebCardGenerator(name=web_parser.name,
+                                    parsing_function=web_parser.define,
+                                    item_converter=web_parser.translate,
+                                    config=web_parser.config,
+                                    scheme_docs=web_parser.scheme_docs)
+        elif gen_type == ParserTypes.local:
+            if (local_parser := self.local_word_parsers.get(name)) is None:
+                raise UnknownPluginName(f"Unknown local word parser: {name}")
+            return LocalCardGenerator(name=local_parser.name,
+                                    local_dict_path=os.path.join(LOCAL_DICTIONARIES_DIR,
+                                                                f"{local_parser.local_dict_name}.json"),
+                                    item_converter=local_parser.translate,
+                                    config=local_parser.config,
+                                    scheme_docs=local_parser.scheme_docs)
+        raise ValueError(f"Unknown card generator type: {gen_type}")
 
     def get_sentence_parser(self, name: str) -> WebSentenceParserContainer:
         if (gen := self.web_sent_parsers.get(name)) is None:
@@ -200,16 +203,16 @@ class PluginFactory:
         if (saving_format := self.deck_saving_formats.get(name)) is None:
             raise UnknownPluginName(f"Unknown deck plugins.saving format: {name}")
         return saving_format
-    
-    def get_local_audio_getter(self, name: str) -> LocalAudioGetterContainer:
-        if (getter := self.local_audio_getters.get(name)) is None:
-            raise UnknownPluginName(f"Unknown local audio getter: {name}")
-        return getter
 
-    def get_web_audio_getter(self, name: str) -> WebAudioGetterContainer:
-        if (getter := self.web_audio_getters.get(name)) is None:
-            raise UnknownPluginName(f"Unknown web audio getter: {name}")
-        return getter
-
+    def get_audio_getter(self, name: str, getter_type: ParserTypes) -> LocalAudioGetterContainer | WebAudioGetterContainer: 
+        if getter_type == ParserTypes.web:
+            if (web_getter := self.web_audio_getters.get(name)) is None:
+                raise UnknownPluginName(f"Unknown web audio getter: {name}")
+            return web_getter
+        elif getter_type == ParserTypes.local:
+            if (local_getter := self.local_audio_getters.get(name)) is None:
+                raise UnknownPluginName(f"Unknown local audio getter: {name}")
+            return local_getter
+        raise ValueError(f"Unknown card generator type: {getter_type}")
 
 loaded_plugins = PluginFactory()

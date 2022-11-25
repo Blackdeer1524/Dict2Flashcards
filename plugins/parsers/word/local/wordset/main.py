@@ -1,7 +1,7 @@
 import os
 
 from app_utils.preprocessing import remove_empty_keys
-from consts.card_fields import FIELDS
+from consts import CardFields
 from plugins_management.config_management import LoadableConfig
 
 DICTIONARY_NAME = "wordset"
@@ -41,10 +41,10 @@ def translate(word: str, word_dict: dict):
                                  word_dict[pos]["level"],
                                  word_dict[pos]["region"],
                                  word_dict[pos]["usage"]):
-            current_word_dict = {FIELDS.word: word.strip(),
-                                 FIELDS.definition: definition,
-                                 FIELDS.sentences: examples,
-                                 FIELDS.dict_tags: {"domain": domain,
+            current_word_dict = {CardFields.word: word.strip(),
+                                 CardFields.definition: definition,
+                                 CardFields.sentences: examples,
+                                 CardFields.dict_tags: {"domain": domain,
                                                     "level": level,
                                                     "region": region,
                                                     "usage": usage,

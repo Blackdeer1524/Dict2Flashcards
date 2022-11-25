@@ -116,12 +116,12 @@ To view every plugin interface, see **./plugins_loading/interfaces.py**
 
 * [Parsers](#parsers)
     * [Word parsers](#word-parsers)
-        * Web
+        * web
         * Local
     * [Sentence parsers](#sentence-parsers)
     * [Image parsers](#image-parsers)
     * [Audio getters](#audio-getters)
-        * Web
+        * web
         * Local
 * [Saving](#saving)
     * [Card processors](#card-processors)
@@ -148,7 +148,7 @@ suppotred_types and valid values can be empty. **In that case, all types/values 
 
 ## [Parsers](#plugins)
 ### [Word parsers](#parsers) 
-#### [Web](#word-parsers)  
+#### [web](#word-parsers)  
 To create a web parser, create a python file inside **./plugins/parsers/word/web/** with the following protocol:
   * SCHEME_DOCS: str - documentation to the resulting scheme
   * define(word: str) function that returns [dictionary format](#dictionary-format)
@@ -177,7 +177,7 @@ To create an image parser, create a python file inside **./plugins/parsers/image
     * current step batch size initialization on <gen>.send(batch_size) that returns image links batch of \<batch_size>
  
 ### [Audio getters](#parsers)
-#### [Web](#audio-getters)
+#### [web](#audio-getters)
 To register web audio getter, create a python file inside **./plugins/parsers/audio/web/** with the following protocol:
   * get(word: str, card_data: dict) -> tuple\[tuple\[list\[str], list\[str]], str] function that takes 
   word for which audio is needed and current card data for the additional info and returns a list of urls, list of associated to each url information,

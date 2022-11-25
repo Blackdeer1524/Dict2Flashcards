@@ -105,11 +105,11 @@ class AudioDownloader(Toplevel):
         def iterate(src_type: str, src: str, dst: str, index: int = 1):
             def write_to_dst(_src_type: str, _src: str, _dst: str) -> bool:
                 wait_flag = False
-                if _src_type == ParserTypes.WEB:
+                if _src_type == ParserTypes.web:
                     wait_flag = self.fetch_audio(_src, _dst, self.headers, self.timeout,
                                                  self.catch_fetching_error)
 
-                elif _src_type == ParserTypes.LOCAL:
+                elif _src_type == ParserTypes.local:
                     shutil.copy(src, _dst)
                 return wait_flag
 

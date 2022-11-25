@@ -217,7 +217,7 @@ class ThemeInterface(Protocol):
 
 
 @runtime_checkable
-class WebWordParserInterface(Protocol):
+class webWordParserInterface(Protocol):
     SCHEME_DOCS: str
     config: LoadableConfig
 
@@ -242,7 +242,7 @@ class LocalWordParserInterface(Protocol):
 
 
 @runtime_checkable
-class WebSentenceParserInterface(Protocol):
+class webSentenceParserInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
@@ -269,7 +269,7 @@ class LocalAudioGetterInterface(Protocol):
 
 
 @runtime_checkable
-class WebAudioGetterInterface(Protocol):
+class webAudioGetterInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod

@@ -19,9 +19,12 @@ class ParserTypes(StrEnum):
     local = auto()
     chain = auto()
 
+    def prefix(self):
+        return f"[{self}]"
+
 
 # Project structure
-ROOT_DIR = Path(os.path.abspath(__file__)).parent.parent
+ROOT_DIR = Path(os.path.abspath(__file__)).parent
 CARDS_DIR = ROOT_DIR / "Cards"
 os.makedirs(CARDS_DIR, exist_ok=True)
 WORDS_DIR = ROOT_DIR / "Words"

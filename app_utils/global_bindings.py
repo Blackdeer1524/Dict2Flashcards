@@ -21,20 +21,17 @@ if SYSTEM == "Windows":
         def stop(self):
             stop_checking_hotkeys()
 else:
-    # from bindglobal import BindGlobal
+    from bindglobal import BindGlobal
 
     class Binder:
         def __init__(self):
-            # self.bg = BindGlobal()
-            pass
+            self.bg = BindGlobal()
 
         def bind(self, *key_seq, action):
-            # self.bg.gbind("<{}>".format("-".join(key_seq)), lambda _: action())
-            pass
+            self.bg.gbind("<{}>".format("-".join(key_seq)), lambda _: action())
 
         def start(self):
             pass
 
         def stop(self):
-            # self.bg.stop()
-            pass
+            self.bg.stop()

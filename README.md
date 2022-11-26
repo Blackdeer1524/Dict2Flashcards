@@ -37,14 +37,14 @@ Hotkey: **Ctrl + V**
 
 # [Installation](#structure)
 ## [Windows](#installation)
-1. Install [Python3.10+](https://www.python.org/downloads/) and add it in PATH.
+1. Install [Python3.11+](https://www.python.org/downloads/) and add it in PATH.
 2. Open downloaded directory with mining.pyw in it.
 3. Open command line in this directory
 4. Run \<pip install -r win_requirements.txt> to install required libraries
 
 ## [Linux](#installation)
-1. Install Python3.10+
-   * sudo apt install python3.10
+1. Install Python3.11+
+   * sudo apt install python3.11
 2. Install Tkinter
    * sudo apt install python3-tk
 3. Install PyGObject

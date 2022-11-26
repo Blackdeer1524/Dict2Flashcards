@@ -418,11 +418,9 @@ class PluginFactory:
             chain_self.loaded_plugins = loaded_plugins
             chain_self.name = name
             chain_self.enum_name2parsers_data: dict[
-                str, tuple[str, Callable[[str, dict], AudioGenerator] | None]] = {}
-            names = []
+                str, tuple[ParserTypes, Callable[[str, dict], AudioGenerator] | None]] = {}
             parser_configs = []
             for parser_name, enum_name in zip(chain_data["chain"], get_enumerated_names(chain_data["chain"])):
-                names.append(parser_name)
 
                 if parser_name.startswith(ParserTypes.web.prefix()):
                     parser_type = ParserTypes.web
@@ -440,15 +438,14 @@ class PluginFactory:
                 parser_configs.append(getter.config)
 
             chain_self.config = ChainConfig(config_dir=CHAIN_AUDIO_GETTERS_DATA_DIR,
-                                            config_name=chain_data["config_name"],
+                                            config_name=chain_data["config_name"],  # type: ignore
                                             name_config_pairs=[(parser_name, config) for parser_name, config
-                                                               in zip(names, parser_configs)])
+                                                               in zip(chain_data["chain"], parser_configs)])
 
         def get(chain_self, word: str, card_data: dict) -> \
                 Generator[list[tuple[tuple[str, str], AudioData]], int, list[tuple[tuple[str, str], AudioData]]]:
-
             batch_size = yield
-            results = []
+            results: list[tuple[tuple[str, ParserTypes], AudioData]] = []
             yielded_once = False
             for enum_name, (parser_type, get_audio_generator) in chain_self.enum_name2parsers_data.items():
                 chain_self.config.update_config(enum_name)

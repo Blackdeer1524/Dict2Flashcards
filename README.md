@@ -61,6 +61,7 @@ To launch this app, open command line in the directory where mining.pyw is locat
 ## [Local](#hotkeys)
 * Ctrl + 0: Moves app to upper left corner of the screen
 * Ctrl + 1..9: picks corresponding sentence
+* Ctrl + b: browse added cards
 * Ctrl + d: skips current card
 * Ctrl + z: returns to a previous card
 * Ctrl + q: moves current card to a separate file

@@ -131,20 +131,30 @@ sentences_field_help = "sentences (list[str])"
 img_links_field_help = "image links (list[str])"
 audio_links_field_help = "audio links (list[str])"
 dict_tags_field_help = "tags (dict)"
-query_language_docs = """
-Unary operators:
-* logic operators:
-    not
+query_language_docs = \
+"""
+Field queries:
+    field_1[subfield_1][subfield_2]...[subfield_n]
+    returns None if filed(subfield) wasn't found
 
-Binary operators:
-* logic operators
-    and, or
-* arithmetics operators:
-    <, <=, >, >=, ==, !=
+Logic operators:
+    if one of the arguments is None then it is automatically converted to False
+
+    Unary operators:
+    * logic operators:
+        not
+
+    Binary operators:
+    * logic operators
+        and, or
+    * arithmetics operators:
+        <, <=, >, >=, ==, !=
 
 Keywords:
     in
         Checks whether <thing> is in <field>[<subfield_1>][...][<subfield_n>]
+        returns False if argument is None
+
         Example:
             {
                 "field": [val_1, .., val_n]}
@@ -157,6 +167,7 @@ Keywords:
 Special queries & commands
     $ANY
         Gets result from the whole hierarchy level
+
         Example:
             {
                 "pos": {
@@ -168,21 +179,25 @@ Special queries & commands
                     }
                 }
             }
-        $ANY will return ["noun", "verb"]
-        pos[$ANY][data] will return [value_1, value_2]
-        $ANY[$ANY][data] will also will return [value_1, value_2]
+
+        $ANY returns ["noun", "verb"]
+        pos[$ANY][data] returns [value_1, value_2]
+        $ANY[$ANY][data] will also returns [value_1, value_2]
 
     $SELF
         Gets current hierarchy level keys
+
         Example:
             {
                 "field_1": 1,
                 "field_2": 2,
             }
-        $SELF will return ["field_1", "field_2"]
+        
+        $SELF returns ["field_1", "field_2"]
 
     d_$
         Will convert string expression to a digit.
+
         By default, every key inside query strings
         (for example, in field[subfield] the keys are field and subfield)
         are treated as strings. If you have an integer/float key or an array
@@ -196,11 +211,12 @@ Special queries & commands
                 }
             }
 
-        array_field[d_$1] will return 2
-        int_field[d_$1] will return [4, 5, 6]
+        array_field[d_$1] returns 2
+        int_field[d_$1] returns [4, 5, 6]
 
     f_$
         Will convert a numeric expression to a field
+
         By default, every stranded decimal-like strings
         are treated as decimals. So if your scheme contains decimal as a
         key you would need this prefix
@@ -213,7 +229,7 @@ Special queries & commands
                 }
             }
 
-        f_$d_$1 will return [1, 2, 3]
+        f_$d_$1 returns [1, 2, 3]
         You would need to also use d_$ prefix, because as 1 would be converted to
         a <field> type, it would also be treated as a string
         Note:
@@ -223,11 +239,15 @@ Special queries & commands
 Methods:
     len
         Measures length of iterable object
+        returns 0 if argument is None
+
         Example:
             {
                 "field": [1, 2, 3]
             }
-        len(field) will return 3
+
+        len(field) returns 3
+
         Example:
             {
                 "field": {
@@ -239,21 +259,27 @@ Methods:
                     }
                 }
             }
+
         len(field[$ANY][data]) = len([[1, 2, 3], [4, 5]]) = 2
 
     split
         Splits given string or list of strings
+        returns empty list if argument is None
+
         Example:
             {
                 "field": "text with spaces",
                 "list_field": ["text with spaces 1", "text with spaces 2"]
             }
+
         split(field) = ["text", "with", "spaces"]
         split(list_field) = [["text", "with", "spaces", "1"],
                              ["text", "with", "spaces", "2"]]
 
     any
         Returns True if one of items is True
+        returns False if argument is None
+
         Example:
             {
                 "field": {
@@ -265,10 +291,13 @@ Methods:
                     }
                 }
             }
-       any(field[$ANY][data] > 1) will return True
+
+       any(field[$ANY][data] > 1) returns True
 
     all
         Returns True if all items are True
+        returns False if argument is None
+
         Example:
             {
                 "field": {
@@ -280,45 +309,54 @@ Methods:
                     }
                 }
             }
-        all($ANY[$ANY][data] > 0) will return True
-        all($ANY[$ANY][data] > 1) will return False
+
+        all($ANY[$ANY][data] > 0) returns True
+        all($ANY[$ANY][data] > 1) returns False
 
     lower
         Makes all strings lowercase
+        returns empty string ("") if argument is None
+
         Example:
             {
                 "field_1": ["ABC", "abc", "AbC"],
                 "field_2": "ABC"
             }
-        lower(field_1) will return ["abc", "abc", "abc"]
-        lower(field_2) will return "abc"
+        
+        lower(field_1) returns ["abc", "abc", "abc"]
+        lower(field_2) returns "abc"
 
     upper
         Makes all strings uppercase
+        returns empty string ("") if argument is None
+
         Example:
             {
                 "field_1": ["ABC", "abc", "AbC"],
                 "field_2": "abc"
             }
-        upper(field_1) will return ["ABC", "ABC", "ABC", ""]
-        upper(field_2) will return "ABC"
+        
+        upper(field_1) returns ["ABC", "ABC", "ABC", ""]
+        upper(field_2) returns "ABC"
 
     reduce
         Flattens one layer of nested list result:
+        returns empty list if argument is None
+
         Example:
             {
                 "field_1": ["a", "b", "c"],
                 "field_2": ["d", "e", "f"]
             }
-        $ANY will return [["a", "b", "c"], ["d", "e", "f"]]
-        reduce($ANY) will return ["a", "b", "c", "d", "e", "f"]
+        $ANY returns [["a", "b", "c"], ["d", "e", "f"]]
+        reduce($ANY) returns ["a", "b", "c", "d", "e", "f"]
         Note:
             {
                 "field_1": [["a"], ["b"], ["c"]],
                 "field_2": [[["d"], ["e"], ["f"]]]
             }
-        $ANY will return [[["a"], ["b"], ["c"]], [[["d"], ["e"], ["f"]]]]
-        reduce($ANY) will return [["a"], ["b"], ["c"], [["d"], ["e"], ["f"]]]
+        $ANY returns [[["a"], ["b"], ["c"]], [[["d"], ["e"], ["f"]]]]
+        reduce($ANY) returns [["a"], ["b"], ["c"], [["d"], ["e"], ["f"]]]
 
     Note:
         You can also combine methods:
@@ -327,7 +365,7 @@ Methods:
                 "field_1": ["ABC", "abc", "AbC"],
                 "field_2": ["Def", "dEF", "def"]
             }
-        lower(reduce($ANY)) will return ["abc", "abc", "abc", "def", "def", "def"]
+        lower(reduce($ANY)) returns ["abc", "abc", "abc", "def", "def", "def"]
 
 Evaluation precedence:
 1) expressions in parentheses

@@ -1432,8 +1432,8 @@ class App(Tk):
                     "name": ("google", [str], [])
                 },
                 "audio": {
-                    "type": ("default", [str], ["default", ParserTypes.web, ParserTypes.local, ParserTypes.chain]),
-                    "name": ("", [str], [])
+                    "type": (ParserTypes.web, [str], ["default", ParserTypes.web, ParserTypes.local, ParserTypes.chain]),
+                    "name": ("forvo", [str], [])
                 }
             },
             "anki": {
@@ -1449,7 +1449,7 @@ class App(Tk):
                 "theme":                ("dark", [str], []),
                 "main_window_geometry": ("500x800+0+0", [str], []),
                 "language_package":     ("eng", [str], []),
-                "audio_autochoose_mode":  ("all_default_audios", [str], ["off",
+                "audio_autochoose_mode":  ("first_available_audio_source", [str], ["off",
                                                                          "first_default_audio",
                                                                          "all_default_audios",
                                                                          "first_available_audio",

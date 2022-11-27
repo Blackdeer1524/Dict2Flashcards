@@ -51,12 +51,21 @@ def assert_result(query: str,
 def test_keywords():
     def test_in():
         scheme = {
+            "tags": {
+                "level": "C2",
+            },
             "field": ["1", "2", "3"]
         }
         assert_result(query="1 in field",
                       scheme=scheme, 
                       assertion=True, 
                       print_if_failed="field")
+
+        assert_result(query="C. in tags[level]",
+                      scheme=scheme,
+                      assertion=True,
+                      print_if_failed="field")
+
         assert_result(query="not 2 in field",
                       scheme=scheme,
                       assertion=False,

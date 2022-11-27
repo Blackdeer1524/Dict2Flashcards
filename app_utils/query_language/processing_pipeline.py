@@ -250,7 +250,7 @@ LIST_LIKE_TYPES = (list, tuple, Generator, itertools.chain)
 def logic_factory(operator: str) -> T_unary_op | T_binary_op:
     def operator_not(x: Iterable[Computable] | Computable,
                       mapping: Mapping):
-        x_computed = x.compute(mapping)
+        x_computed = False if x is None else x.compute(mapping)
         if isinstance(x_computed, LIST_LIKE_TYPES):
             return (not item for item in x)
         return not x_computed
@@ -258,8 +258,8 @@ def logic_factory(operator: str) -> T_unary_op | T_binary_op:
     def operator_and(x: Iterable[Computable] | Computable,
                      y: Iterable[Computable] | Computable,
                      mapping: Mapping):
-        x_computed = x.compute(mapping)
-        y_computed = y.compute(mapping)
+        x_computed = False if x is None else x.compute(mapping)
+        y_computed = False if y is None else y.compute(mapping)
 
         if isinstance(x_computed, LIST_LIKE_TYPES):
             if isinstance(y_computed, LIST_LIKE_TYPES):
@@ -280,8 +280,8 @@ def logic_factory(operator: str) -> T_unary_op | T_binary_op:
     def operator_or(x: Iterable[Computable] | Computable,
                     y: Iterable[Computable] | Computable,
                     mapping: Mapping):
-        x_computed = x.compute(mapping)
-        y_computed = y.compute(mapping)
+        x_computed = False if x is None else x.compute(mapping)
+        y_computed = False if y is None else y.compute(mapping)
 
         if isinstance(x_computed, LIST_LIKE_TYPES):
             if isinstance(y_computed, LIST_LIKE_TYPES):
@@ -305,8 +305,8 @@ def logic_factory(operator: str) -> T_unary_op | T_binary_op:
                         y: Iterable[Computable] | Computable,
                         mapping: Mapping,
                         _op: Callable[[Any, Any], bool]):
-        x_computed = x.compute(mapping)
-        y_computed = y.compute(mapping)
+        x_computed = False if x is None else x.compute(mapping)
+        y_computed = False if y is None else y.compute(mapping)
 
         if isinstance(x_computed, LIST_LIKE_TYPES):
             if isinstance(y_computed, LIST_LIKE_TYPES):
@@ -342,6 +342,8 @@ def logic_factory(operator: str) -> T_unary_op | T_binary_op:
 def method_factory(method_name: str):
     if method_name == "len":
         def field_length(x):
+            if x is None:
+                return 0
             if isinstance(x, Sized):
                 return len(x)
             elif isinstance(x, Iterable):
@@ -359,6 +361,9 @@ def method_factory(method_name: str):
         return print_results
     elif method_name == "split":
         def string_split(x):
+            if x is None:
+                return []
+
             if not isinstance(x, Iterable):
                 raise ArgumentTypeError(f"{type(x)} type was given. Iterable[String] or String types ware expected")
 
@@ -372,18 +377,24 @@ def method_factory(method_name: str):
         return string_split
     elif method_name == "any":
         def any_aggregation_method(x):
+            if x is None:
+                return False
             if not isinstance(x, Iterable):
                 raise ArgumentTypeError(f"{type(x)} type was given. Iterable type was expected")
             return any(x)
         return any_aggregation_method
     elif method_name == "all":
         def all_aggregation_method(x):
+            if x is None:
+                return False
             if not isinstance(x, Iterable):
                 raise ArgumentTypeError(f"{type(x)} type was given. Iterable type was expected")
             return all(x)
         return all_aggregation_method
     elif method_name == "lower":
         def lower(x):
+            if x is None:
+                return ""
             def raise_if_not_str(item):
                 raise ArgumentTypeError(f"Wrong collection item type. Got {type(item)}. String type was expected")
             if isinstance(x, str):
@@ -394,6 +405,8 @@ def method_factory(method_name: str):
         return lower
     elif method_name == "upper":
         def upper(x):
+            if x is None:
+                return ""
             def raise_if_not_str(item):
                 raise ArgumentTypeError(f"Wrong collection item type. Got {type(item)}. String type was expected")
             if isinstance(x, str):
@@ -404,6 +417,8 @@ def method_factory(method_name: str):
         return upper
     elif method_name == "reduce":
         def reduce(x):
+            if x is None:
+                return []
             computed_x = []
             for i in x:
                 if not isinstance(i, LIST_LIKE_TYPES):
@@ -417,6 +432,9 @@ def method_factory(method_name: str):
 def keyword_factory(keyword_name: str) -> Callable[[Any], int]:
     if keyword_name == "in":
         def field_contains(collection: Iterable, search_pattern: re.Pattern):
+            if collection is None:
+                return False
+
             if not isinstance(collection, Iterable):
                 raise ArgumentTypeError(f"{type(collection)} type was given. Iterable[String] or String types were expected")
 

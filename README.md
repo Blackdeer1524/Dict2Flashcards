@@ -11,27 +11,27 @@ Sentence-mining app written in Python using Tkinter.
 * [Query language documentation](#query-language-documentation)
 
 # [Demonstration](#structure)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/dev/app_demonstration/start_to_finish_demo.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/start_to_finish_demo.gif)
 
 ### [Drag & Drop](#download-images-from-web) 
 #### [Image from browser](#drag--drop) 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/dev/app_demonstration/drag_image_from_browser.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/drag_image_from_browser.gif)
 #### [Local image](#drag--drop) 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/dev/app_demonstration/drag_local_image.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/drag_local_image.gif)
 #### [Image link from any text field](#drag--drop) 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/dev/app_demonstration/drag_image_link.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/drag_image_link.gif)
 
 ### [Paste from clipboard](#download-images-from-web) 
 Hotkey: **Ctrl + V**
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/dev/app_demonstration/paste_image_from_clipboard.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/paste_image_from_clipboard.gif)
 
 ## [Bury card to watch them later](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/dev/app_demonstration/bury_and_reopen.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/bury_and_reopen.gif)
 
 ## [Query language](#demonstration)
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/dev/app_demonstration/add_with_query_lang.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/add_with_query_lang.gif)
 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/dev/app_demonstration/search_in_deck_with_query_lang.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/search_in_deck_with_query_lang.gif)
 
 [Query language docs](#query-language-documentation)
 
@@ -72,11 +72,11 @@ To launch this app, open command line in the directory where mining.pyw is locat
 ## [Global](#hotkeys)
 * Ctrl + c + Space: adds currently highlighted word to deck
 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/dev/app_demonstration/add_word_global_hotkey.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/add_word_global_hotkey.gif)
 
 * Ctrl + c + Alt: adds currently highlighted text to the first sentence field
 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/dev/app_demonstration/add_highlighted_sentence_global_hotkey.gif)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/add_highlighted_sentence_global_hotkey.gif)
 
 # [Resulting file](#structure)
 By default, resulting file has CSV extention, is located at saving directory that you choosed, and has the following naming convention:
@@ -102,7 +102,7 @@ A Card is essentially a Python dictionary with the following keys:
   * audio_links: list[str]
   * tags: dict[str, str | list | dict]
 
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/dev/app_demonstration/card_fields_usage.png)
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/card_fields_usage.png)
 
 Cards can have other fields, although they will not be displayed.
 But they could be used inside

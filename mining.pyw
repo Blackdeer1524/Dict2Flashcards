@@ -2135,11 +2135,11 @@ class App(Tk):
 
             picked_audio_data = additional_data.get(SavedDataDeck.AUDIO_DATA, {})
             if picked_audio_data:
-                audio_sources = picked_audio_data[SavedDataDeck.AUDIO_SRCS]
-                audio_srcs_types = picked_audio_data[SavedDataDeck.AUDIO_SRCS_TYPE]
                 parser_results = []
-                for audio_srcs_type, audio_src in zip(audio_srcs_types, audio_sources):
-                    parser_results.append([("", ParserTypes(audio_srcs_type)), (([audio_src], [""]), "")])
+                for audio_src, audio_srcs_type, saving_path in zip(picked_audio_data[SavedDataDeck.AUDIO_SRCS], 
+                                                                   picked_audio_data[SavedDataDeck.AUDIO_SRCS_TYPE],
+                                                                   picked_audio_data[SavedDataDeck.AUDIO_SAVING_PATHS]):
+                    parser_results.append([("", ParserTypes(audio_srcs_type)), (([audio_src], [self.card_processor.get_card_audio_name(saving_path)]), "")])
 
                 self.display_audio_on_frame(
                     word=word_data,
@@ -2346,6 +2346,7 @@ class App(Tk):
                 audio_sf.bind_scroll_wheel(play_audio_button)
 
                 info_label = self.Label(audio_info_frame, text=info, relief="ridge")
+                info_label.bind('<Configure>', lambda e, label=info_label: label.config(wraplength=label.winfo_width() * 7 // 8), add=True)
                 info_label.grid(row=0, column=2, sticky="news")
                 audio_sf.bind_scroll_wheel(info_label)
 

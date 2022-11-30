@@ -1182,7 +1182,7 @@ class App(Tk):
 
                     chain = [item.name for item in chain_data]
                     chosen_chain_config = {"config_name": "{}_{}.json".format(remove_special_chars(new_chain_name, "_"),
-                                                                              hash(time.time())),
+                                                                              abs(hash(time.time()))),
                                            "chain": chain}
                     self.chaining_data[chain_type][new_chain_name] = chosen_chain_config
 
@@ -2014,11 +2014,12 @@ class App(Tk):
                         os.path.join(self.configurations["directories"]["media_dir"],
                                     self.card_processor
                                     .get_save_audio_name(
-                                        editor_word_text.get(1.0, "end").rstrip(),
-                                        f"{audio_getter_info.type.prefix()} {audio_getter_info.name}",
-                                        str(i),
-                                        editor_card_data))
-                        for i in range(len(audio_links))))
+                                        word=editor_word_text.get(1.0, "end").rstrip(),
+                                        uniqueness_postfix=str(abs(hash(link)))[:8],
+                                        audio_provider=f"{audio_getter_info.type.prefix()} {audio_getter_info.name}",
+                                        multiple_postfix=str(i),
+                                        card_data=editor_card_data))
+                        for i, link in enumerate(audio_links)))
 
             last_audio_getter_data: App.AudioGetterInfo | None = None
             audio_getters_audios: list[str] = []
@@ -2264,7 +2265,12 @@ class App(Tk):
 
         @error_handler(self.show_exception_logs)
         def web_playsound(audio_url: str, src: str):
-            audio_name = self.card_processor.get_save_audio_name(word, src, "0", card_data)
+            audio_name = self.card_processor.get_save_audio_name(
+                word=word, 
+                uniqueness_postfix=str(abs(hash(audio_url)))[:8],
+                audio_provider=src, 
+                multiple_postfix="0",
+                card_data=card_data)
 
             temp_audio_path = os.path.join(TEMP_DIR, audio_name)
             if os.path.exists(temp_audio_path):
@@ -3092,11 +3098,12 @@ class App(Tk):
                 os.path.join(self.configurations["directories"]["media_dir"],
                              self.card_processor
                              .get_save_audio_name(
-                                 audio_getter_info.fetching_word,
-                                 audio_getter_info.name,
-                                 str(i),
-                                 self.dict_card_data))
-                for i in range(len(audio_links))
+                                 word=audio_getter_info.fetching_word,
+                                 uniqueness_postfix=str(abs(hash(link)))[:8],
+                                 audio_provider=audio_getter_info.name,
+                                 multiple_postfix=str(i),
+                                 card_data=self.dict_card_data))
+                for i, link in enumerate(audio_links)
             ))
 
         chosen_smth = False

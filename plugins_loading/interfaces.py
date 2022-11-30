@@ -296,6 +296,7 @@ class CardProcessorInterface(Protocol):
 
     @staticmethod
     def get_save_audio_name(word: str,
+                            uniqueness_postfix: str,
                             audio_provider: str,
                             multiple_postfix: str,
                             card_data: dict) -> str:

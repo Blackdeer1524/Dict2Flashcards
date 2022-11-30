@@ -17,7 +17,10 @@ def get_card_image_name(saved_image_path: str) -> str:
     return f"<img src='{os.path.split(saved_image_path)[-1]}'/>"
 
 
-def get_save_audio_name(word: str, audio_provider: str, multiple_postfix: str,
+def get_save_audio_name(word: str, 
+                        uniqueness_postfix: str, 
+                        audio_provider: str, 
+                        multiple_postfix: str,
                         card_data: dict) -> str:
     word = word.strip().lower()
     pos = card_data.get(CardFields.dict_tags, {}).get("pos")
@@ -26,7 +29,7 @@ def get_save_audio_name(word: str, audio_provider: str, multiple_postfix: str,
         if pos is not None else remove_special_chars(word, sep='-')
 
     prepared_word_parser_name = remove_special_chars(audio_provider, sep='-')
-    audio_name = f"mined-{SCHEME_PREFIX}-{prepared_word_parser_name}-{raw_audio_name}-{multiple_postfix}.mp3"
+    audio_name = f"mined-{SCHEME_PREFIX}-{prepared_word_parser_name}-{raw_audio_name}-{uniqueness_postfix}-{multiple_postfix}.mp3"
     return audio_name
 
 

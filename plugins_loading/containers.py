@@ -130,7 +130,7 @@ class ImageParserContainer(_PluginContainer):
 class CardProcessorContainer(_PluginContainer):
     get_save_image_name: Callable[[str, str, dict], str]
     get_card_image_name: Callable[[str], str]
-    get_save_audio_name: Callable[[str, str, str, dict], str]
+    get_save_audio_name: Callable[[str, str, str, str, dict], str]
     get_card_audio_name: Callable[[str], str]
     process_card:        Callable[[dict], None]
 

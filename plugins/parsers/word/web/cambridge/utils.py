@@ -137,31 +137,34 @@ def update_word_dict(word_dict: dict,
         word_dict[word] = {}
 
     if word_dict[word].get(pos) is None:
-        word_dict[word][pos] = {"definitions": [definition],
-                                "alt_terms": [alt_terms_list],
-                                "irregular_forms": [irregular_forms_list],
-                                "examples": [sentences],
-                                "level": [level],
-                                "labels_and_codes": [labels_and_codes],
-                                "region": [region],
-                                "usage": [usage],
-                                "domain": [domain],
-                                "image_links": [image_link],
-                                "UK_IPA": uk_ipa,
-                                "US_IPA": us_ipa,
-                                "UK_audio_links": uk_audio_links,
-                                "US_audio_links": us_audio_links}
-    else:
-        word_dict[word][pos]["definitions"].append(definition)
-        word_dict[word][pos]["alt_terms"].append(alt_terms_list)
-        word_dict[word][pos]["irregular_forms"].append(irregular_forms_list)
-        word_dict[word][pos]["examples"].append(sentences)
-        word_dict[word][pos]["level"].append(level)
-        word_dict[word][pos]["labels_and_codes"].append(labels_and_codes)
-        word_dict[word][pos]["region"].append(region)
-        word_dict[word][pos]["usage"].append(usage)
-        word_dict[word][pos]["domain"].append(domain)
-        word_dict[word][pos]["image_links"].append(image_link)
+        word_dict[word][pos] = {"definitions": [],
+                                "alt_terms": [],
+                                "irregular_forms": [],
+                                "examples": [],
+                                "level": [],
+                                "labels_and_codes": [],
+                                "region": [],
+                                "usage": [],
+                                "domain": [],
+                                "image_links": [],
+                                "UK_IPA": [],
+                                "US_IPA": [],
+                                "UK_audio_links": [],
+                                "US_audio_links": []}
+    word_dict[word][pos]["definitions"].append(definition)
+    word_dict[word][pos]["alt_terms"].append(alt_terms_list)
+    word_dict[word][pos]["irregular_forms"].append(irregular_forms_list)
+    word_dict[word][pos]["examples"].append(sentences)
+    word_dict[word][pos]["level"].append(level)
+    word_dict[word][pos]["labels_and_codes"].append(labels_and_codes)
+    word_dict[word][pos]["region"].append(region)
+    word_dict[word][pos]["usage"].append(usage)
+    word_dict[word][pos]["domain"].append(domain)
+    word_dict[word][pos]["image_links"].append(image_link)
+    word_dict[word][pos]["UK_IPA"].append(uk_ipa)
+    word_dict[word][pos]["US_IPA"].append(us_ipa)
+    word_dict[word][pos]["UK_audio_links"].append(uk_audio_links)
+    word_dict[word][pos]["US_audio_links"].append(us_audio_links)
 
 
 def get_irregular_forms(word_header_block) -> list[str]:
@@ -315,6 +318,7 @@ def define(word, dictionary_index=0, headers=None, timeout=5) -> tuple[Dictionar
                                              current_word_domain)
                     current_def_block_word = phrase_block.find("span",
                                                                {"class": "phrase-title dphrase-title"}).text.strip()
+            
 
             update_word_dict(word_info,
                              word=current_def_block_word,
@@ -339,4 +343,4 @@ def define(word, dictionary_index=0, headers=None, timeout=5) -> tuple[Dictionar
 if __name__ == "__main__":
     from pprint import pprint
 
-    pprint(define("larynx"))
+    pprint(define("bass"))

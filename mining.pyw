@@ -2209,7 +2209,7 @@ class App(Tk):
                 if audio_data is None:
                     parser_results = []
                     return
-                parser_results = [((self.configurations["scrappers"]["audio"]["name"], audio_getter_type), audio_data)]
+                parser_results = [(("{} {}".format(audio_getter_type.prefix(), self.configurations["scrappers"]["audio"]["name"]), audio_getter_type), audio_data)]
             elif audio_getter_type == ParserTypes.chain:
                 parser_results = self.external_audio_generator.get(
                     word=word,
@@ -2217,9 +2217,6 @@ class App(Tk):
                     batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
                 if parser_results is None:
                     parser_results = []
-                    return
-                parser_results = [((audio_getter_name, audio_getter_type), audio_data) for
-                                  (audio_getter_name, audio_getter_type), audio_data in parser_results]
             else:
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
 
@@ -3132,9 +3129,9 @@ class App(Tk):
                 raise NotImplementedError(f"Unknown audio autochoose mode: {audio_autochoose_mode}")
 
             if (dictionary_audio_links := self.dict_card_data.get(CardFields.audio_links, [])):
-                add_audio_data_to_card(audio_getter_info=App.AudioGetterInfo(self.card_generator.name,
-                                                                              type=ParserTypes.web,  
-                                                                              fetching_word=self.word),
+                add_audio_data_to_card(audio_getter_info=App.AudioGetterInfo(f"dict {ParserTypes.web.prefix()} {self.card_generator.name}",
+                                                                             type=ParserTypes.web,  
+                                                                             fetching_word=self.word),
                                        audio_links=dictionary_audio_links[:choosing_slice])
 
             if self.external_audio_generator is not None and \
@@ -3147,12 +3144,12 @@ class App(Tk):
                                                                     card_data=self.dict_card_data,
                                                                     batch_size=choosing_slice)
                 
-                audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
+                audio_getter_type = ParserTypes(self.configurations["scrappers"]["audio"]["type"])
                 if audio_getter_type in (ParserTypes.web, ParserTypes.local):
                     if audio_data_pack is not None:
                         ((audio_links, additional_info), error_message) = audio_data_pack
-                        add_audio_data_to_card(audio_getter_info=App.AudioGetterInfo(name=f"extern_{self.external_audio_generator.data_generator.name}",
-                                                                                     type=ParserTypes(audio_getter_type),
+                        add_audio_data_to_card(audio_getter_info=App.AudioGetterInfo(name=f"{audio_getter_type.prefix()} {self.external_audio_generator.data_generator.name}",
+                                                                                     type=audio_getter_type,
                                                                                      fetching_word=word_for_audio_query),
                                                audio_links=audio_links)
                 elif audio_getter_type == ParserTypes.chain:
@@ -3163,17 +3160,17 @@ class App(Tk):
                             try:
                                 ((getter_name, getter_type), ((audio_links, additional_info), error_message)) = next(
                                     audio_gen)
-                                add_audio_data_to_card(App.AudioGetterInfo(name=f"extern_{getter_name}",
-                                                                            type=ParserTypes(getter_type),
-                                                                            fetching_word=word_for_audio_query),
+                                add_audio_data_to_card(App.AudioGetterInfo(name=getter_name,
+                                                                           type=ParserTypes(getter_type),
+                                                                           fetching_word=word_for_audio_query),
                                                        audio_links=audio_links[:choosing_slice])
                             except StopIteration:
                                 pass
                         elif audio_autochoose_mode == "all":
                             for ((getter_name, getter_type), ((audio_links, additional_info), error_message)) in audio_gen:
-                                add_audio_data_to_card(App.AudioGetterInfo(name=f"extern_{getter_name}",
-                                                                            type=ParserTypes(getter_type),
-                                                                            fetching_word=word_for_audio_query),
+                                add_audio_data_to_card(App.AudioGetterInfo(name=getter_name,
+                                                                           type=ParserTypes(getter_type),
+                                                                           fetching_word=word_for_audio_query),
                                                        audio_links=audio_links[:choosing_slice])
                         else:
                             raise NotImplementedError(f"Unreachable audio_autochoose_mode: {audio_autochoose_mode}")
@@ -3357,7 +3354,7 @@ class App(Tk):
 
         if (audio_sources := self.dict_card_data.get(CardFields.audio_links)) is not None and audio_sources:
             additional_info = (word_data for _ in range(len(audio_sources)))
-            parser_results = [((f"!dict {self.typed_word_parser_name}", ParserTypes.web), 
+            parser_results = [((f"dict {self.typed_word_parser_name}", ParserTypes.web), 
                               ((audio_sources, additional_info), ""))]
             self.display_audio_on_frame(
                 word=self.word,

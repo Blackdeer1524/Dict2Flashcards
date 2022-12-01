@@ -2015,11 +2015,10 @@ class App(Tk):
                                     self.card_processor
                                     .get_save_audio_name(
                                         word=editor_word_text.get(1.0, "end").rstrip(),
-                                        uniqueness_postfix=str(abs(hash(link)))[:8],
                                         audio_provider=f"{audio_getter_info.type.prefix()} {audio_getter_info.name}",
-                                        multiple_postfix=str(i),
+                                        uniqueness_postfix=str(abs(hash(link)))[:8],
                                         card_data=editor_card_data))
-                        for i, link in enumerate(audio_links)))
+                        for link in audio_links))
 
             last_audio_getter_data: App.AudioGetterInfo | None = None
             audio_getters_audios: list[str] = []
@@ -2267,9 +2266,8 @@ class App(Tk):
         def web_playsound(audio_url: str, src: str):
             audio_name = self.card_processor.get_save_audio_name(
                 word=word, 
-                uniqueness_postfix=str(abs(hash(audio_url)))[:8],
                 audio_provider=src, 
-                multiple_postfix="0",
+                uniqueness_postfix=str(abs(hash(audio_url)))[:8],
                 card_data=card_data)
 
             temp_audio_path = os.path.join(TEMP_DIR, audio_name)
@@ -3099,11 +3097,10 @@ class App(Tk):
                              self.card_processor
                              .get_save_audio_name(
                                  word=audio_getter_info.fetching_word,
-                                 uniqueness_postfix=str(abs(hash(link)))[:8],
                                  audio_provider=audio_getter_info.name,
-                                 multiple_postfix=str(i),
+                                 uniqueness_postfix=str(abs(hash(link)))[:8],
                                  card_data=self.dict_card_data))
-                for i, link in enumerate(audio_links)
+                for link in audio_links
             ))
 
         chosen_smth = False

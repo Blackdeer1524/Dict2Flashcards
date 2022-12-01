@@ -371,7 +371,7 @@ class App(Tk):
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
         # self.text_widgets_frame.grid_columnconfigure(0, weight=1)
-        self.text_widgets_frame.last_source = None
+        self.text_widgets_frame.last_getter_label = None
         self.text_widgets_frame.source_display_frame = None
 
         typed_audio_getter = "default" if self.external_audio_generator is None \
@@ -438,7 +438,7 @@ class App(Tk):
 
         self.audio_inner_frame = self.audio_sf.display_widget(self.Frame, fit_width=True)
         self.audio_sf.bind_scroll_wheel(self.audio_inner_frame)
-        self.audio_inner_frame.last_source = None
+        self.audio_inner_frame.last_getter_label = None
         self.audio_inner_frame.source_display_frame = None
 
         self.user_tags_field = self.Entry(self, placeholder=self.lang_pack.user_tags_field_placeholder)
@@ -1804,7 +1804,7 @@ class App(Tk):
         editor_text_widgets_frame = editor_text_widgets_sf.display_widget(self.Frame, fit_width=True)
         editor_text_widgets_sf.bind_scroll_wheel(editor_text_widgets_frame)
 
-        editor_text_widgets_frame.last_source = None
+        editor_text_widgets_frame.last_getter_label = None
         editor_text_widgets_frame.source_display_frame = None
 
         def display_audio_getter_results_on_button_click():
@@ -1895,7 +1895,7 @@ class App(Tk):
 
         editor_audio_inner_frame = editor_audio_sf.display_widget(self.Frame, fit_width=True)
         editor_audio_sf.bind_scroll_wheel(editor_audio_inner_frame)
-        editor_audio_inner_frame.last_source = None
+        editor_audio_inner_frame.last_getter_label = None
         editor_audio_inner_frame.source_display_frame = None
 
         editor_user_tags_field = self.Entry(item_editor_frame, placeholder=self.lang_pack.user_tags_field_placeholder)
@@ -2078,14 +2078,14 @@ class App(Tk):
             editor_audio_inner_frame.destroy()
             editor_audio_inner_frame = editor_audio_sf.display_widget(self.Frame, fit_width=True)
             editor_audio_sf.bind_scroll_wheel(editor_audio_inner_frame)
-            editor_audio_inner_frame.last_source = None
+            editor_audio_inner_frame.last_getter_label = None
             editor_audio_inner_frame.source_display_frame = None
 
             editor_sentence_texts.clear()
             editor_text_widgets_frame.destroy()
             editor_text_widgets_frame = editor_text_widgets_sf.display_widget(self.Frame, fit_width=True)
             editor_text_widgets_sf.bind_scroll_wheel(editor_text_widgets_frame)
-            editor_text_widgets_frame.last_source = None
+            editor_text_widgets_frame.last_getter_label = None
             editor_text_widgets_frame.source_display_frame = None
 
             editor_word_text.clear()
@@ -2293,6 +2293,7 @@ class App(Tk):
 
         error_messages: list[tuple[str, str]] = []
         for (getter_label, audio_getter_type), ((audio_sources, additional_info), error_message) in parser_results:
+            getter_label = f"{getter_label}: {word}" if getter_label else ""
             if not audio_sources:
                 continue
 
@@ -2302,11 +2303,11 @@ class App(Tk):
             if error_message:
                 error_messages.append((getter_label, error_message))
             
-            if audio_inner_frame.last_source != getter_label:
-                audio_inner_frame.last_source = getter_label
+            if audio_inner_frame.last_getter_label != getter_label:
+                audio_inner_frame.last_getter_label = getter_label
                 audio_inner_frame.source_display_frame = LabelFrame(
                     audio_inner_frame,
-                    text=f"{getter_label}: {word}" if getter_label else "",
+                    text=getter_label,
                     fg=self.theme.button_cfg.get("foreground"),
                     **self.theme.frame_cfg)
                 audio_inner_frame.source_display_frame.audio_getter_data = App.AudioGetterInfo(
@@ -3255,8 +3256,8 @@ class App(Tk):
 
         next_index = len(sentence_text_widgets_list) + 1
 
-        if text_widgets_frame.last_source != source:
-            text_widgets_frame.last_source = source
+        if text_widgets_frame.last_getter_label != source:
+            text_widgets_frame.last_getter_label = source
             text_widgets_frame.source_display_frame = LabelFrame(text_widgets_frame,
                                                                  text=source,
                                                                  fg=self.theme.button_cfg.get("foreground"),
@@ -3301,14 +3302,14 @@ class App(Tk):
         self.audio_inner_frame.destroy()
         self.audio_inner_frame = self.audio_sf.display_widget(self.Frame, fit_width=True)
         self.audio_sf.bind_scroll_wheel(self.audio_inner_frame)
-        self.audio_inner_frame.last_source = None
+        self.audio_inner_frame.last_getter_label = None
         self.audio_inner_frame.source_display_frame = None
 
         self.sentence_texts.clear()
         self.text_widgets_frame.destroy()
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
-        self.text_widgets_frame.last_source = None
+        self.text_widgets_frame.last_getter_label = None
         self.text_widgets_frame.source_display_frame = None
 
         self.title(f"{self.lang_pack.main_window_title_prefix}: {self.deck.get_n_cards_left()}")

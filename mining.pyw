@@ -3354,7 +3354,7 @@ class App(Tk):
         self.definition_text.fill_placeholder()
 
         if (audio_sources := self.dict_card_data.get(CardFields.audio_links)) is not None and audio_sources:
-            additional_info = (word_data for _ in range(len(audio_sources)))
+            additional_info = ("" for _ in range(len(audio_sources)))
             parser_results = [((f"dict {self.typed_word_parser_name}", ParserTypes.web), 
                               ((audio_sources, additional_info), ""))]
             self.display_audio_on_frame(

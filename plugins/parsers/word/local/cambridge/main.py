@@ -35,9 +35,8 @@ def translate(word: str, word_dict: dict):
     audio_region_field = f"{config['audio_region'].upper()}_audio_links"
     word_list = []
     for pos in word_dict:
-        audio = word_dict[pos].get(audio_region_field, [])
         for definition, examples, domain, labels_and_codes, level, \
-            region, usage, image, alt_terms, irreg_forms \
+            region, usage, image, alt_terms, irreg_forms, audio \
                 in zip(word_dict[pos]["definitions"],
                        word_dict[pos]["examples"],
                        word_dict[pos]["domain"],
@@ -47,7 +46,8 @@ def translate(word: str, word_dict: dict):
                        word_dict[pos]["usage"],
                        word_dict[pos]["image_links"],
                        word_dict[pos]["alt_terms"],
-                       word_dict[pos]["irregular_forms"]):
+                       word_dict[pos]["irregular_forms"],
+                       word_dict[pos][audio_region_field]):
             current_word_dict = {CardFields.word: word.strip(),
                                  CardFields.special: irreg_forms + alt_terms,
                                  CardFields.definition: definition,

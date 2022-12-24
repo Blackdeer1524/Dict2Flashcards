@@ -3,7 +3,7 @@ import os
 from collections import UserDict
 from dataclasses import dataclass, field
 from typing import ClassVar, Any, Type, Sequence, Optional
-from typing import Self, Union
+from typing import Union
 
 class Config(UserDict):
     _JSONVal = None | bool | str | float | int

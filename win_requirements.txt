@@ -1,5 +1,5 @@
 beautifulsoup4==4.11.1
-certifi==2022.6.15
+certifi==2022.12.07
 charset-normalizer==2.0.12
 global-hotkeys==0.0.4
 idna==3.3

@@ -1,6 +1,6 @@
 beautifulsoup4==4.11.1
 bindglobal==0.0.3
-certifi==2022.6.15
+certifi==2022.12.07
 charset-normalizer==2.0.12
 evdev==1.5.0
 idna==3.3

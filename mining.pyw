@@ -246,8 +246,75 @@ class App(Tk):
         self.configure_image_parser_button.grid(row=5, column=7, sticky="news",
                                                 padx=(0, self.text_padx), pady=(0, self.text_pady))
 
+        typed_audio_getter = "default" if self.external_audio_generator is None \
+            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                  self.external_audio_generator.data_generator.name)
+
+        def display_audio_getter_results_on_button_click():
+            fill_search_fields()
+            self.waiting_for_audio_display = True
+            self.display_audio_getter_results(
+                word=self.audio_search_entry.get(),
+                card_data=self.dict_card_data,
+                show_errors=True,
+                audio_sf=self.audio_sf,
+                audio_inner_frame=self.audio_inner_frame
+            )
+
+        self.fetch_audio_data_button = self.Button(self,
+                                                   text=self.lang_pack.fetch_audio_data_button_text,
+                                                   command=display_audio_getter_results_on_button_click)
+
+        if typed_audio_getter == "default":
+            self.fetch_audio_data_button["state"] = "disabled"
+
+        self.fetch_audio_data_button.grid(row=6, column=0, columnspan=3,
+                                          sticky="news",
+                                          padx=(self.text_padx, 0), pady=0)
+
+        self.audio_getter_option_menu = self.get_option_menu(
+            self,
+            init_text=typed_audio_getter,
+            values=["default"] +
+                   [f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
+                   [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                   [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
+            command=lambda parser_name: self.change_audio_getter(parser_name))
+        self.audio_getter_option_menu.grid(row=6, column=3, columnspan=4, sticky="news",
+                                           padx=0, pady=0)
+
+        self.configure_audio_getter_button = self.Button(self, text="</>")
+
+        if self.external_audio_generator is not None:
+            cmd = lambda: self.call_configuration_window(plugin_name=typed_audio_getter,
+                                                         plugin_config=self.external_audio_generator.data_generator.config,
+                                                         plugin_load_function=lambda conf: conf.load(),
+                                                         saving_action=lambda conf: conf.save())
+            self.configure_audio_getter_button["command"] = cmd
+        else:
+            self.configure_audio_getter_button["state"] = "disabled"
+
+        self.configure_audio_getter_button.grid(row=6, column=7, sticky="news",
+                                                padx=(0, self.text_padx), pady=0)
+
+        self.audio_search_entry = self.Entry(self, placeholder=self.lang_pack.audio_search_entry_text)
+        self.audio_search_entry.grid(row=7, column=0, columnspan=8, sticky="news",
+                                     padx=self.text_padx, pady=0)
+
+        self.audio_sf = ScrolledFrame(self, scrollbars="vertical",
+                                      canvas_bg=self.theme.frame_cfg.get("bg"),
+                                      height=110)
+
+        self.audio_sf.grid(row=8, column=0, columnspan=8, sticky="news",
+                           padx=self.text_padx, pady=(0, self.text_pady))
+
+        self.audio_inner_frame = self.audio_sf.display_widget(self.Frame, fit_width=True)
+        self.audio_sf.bind_scroll_wheel(self.audio_inner_frame)
+        self.audio_inner_frame.last_getter_label = None
+        self.audio_inner_frame.source_display_frame = None
+
         a = self.Frame(self)
-        a.grid(row=6, column=0, columnspan=8, padx=self.text_padx, pady=0, sticky="news")
+        a.grid(row=9, column=0, columnspan=8, padx=self.text_padx, pady=0, sticky="news")
 
         for i in range(4):
             a.columnconfigure(i, weight=1)
@@ -329,7 +396,7 @@ class App(Tk):
         self.fetch_ext_sentences_button = self.Button(self,
                                                       text=self.lang_pack.fetch_ext_sentences_button,
                                                       command=fetch_external_sentences)
-        self.fetch_ext_sentences_button.grid(row=7, column=0, columnspan=3, sticky="news",
+        self.fetch_ext_sentences_button.grid(row=10, column=0, columnspan=3, sticky="news",
                                              padx=(self.text_padx, 0), pady=(self.text_pady, 0))
 
         typed_sentence_parser_name = f"[{self.configurations['scrappers']['sentence']['type']}] {self.external_sentence_fetcher.data_generator.name}"
@@ -339,7 +406,7 @@ class App(Tk):
             values=[f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
                    [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
             command=lambda parser_name: self.change_sentence_parser(parser_name))
-        self.sentence_parsers_option_menu.grid(row=7, column=3, columnspan=4, sticky="news",
+        self.sentence_parsers_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
                                               pady=(self.text_pady, 0))
 
         self.configure_sentence_parser_button = self.Button(
@@ -353,93 +420,25 @@ class App(Tk):
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()),
             width=6)
-        self.configure_sentence_parser_button.grid(row=7, column=7, sticky="news",
+        self.configure_sentence_parser_button.grid(row=10, column=7, sticky="news",
                                                    padx=(0, self.text_padx), pady=(self.text_pady, 0))
         # ======
         self.sentence_search_entry = self.Entry(self, placeholder=self.lang_pack.sentence_search_entry_text)
-        self.sentence_search_entry.grid(row=8, column=0, columnspan=8, sticky="news",
+        self.sentence_search_entry.grid(row=11, column=0, columnspan=8, sticky="news",
                                         padx=self.text_padx, pady=(0, 0))
 
         self.sentence_texts = []
 
         self.text_widgets_sf = ScrolledFrame(self, scrollbars="vertical",
                                              canvas_bg=self.theme.frame_cfg.get("bg"))
-        self.text_widgets_sf.grid(row=9, column=0, columnspan=8, sticky="news",
+        self.text_widgets_sf.grid(row=12, column=0, columnspan=8, sticky="news",
                                   padx=self.text_padx, pady=(0, self.text_pady))
-        self.grid_rowconfigure(9, weight=1)
+        self.grid_rowconfigure(12, weight=1)
 
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
-        # self.text_widgets_frame.grid_columnconfigure(0, weight=1)
         self.text_widgets_frame.last_getter_label = None
         self.text_widgets_frame.source_display_frame = None
-
-        typed_audio_getter = "default" if self.external_audio_generator is None \
-            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                  self.external_audio_generator.data_generator.name)
-
-        def display_audio_getter_results_on_button_click():
-            fill_search_fields()
-            self.waiting_for_audio_display = True
-            self.display_audio_getter_results(
-                word=self.audio_search_entry.get(),
-                card_data=self.dict_card_data,
-                show_errors=True,
-                audio_sf=self.audio_sf,
-                audio_inner_frame=self.audio_inner_frame
-            )
-
-        self.fetch_audio_data_button = self.Button(self,
-                                                   text=self.lang_pack.fetch_audio_data_button_text,
-                                                   command=display_audio_getter_results_on_button_click)
-
-        if typed_audio_getter == "default":
-            self.fetch_audio_data_button["state"] = "disabled"
-
-        self.fetch_audio_data_button.grid(row=10, column=0, columnspan=3,
-                                          sticky="news",
-                                          padx=(self.text_padx, 0), pady=0)
-
-        self.audio_getter_option_menu = self.get_option_menu(
-            self,
-            init_text=typed_audio_getter,
-            values=["default"] +
-                   [f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
-                   [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
-                   [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
-            command=lambda parser_name: self.change_audio_getter(parser_name))
-        self.audio_getter_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
-                                           padx=0, pady=0)
-
-        self.configure_audio_getter_button = self.Button(self, text="</>")
-
-        if self.external_audio_generator is not None:
-            cmd = lambda: self.call_configuration_window(plugin_name=typed_audio_getter,
-                                                         plugin_config=self.external_audio_generator.data_generator.config,
-                                                         plugin_load_function=lambda conf: conf.load(),
-                                                         saving_action=lambda conf: conf.save())
-            self.configure_audio_getter_button["command"] = cmd
-        else:
-            self.configure_audio_getter_button["state"] = "disabled"
-
-        self.configure_audio_getter_button.grid(row=10, column=7, sticky="news",
-                                                padx=(0, self.text_padx), pady=0)
-
-        self.audio_search_entry = self.Entry(self, placeholder=self.lang_pack.audio_search_entry_text)
-        self.audio_search_entry.grid(row=11, column=0, columnspan=8, sticky="news",
-                                     padx=self.text_padx, pady=0)
-
-        self.audio_sf = ScrolledFrame(self, scrollbars="vertical",
-                                      canvas_bg=self.theme.frame_cfg.get("bg"),
-                                      height=110)
-
-        self.audio_sf.grid(row=12, column=0, columnspan=8, sticky="news",
-                           padx=self.text_padx, pady=(0, self.text_pady))
-
-        self.audio_inner_frame = self.audio_sf.display_widget(self.Frame, fit_width=True)
-        self.audio_sf.bind_scroll_wheel(self.audio_inner_frame)
-        self.audio_inner_frame.last_getter_label = None
-        self.audio_inner_frame.source_display_frame = None
 
         self.user_tags_field = self.Entry(self, placeholder=self.lang_pack.user_tags_field_placeholder)
         self.user_tags_field.fill_placeholder()
@@ -1295,8 +1294,8 @@ class App(Tk):
             if not self.sentence_search_entry.get():
                 self.sentence_search_entry.insert(0, word)
 
-        self.new_order = [(self.browse_button, None),
-                          (self.anki_button, None),
+        self.new_order = [(self.anki_button, None),
+                          (self.browse_button, None),
                           (self.word_parser_option_menu, None),
                           (self.configure_word_parser_button, None),
 
@@ -1308,16 +1307,6 @@ class App(Tk):
 
                           (self.dict_tags_field, None),
 
-                          (self.prev_button, None),
-                          (self.bury_button, None),
-                          (self.skip_button, None),
-
-                          (self.fetch_ext_sentences_button, None),
-                          (self.sentence_parsers_option_menu, None),
-                          (self.configure_sentence_parser_button, None),
-
-                          (self.sentence_search_entry, None),
-
                           (self.fetch_images_button, None),
                           (self.image_parsers_option_menu, None),
                           (self.configure_image_parser_button, None),
@@ -1327,6 +1316,17 @@ class App(Tk):
                           (self.configure_audio_getter_button, None),
 
                           (self.audio_search_entry, None),
+
+                          (self.prev_button, None),
+                          (self.bury_button, None),
+                          (self.skip_button, None),
+                          (self.skip_all_button, None),
+
+                          (self.fetch_ext_sentences_button, None),
+                          (self.sentence_parsers_option_menu, None),
+                          (self.configure_sentence_parser_button, None),
+
+                          (self.sentence_search_entry, None),
 
                           (self.user_tags_field, None),
                           (self.tag_prefix_field, None),
@@ -1683,8 +1683,98 @@ class App(Tk):
                 plugin_config=self.image_parser.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()))
-        editor_configure_image_parser_button.grid(row=5, column=7, sticky="news",
+        editor_configure_image_parser_button.grid(row=5, column=7, sticky="news", padx=(0, editor_text_padx), pady=0)
+
+        def display_audio_getter_results_on_button_click():
+            editor_fill_search_fields()
+            self.waiting_for_audio_display = True
+            self.display_audio_getter_results(
+                word=editor_audio_search_entry.get(),
+                card_data=editor_card_data,
+                show_errors=True,
+                audio_sf=editor_audio_sf,
+                audio_inner_frame=editor_audio_inner_frame
+            )
+
+        editor_fetch_audio_data_button = self.Button(item_editor_frame,
+                                                     text=self.lang_pack.fetch_audio_data_button_text,
+                                                     command=display_audio_getter_results_on_button_click)
+
+        typed_audio_getter = "default" if self.external_audio_generator is None \
+            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                  self.external_audio_generator.data_generator.name)
+
+        if typed_audio_getter == "default":
+            editor_fetch_audio_data_button["state"] = "disabled"
+
+        editor_fetch_audio_data_button.grid(row=6, column=0, columnspan=3,
+                                            sticky="news",
+                                            padx=(editor_text_padx, 0), pady=0)
+
+        def global_change_audio_getter(parser_name):
+            self.change_audio_getter(parser_name)
+            self.audio_getter_option_menu.destroy()
+            typed_audio_getter = "default" if self.external_audio_generator is None \
+                else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
+                                      self.external_audio_generator.data_generator.name)
+            if typed_audio_getter == "default":
+                editor_fetch_audio_data_button["state"] = "disabled"
+                editor_configure_audio_getter_button["state"] = "disabled"
+            else:
+                editor_fetch_audio_data_button["state"] = "normal"
+                editor_configure_audio_getter_button["state"] = "normal"
+
+            self.audio_getter_option_menu = self.get_option_menu(
+                self,
+                init_text=typed_audio_getter,
+                values=["default"] +
+                       [f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
+                       [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                       [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
+                command=lambda parser_name: self.change_audio_getter(parser_name))
+            self.audio_getter_option_menu.grid(row=6, column=3, columnspan=4, sticky="news",
+                                               padx=0, pady=0)
+
+        editor_audio_getter_option_menu = self.get_option_menu(
+            item_editor_frame,
+            init_text=typed_audio_getter,
+            values=["default"] +
+                   [f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
+                   [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                   [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
+            command=global_change_audio_getter)
+        editor_audio_getter_option_menu.grid(row=6, column=3, columnspan=4, sticky="news",
+                                             padx=0, pady=0)
+
+        editor_configure_audio_getter_button = self.Button(item_editor_frame, text="</>")
+
+        if self.external_audio_generator is not None:
+            cmd = lambda: self.call_configuration_window(plugin_name=typed_audio_getter,
+                                                         plugin_config=self.external_audio_generator.data_generator.config,
+                                                         plugin_load_function=lambda conf: conf.load(),
+                                                         saving_action=lambda conf: conf.save())
+            editor_configure_audio_getter_button["command"] = cmd
+        else:
+            editor_configure_audio_getter_button["state"] = "disabled"
+
+        editor_configure_audio_getter_button.grid(row=6, column=7, sticky="news",
                                                   padx=(0, editor_text_padx), pady=0)
+
+        editor_audio_search_entry = self.Entry(item_editor_frame, placeholder=self.lang_pack.audio_search_entry_text)
+        editor_audio_search_entry.grid(row=7, column=0, columnspan=8, sticky="news",
+                                       padx=editor_text_padx, pady=0)
+
+        editor_audio_sf = ScrolledFrame(item_editor_frame, scrollbars="vertical",
+                                        canvas_bg=self.theme.frame_cfg.get("bg"),
+                                        height=110)
+
+        editor_audio_sf.grid(row=8, column=0, columnspan=8, sticky="news",
+                             padx=editor_text_padx, pady=(0, editor_text_pady))
+
+        editor_audio_inner_frame = editor_audio_sf.display_widget(self.Frame, fit_width=True)
+        editor_audio_sf.bind_scroll_wheel(editor_audio_inner_frame)
+        editor_audio_inner_frame.last_getter_label = None
+        editor_audio_inner_frame.source_display_frame = None
 
         def change_picked_sentence(index: int):
             selected_item = items_table.selection()
@@ -1748,7 +1838,7 @@ class App(Tk):
         editor_fetch_ext_sentences_button = self.Button(item_editor_frame,
                                                         text=self.lang_pack.fetch_ext_sentences_button,
                                                         command=editor_fetch_external_sentences)
-        editor_fetch_ext_sentences_button.grid(row=7, column=0, columnspan=3, sticky="news",
+        editor_fetch_ext_sentences_button.grid(row=9, column=0, columnspan=3, sticky="news",
                                                padx=(editor_text_padx, 0), pady=(editor_text_pady, 0))
 
         def global_change_sentence_parser(parser_name):
@@ -1761,7 +1851,7 @@ class App(Tk):
                 values=[f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
                        [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
                 command=lambda parser_name: self.change_sentence_parser(parser_name))
-            self.sentence_parsers_option_menu.grid(row=7, column=3, columnspan=4, sticky="news",
+            self.sentence_parsers_option_menu.grid(row=9, column=3, columnspan=4, sticky="news",
                                                   pady=(self.text_pady, 0))
 
         typed_sentence_parser_name = f"[{self.configurations['scrappers']['sentence']['type']}] {self.external_sentence_fetcher.data_generator.name}"
@@ -1771,7 +1861,7 @@ class App(Tk):
             values=[f"[{ParserTypes.chain}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
                    [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
             command=global_change_sentence_parser)
-        editor_sentence_parsers_option_menu.grid(row=7, column=3, columnspan=4, sticky="news",
+        editor_sentence_parsers_option_menu.grid(row=9, column=3, columnspan=4, sticky="news",
                                               pady=(editor_text_pady, 0))
 
         editor_configure_sentence_parser_button = self.Button(
@@ -1785,118 +1875,27 @@ class App(Tk):
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()),
             width=6)
-        editor_configure_sentence_parser_button.grid(row=7, column=7, sticky="news",
+        editor_configure_sentence_parser_button.grid(row=9, column=7, sticky="news",
                                                      padx=(0, editor_text_padx), pady=(editor_text_pady, 0))
         # ======
         editor_sentence_search_entry = self.Entry(item_editor_frame,
                                                   placeholder=self.lang_pack.sentence_search_entry_text)
-        editor_sentence_search_entry.grid(row=8, column=0, columnspan=8, sticky="news",
+        editor_sentence_search_entry.grid(row=10, column=0, columnspan=8, sticky="news",
                                           padx=editor_text_padx, pady=(0, 0))
 
         editor_sentence_texts = []
 
         editor_text_widgets_sf = ScrolledFrame(item_editor_frame, scrollbars="vertical",
                                                canvas_bg=self.theme.frame_cfg.get("bg"))
-        editor_text_widgets_sf.grid(row=9, column=0, columnspan=8, sticky="news",
+        editor_text_widgets_sf.grid(row=11, column=0, columnspan=8, sticky="news",
                                     padx=editor_text_padx, pady=(0, editor_text_pady))
-        item_editor_frame.grid_rowconfigure(9, weight=1)
+        item_editor_frame.grid_rowconfigure(11, weight=1)
 
         editor_text_widgets_frame = editor_text_widgets_sf.display_widget(self.Frame, fit_width=True)
         editor_text_widgets_sf.bind_scroll_wheel(editor_text_widgets_frame)
 
         editor_text_widgets_frame.last_getter_label = None
         editor_text_widgets_frame.source_display_frame = None
-
-        def display_audio_getter_results_on_button_click():
-            editor_fill_search_fields()
-            self.waiting_for_audio_display = True
-            self.display_audio_getter_results(
-                word=editor_audio_search_entry.get(),
-                card_data=editor_card_data,
-                show_errors=True,
-                audio_sf=editor_audio_sf,
-                audio_inner_frame=editor_audio_inner_frame
-            )
-
-        editor_fetch_audio_data_button = self.Button(item_editor_frame,
-                                                     text=self.lang_pack.fetch_audio_data_button_text,
-                                                     command=display_audio_getter_results_on_button_click)
-
-        typed_audio_getter = "default" if self.external_audio_generator is None \
-            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                  self.external_audio_generator.data_generator.name)
-
-        if typed_audio_getter == "default":
-            editor_fetch_audio_data_button["state"] = "disabled"
-
-        editor_fetch_audio_data_button.grid(row=10, column=0, columnspan=3,
-                                            sticky="news",
-                                            padx=(editor_text_padx, 0), pady=0)
-
-        def global_change_audio_getter(parser_name):
-            self.change_audio_getter(parser_name)
-            self.audio_getter_option_menu.destroy()
-            typed_audio_getter = "default" if self.external_audio_generator is None \
-                else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                      self.external_audio_generator.data_generator.name)
-            if typed_audio_getter == "default":
-                editor_fetch_audio_data_button["state"] = "disabled"
-                editor_configure_audio_getter_button["state"] = "disabled"
-            else:
-                editor_fetch_audio_data_button["state"] = "normal"
-                editor_configure_audio_getter_button["state"] = "normal"
-
-            self.audio_getter_option_menu = self.get_option_menu(
-                self,
-                init_text=typed_audio_getter,
-                values=["default"] +
-                       [f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
-                       [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
-                       [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
-                command=lambda parser_name: self.change_audio_getter(parser_name))
-            self.audio_getter_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
-                                               padx=0, pady=0)
-
-        editor_audio_getter_option_menu = self.get_option_menu(
-            item_editor_frame,
-            init_text=typed_audio_getter,
-            values=["default"] +
-                   [f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
-                   [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
-                   [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
-            command=global_change_audio_getter)
-        editor_audio_getter_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
-                                             padx=0, pady=0)
-
-        editor_configure_audio_getter_button = self.Button(item_editor_frame, text="</>")
-
-        if self.external_audio_generator is not None:
-            cmd = lambda: self.call_configuration_window(plugin_name=typed_audio_getter,
-                                                         plugin_config=self.external_audio_generator.data_generator.config,
-                                                         plugin_load_function=lambda conf: conf.load(),
-                                                         saving_action=lambda conf: conf.save())
-            editor_configure_audio_getter_button["command"] = cmd
-        else:
-            editor_configure_audio_getter_button["state"] = "disabled"
-
-        editor_configure_audio_getter_button.grid(row=10, column=7, sticky="news",
-                                                  padx=(0, editor_text_padx), pady=0)
-
-        editor_audio_search_entry = self.Entry(item_editor_frame, placeholder=self.lang_pack.audio_search_entry_text)
-        editor_audio_search_entry.grid(row=11, column=0, columnspan=8, sticky="news",
-                                       padx=editor_text_padx, pady=0)
-
-        editor_audio_sf = ScrolledFrame(item_editor_frame, scrollbars="vertical",
-                                        canvas_bg=self.theme.frame_cfg.get("bg"),
-                                        height=110)
-
-        editor_audio_sf.grid(row=12, column=0, columnspan=8, sticky="news",
-                             padx=editor_text_padx, pady=(0, editor_text_pady))
-
-        editor_audio_inner_frame = editor_audio_sf.display_widget(self.Frame, fit_width=True)
-        editor_audio_sf.bind_scroll_wheel(editor_audio_inner_frame)
-        editor_audio_inner_frame.last_getter_label = None
-        editor_audio_inner_frame.source_display_frame = None
 
         editor_user_tags_field = self.Entry(item_editor_frame, placeholder=self.lang_pack.user_tags_field_placeholder)
         editor_user_tags_field.fill_placeholder()
@@ -1929,32 +1928,32 @@ class App(Tk):
             if not editor_sentence_search_entry.get():
                 editor_sentence_search_entry.insert(0, word)
 
-        editor_new_order = [(editor_browse_button, None),
-                            (editor_anki_button, None),
+        editor_new_order = [(editor_anki_button, None),
+                            (editor_browse_button, None),
 
                             (editor_word_text, editor_fill_search_fields),
 
                             (editor_special_field, None),
 
                             (editor_definition_text, None),
-
+                            
                             (editor_dict_tags_field, None),
 
-                          (editor_fetch_ext_sentences_button, None),
-                          (editor_sentence_parsers_option_menu, None),
-                          (editor_configure_sentence_parser_button, None),
-
-                            (editor_sentence_search_entry, None),
-
-                          (editor_fetch_images_button, None),
-                          (editor_image_parsers_option_menu, None),
-                          (editor_configure_image_parser_button, None),
+                            (editor_fetch_images_button, None),
+                            (editor_image_parsers_option_menu, None),
+                            (editor_configure_image_parser_button, None),
 
                             (editor_fetch_audio_data_button, None),
                             (editor_audio_getter_option_menu, None),
                             (editor_configure_audio_getter_button, None),
 
                             (editor_audio_search_entry, None),
+
+                            (editor_fetch_ext_sentences_button, None),
+                            (editor_sentence_parsers_option_menu, None),
+                            (editor_configure_sentence_parser_button, None),
+
+                            (editor_sentence_search_entry, None),
 
                             (editor_user_tags_field, None),
                             (editor_tag_prefix_field, None),

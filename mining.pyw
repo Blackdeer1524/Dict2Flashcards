@@ -3345,7 +3345,9 @@ class App(Tk):
             widget.insert(1.0, text)
             widget["state"] = "disabled"
 
-        fill_additional_dict_data(self.dict_tags_field, Card.get_str_dict_tags(self.dict_card_data))
+        fill_additional_dict_data(self.dict_tags_field, 
+                                  Card.get_str_dict_tags(card_data=self.dict_card_data,
+                                                         tag_processor=lambda x:x.replace(" ", "_")))
         fill_additional_dict_data(self.special_field, " ".join(self.dict_card_data.get(CardFields.special, [])))
 
         self.definition_text.clear()

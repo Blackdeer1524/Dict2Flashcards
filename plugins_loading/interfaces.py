@@ -1,4 +1,4 @@
-from typing import Protocol, runtime_checkable, Callable
+from typing import Protocol, runtime_checkable, Callable, Any
 
 from app_utils.cards import SavedDataDeck, CardStatus
 from plugins_management.config_management import LoadableConfig
@@ -220,33 +220,41 @@ class ThemeInterface(Protocol):
     option_submenus_cfg: dict
 
 
+from typing import Generic, TypeVar
+
+WORD_TYPE_T = str
+ERROR_MESSAGE_T = str
+WORD_DEFINITION_T = TypeVar('WORD_DEFINITION_T')
+
 @runtime_checkable
-class webWordParserInterface(Protocol):
+class WebWordParserInterface(Protocol, Generic[WORD_DEFINITION_T]):
     SCHEME_DOCS: str
     config: LoadableConfig
 
     @staticmethod
-    def define(word: str) -> tuple[DictionaryFormat, str]:
+    def define(word: str) -> tuple[list[tuple[WORD_TYPE_T, WORD_DEFINITION_T]], ERROR_MESSAGE_T]:
         ...
 
     @staticmethod
-    def translate(word: str, word_dict: dict) -> list[dict]:
+    def translate(word: str, word_data: WORD_DEFINITION_T) -> list[dict]:
         ...
 
 
+WORD_DEFINITION_T = TypeVar('WORD_DEFINITION_T')
+
 @runtime_checkable
-class LocalWordParserInterface(Protocol):
+class LocalWordParserInterface(Protocol, Generic[WORD_DEFINITION_T]):
     SCHEME_DOCS: str
     config: LoadableConfig
     DICTIONARY_NAME: str
 
     @staticmethod
-    def translate(word: str, word_dict: dict) -> dict:
+    def translate(word: str, word_data: WORD_DEFINITION_T) -> list[dict]:
         ...
 
 
 @runtime_checkable
-class webSentenceParserInterface(Protocol):
+class WebSentenceParserInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
@@ -273,7 +281,7 @@ class LocalAudioGetterInterface(Protocol):
 
 
 @runtime_checkable
-class webAudioGetterInterface(Protocol):
+class WebAudioGetterInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod

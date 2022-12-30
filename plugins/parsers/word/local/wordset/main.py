@@ -3,17 +3,21 @@ import os
 from app_utils.preprocessing import remove_empty_keys
 from consts import CardFields
 from plugins_management.config_management import LoadableConfig
+from typing import TypedDict
+
 
 DICTIONARY_NAME = "wordset"
-SCHEME_DOCS = """
-tags: {
-    pos: part of speach (str)
-    domain: word domain (list[str])
-    level: English proficiency level (str)[A1, A2, B1, B2, C1, C2]
-    region: where this word mostly in use (list[str])
-    usage: usage context (list[str])
-}
-"""
+SCHEME_DOCS = ""
+
+
+class POSDataScheme(TypedDict):
+    definitions: list[str]
+    examples:    list[list[str]]
+
+
+POS_T = str
+WORD_DATA_STRUCTURE = dict[POS_T, POSDataScheme]
+
 
 _CONF_VALIDATION_SCHEME = {}
 
@@ -22,35 +26,15 @@ config = LoadableConfig(config_location=os.path.dirname(__file__),
                         docs="")
 
 
-def translate(word: str, word_dict: dict):
+def translate(word: str, word_data: WORD_DATA_STRUCTURE):
     word_list = []
-    for pos in word_dict:
-        # uk_ipa = word_dict[word][pos]["UK IPA"]
-        # us_ipa = word_dict[word][pos]["US IPA"]
-        for name in ("examples", "domain", "labels_and_codes", "level", "region", "usage"):
-            if word_dict[pos].get(name) is None:
-                word_dict[pos][name] = []
-            while len(word_dict[pos]["definitions"]) > len(word_dict[pos][name]):
-                word_dict[pos][name].append([])
-
-        for definition, examples, domain, labels_and_codes, level, \
-            region, usage in zip(word_dict[pos]["definitions"],
-                                 word_dict[pos]["examples"],
-                                 word_dict[pos]["domain"],
-                                 word_dict[pos]["labels_and_codes"],
-                                 word_dict[pos]["level"],
-                                 word_dict[pos]["region"],
-                                 word_dict[pos]["usage"]):
-            current_word_dict = {CardFields.word: word.strip(),
+    for pos in word_data:
+        for definition, examples in zip(word_data[pos]["definitions"], word_data[pos]["examples"]):
+            current_word_data = {CardFields.word: word.strip(),
                                  CardFields.definition: definition,
-                                 CardFields.sentences: examples,
-                                 CardFields.dict_tags: {"domain": domain,
-                                                    "level": level,
-                                                    "region": region,
-                                                    "usage": usage,
-                                                    "pos": pos
-                                                    }
-                                 }
-            remove_empty_keys(current_word_dict)
-            word_list.append(current_word_dict)
+                                 CardFields.sentences: examples, 
+                                 CardFields.dict_tags: {
+                                    "pos": pos,
+                                 }}
+            word_list.append(current_word_data)
     return word_list

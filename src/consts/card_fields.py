@@ -1,6 +1,11 @@
-from .. import StrEnum
-from typing import TypedDict, NotRequired, Union
+from __future__ import annotations  # for Python 3.7-3.9
 
+from typing import TypedDict, Union
+
+from typing_extensions import \
+    NotRequired  # for Python <3.11 with (Not)Required
+
+from .. import StrEnum
 
 TagsScheme = dict[str, Union[str, list[str], "TagsScheme"]]
 

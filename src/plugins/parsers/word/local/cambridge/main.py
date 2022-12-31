@@ -1,10 +1,7 @@
 import os
 from typing import TypedDict
 
-from .. import \
-    app_utils  # src.app_utils.preprocessing import remove_empty_keys
-from .. import config_management  # .config_management import LoadableConfig
-from .. import consts  # src.consts.card_fields import CardFields
+from .. import config_management, consts
 
 DICTIONARY_NAME = "cambridge"
 
@@ -29,9 +26,10 @@ _CONF_VALIDATION_SCHEME = \
         "audio_region": ("us", [str], ["us", "uk"]),
     }
 
-config = config_management.LoadableConfig(config_location=os.path.dirname(__file__),
-                                          validation_scheme=_CONF_VALIDATION_SCHEME,
-                                          docs=_CONFIG_DOCS)
+config = config_management.LoadableConfig(
+    config_location=os.path.dirname(__file__),
+    validation_scheme=_CONF_VALIDATION_SCHEME,
+    docs=_CONFIG_DOCS)
 
 
 DEFINITION_T       = str
@@ -74,7 +72,7 @@ class POSData(TypedDict):
     data: POSFields
 
 
-def translate(word: str, word_data: list[POSData]) -> list[dict]:
+def translate(word: str, word_data: list[POSData]) -> list[consts.CardFormat]:
     audio_region_field = f"{config['audio_region'].upper()}_audio_links"
     word_list = []
 
@@ -94,19 +92,20 @@ def translate(word: str, word_data: list[POSData]) -> list[dict]:
                        pos_fields["alt_terms"],
                        pos_fields["irregular_forms"],
                        pos_fields[audio_region_field]):  # type: ignore
-            current_word_dict = {consts.CardFields.word: word.strip(),
-                                 consts.CardFields.special: irreg_forms + alt_terms,
-                                 consts.CardFields.definition: definition,
-                                 consts.CardFields.sentences: examples,
-                                 consts.CardFields.audio_links: region_audio_links,
-                                 consts.CardFields.img_links: [image] if image else [],
-                                 consts.CardFields.dict_tags: {"domain": domain,
-                                                        "level": level,
-                                                        "region": region,
-                                                        "usage": usage,
-                                                        "pos": pos
-                                                        }
-                                 }
-            app_utils.preprocessing.remove_empty_keys(current_word_dict)
+            current_word_dict:consts.CardFormat = {
+                "word": word.strip(),
+                "special": irreg_forms + alt_terms,
+                "definition": definition,
+                "examples": examples,
+                "image_links": [image] if image else [],
+                "audio_links": region_audio_links,
+                "tags": {
+                    "domain": domain,
+                    "level": level,
+                    "region": region,
+                    "usage": usage,
+                    "pos": pos
+                    },
+                }
             word_list.append(current_word_dict)
     return word_list

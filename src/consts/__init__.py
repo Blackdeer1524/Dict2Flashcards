@@ -1,3 +1,3 @@
 from . import paths
-from .card_fields import CardFields
+from .card_fields import CardFormat, CardFields
 from .parser_types import ParserTypes

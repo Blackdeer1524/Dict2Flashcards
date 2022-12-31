@@ -1,12 +1,11 @@
-from typing import Callable, Protocol, runtime_checkable
+from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 from ..app_utils.cards import CardStatus, SavedDataDeck
 from ..plugins_management.config_management import LoadableConfig
 from ..plugins_management.parsers_return_types import (AudioGenerator,
-                                                       DictionaryFormat,
                                                        ImageGenerator,
                                                        SentenceGenerator)
-
+from ..consts import CardFormat
 
 @runtime_checkable
 class LanguagePackageInterface(Protocol):
@@ -223,9 +222,7 @@ class ThemeInterface(Protocol):
     option_submenus_cfg: dict
 
 
-from typing import Generic, TypeVar
-
-WORD_TYPE_T = str
+WORD_T = str
 ERROR_MESSAGE_T = str
 WORD_DEFINITION_T = TypeVar('WORD_DEFINITION_T')
 
@@ -235,24 +232,24 @@ class WebWordParserInterface(Protocol, Generic[WORD_DEFINITION_T]):
     config: LoadableConfig
 
     @staticmethod
-    def define(word: str) -> tuple[list[tuple[WORD_TYPE_T, WORD_DEFINITION_T]], ERROR_MESSAGE_T]:
+    def define(word: str) -> tuple[list[tuple[WORD_T, WORD_DEFINITION_T]], ERROR_MESSAGE_T]:
         ...
 
     @staticmethod
-    def translate(word: str, word_data: WORD_DEFINITION_T) -> list[dict]:
+    def translate(word: str, word_data: WORD_DEFINITION_T) -> list[CardFormat]:
         ...
 
 
-WORD_DEFINITION_T = TypeVar('WORD_DEFINITION_T')
+WORD_DEFINITION_Q = TypeVar('WORD_DEFINITION_Q')
 
 @runtime_checkable
-class LocalWordParserInterface(Protocol, Generic[WORD_DEFINITION_T]):
+class LocalWordParserInterface(Protocol):
     SCHEME_DOCS: str
     config: LoadableConfig
     DICTIONARY_NAME: str
 
     @staticmethod
-    def translate(word: str, word_data: WORD_DEFINITION_T) -> list[dict]:
+    def translate(word: str, word_data: WORD_DEFINITION_Q) -> list[CardFormat]:
         ...
 
 

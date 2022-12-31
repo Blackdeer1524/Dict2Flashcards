@@ -1,4 +1,6 @@
-from typing import Generator, TypeVar
+from typing import Generator, TypeVar, TypedDict
+from ..consts import CardFormat
+
 
 AudioData = tuple[tuple[list[str], list[str]], str]
 T = TypeVar("T")

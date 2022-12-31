@@ -38,24 +38,24 @@ Hotkey: **Ctrl + V**
 # [Installation](#structure)
 ## [Windows](#installation)
 1. Install [Python3.11+](https://www.python.org/downloads/) and add it in PATH.
-2. Open downloaded directory with mining.pyw in it.
+2. Open downloaded directory with `main.pyw` in it.
 3. Open command line in this directory
-4. Run \<pip install -r win_requirements.txt> to install required libraries
+4. Run `pip install -r installation/win/requirements.txt` to install required libraries
 
 ## [Linux](#installation)
 1. Install Python3.11+
-   * sudo apt install python3.11
+   * `sudo apt install python3.11`
 2. Install Tkinter
-   * sudo apt install python3-tk
+   * `sudo apt install python3-tk`
 3. Install PyGObject
-   * sudo apt install python3-gi
+   * `sudo apt install python3-gi`
 4. Install required libraries
-   * pip3 install -r linux_requirements.txt
+   * `pip3 install -r installation/linux/requirements.txt`
 
 # [Launch](#structure)
-To launch this app, open command line in the directory where mining.pyw is located and run
-* if you are on Windows: python mining.pyw
-* if you are on Linux: python3 mining.pyw
+To launch this app, open command line in the directory where `main.pyw` is located and run
+* if you are on Windows: `python main.pyw`
+* if you are on Linux: `python3 main.pyw`
 
 # [Hotkeys](#structure)
 ## [Local](#hotkeys)
@@ -79,42 +79,34 @@ To launch this app, open command line in the directory where mining.pyw is locat
 ![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/add_highlighted_sentence_global_hotkey.gif)
 
 # [Resulting file](#structure)
-By default, resulting file has CSV extention, is located at saving directory that you choosed, and has the following naming convention:
-\<deck_name>\_\<session_start_time>.csv
+By default, resulting file is an Anki package that is located at the saving directory that you chose.
 
-## CSV fields order
+Card fields:
  1. Sentence example
  2. Word
  3. Definition
  4. Image
  5. Word audio 
- 6. Tags
  
 [How to create custom format processor](#format-processors)
-
-# [Card format](#structure)
-A Card is essentially a Python dictionary with the following keys:
-  * word: str
-  * special: list[str]
-  * definition: str
-  * examples: list[str]
-  * image_links: list[str]
-  * audio_links: list[str]
-  * tags: dict[str, str | list | dict]
-
-![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/card_fields_usage.png)
 
 Cards can have other fields, although they will not be displayed.
 But they could be used inside
 [format](#format-processors) and [card](#card-processors) processors.
 
-# [Dictionary format](#structure)
-
-\[\[\<word>: str, \<data>: dict], ...]
-
 # [Plugins](#structure)
-To view every plugin interface, see **./plugins_loading/interfaces.py**
+All plugins can use 
+* all contents of ./src/plugins_management/parsers_return_types
+* all contents of ./src/plugins_management/config_management
+* all contents of ./src/consts
+* cards, preprocessing, query_language, storages, string_utils from ./src/app_utils
 
+Just add 
+`from .. import app_utils, parsers_return_types, config_management, consts`
+At the header of your file 
+
+To view every plugin interface, see **./src/plugins_loading/interfaces.py**
+* [Plugin return types](#plugins-return-types)
 * [Parsers](#parsers)
     * [Word parsers](#word-parsers)
         * web
@@ -130,6 +122,50 @@ To view every plugin interface, see **./plugins_loading/interfaces.py**
 * [Themes](#themes)
 * [Language packages](#language-packages) 
  
+## [Plugins return types](#structure)
+All types are located in **./src/plugin_management/parsers_return_types.py**.
+They are already available for plugins to use. 
+
+### [DictionaryFormat](#plugins-return-types)
+ * `list[tuple[str, WORD_DEFINITION_T]]`
+ * list of tuples of `words` and their `definitions`  
+#### [WORD_DEFINITION_T](#DictionaryFormat)
+ * Generic type
+---
+### [ImageGenerator](#plugins-return-types)
+ * `Generator[tuple[list[str], str], int, tuple[list[str], str]]` 
+ * Generator that yields and returns `list of image URLs` and `accompanied error message`. Accepts `required number of URLS` 
+---
+### [SentenceGenerator](#plugins-return-types) 
+ * `Generator[tuple[list[str], str], int, tuple[list[str], str]]`
+ * Generator that yields and returns `list of sentences` and `accompanied error message`. Accepts `required number of sentences` 
+---
+### [AudioGenerator](#plugins-return-types)  
+ * `Generator[AudioData, int, AudioData]`
+ * Generator that yields and returns `AudioData` and `accompanied error message`. Accepts `required number of audio URLs` 
+#### [AudioData](#AudioGenerator)
+ * `tuple[tuple[list[str], list[str]], str]`
+ * ((`list of audio URLs`, `list of additional information for corresponding URL`), `error message`)
+---
+### [CardFormat](#plugins-return-types)
+
+A Card is essentially a Python dictionary with the following keys:
+```python
+TagsScheme = dict[str, Unioun[str, list[str], "TagsScheme"]]
+
+class CardFormat(TypedDict):
+    word:        str
+    special:     NotRequired[list[str]]
+    definition:  NotRequired[str]
+    examples:    NotRequired[list[str]]
+    image_links: NotRequired[list[str]]
+    audio_links: NotRequired[list[str]]
+    tags:        NotRequired[TagsScheme]
+```
+
+![](https://github.com/Blackdeer1524/Dict2Anki/blob/main/app_demonstration/card_fields_usage.png)
+
+
 Every plugin has to have **config** variable of **LoadableConfig** class 
 ```
 LoadableConfig(config_location: str,
@@ -150,71 +186,88 @@ suppotred_types and valid values can be empty. **In that case, all types/values 
 ## [Parsers](#plugins)
 ### [Word parsers](#parsers) 
 #### [web](#word-parsers)  
-To create a web parser, create a python file inside **./plugins/parsers/word/web/** with the following protocol:
-  * SCHEME_DOCS: str - documentation to the resulting scheme
-  * define(word: str) function that returns [dictionary format](#dictionary-format)
-  * translate(word: str, word_dict: dict) function that converts [dictionary entry](#dictionary-format) to [card format](#card-format)
+To create a web parser, create a python file inside **./src/plugins/parsers/word/web/** with the following protocol:
+  * `config: LoadableConfig`
+    * plugin config
+  * `SCHEME_DOCS: str`
+    * documentation to the resulting scheme
+  * `define(word: str) -> tuple[list[tuple[str, WORD_DEFINITION_T]], str]` 
+    * function that defines given word. Returns [dictionary format](#dictionary-format) accompanied with error message
+  * `translate(word: str, word_data: WORD_DEFINITION_T) -> list[CardFormat]` 
+    * function that converts `one` [dictionary entry](#DictionaryFormat) to a list of [СardFormat](#CardFormat)
 
 #### [Local](#word-parsers)
-Parses local JSON dictionary, that is located in **./media** folder
+Parses local JSON dictionary, that is located in **./src/media** folder
 
-To register a local dictionary, create a python file inside **./plugins/parsers/word/local/** with the following protocol:
-  * DICTIONARY_NAME: str - relative path to the JSON dictionary of [dictionary format](#dictionary-format) that is located inside **./media** folder
-  * SCHEME_DOCS: str - documentation to the resulting scheme
-  * translate(word: str, word_dict: dict) function that converts [dictionary entry](#dictionary-format) to [card format](#card-format)
+To register a local dictionary, create a python file inside **./src/plugins/parsers/word/local/** with the following protocol:
+  * `config: LoadableConfig`
+    * plugin config
+  * `DICTIONARY_NAME: str`
+    * Relative path to the JSON dictionary of list[tuple[str, WORD_DEFINITION_T]] [dictionary format](#dictionary-format). Dictionary is located inside **./src/media** folder
+  * `SCHEME_DOCS: str`
+    * documentation to the translated scheme
+  * `translate(word: str, word_data: WORD_DEFINITION_T) -> list[CardFormat]`
+    * function that converts `one` [dictionary entry](#DictionaryFormat) to a list of [СardFormat](#CardFormat)
 
 ### [Sentence parsers](#parsers)
-To create a sentence parser, create a python file inside **./plugins/parsers/sentence/** with the following protocol:
-  * get(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
-  sentences are needed. This function has to have 2 stages
-    * initialization on first next() call
-    * current step batch size initialization on \<gen>.send(batch_size) that returns sentence batch of \<batch_size>
+To create a sentence parser, create a python file inside **./src/plugins/parsers/sentence/** with the following protocol:
+  * `config: LoadableConfig`
+    * plugin config
+  * `get(word: str) -> SentenceGenerator` 
+    [SentenceGenerator](#SentenceGenerator)
 
 ### [Image parsers](#parsers)
-To create an image parser, create a python file inside **./plugins/parsers/image/** with the following protocol:
-  * get(word: str) -> Generator\[tuple\[list\[str], str], int, tuple\[list\[str], str]] function that takes word for which
-  images are needed. This function has to have 2 stages
-    * initialization on first next() call
-    * current step batch size initialization on <gen>.send(batch_size) that returns image links batch of \<batch_size>
+To create an image parser, create a python file inside **./src/plugins/parsers/image/** with the following protocol:
+  * `config: LoadableConfig`
+    * plugin config
+  * `get(word: str) -> ImageGenerator` 
+    * [ImageGenerator](#ImageGenerator)
  
 ### [Audio getters](#parsers)
 #### [web](#audio-getters)
-To register web audio getter, create a python file inside **./plugins/parsers/audio/web/** with the following protocol:
-  * get(word: str, card_data: dict) -> tuple\[tuple\[list\[str], list\[str]], str] function that takes 
-  word for which audio is needed and current card data for the additional info and returns a list of urls, list of associated to each url information,
-  and error message.
+To register web audio getter, create a python file inside **./src/plugins/parsers/audio/web/** with the following protocol:
+  * `config: LoadableConfig`
+    * plugin config
+  * `get(word: str, card_data: dict) -> AudioGenerator` 
+    * [AudioGenerator](#AudioGenerator)
 
 #### [Local](#audio-getters)
-To register folder with audio files, create a python file inside **./plugins/parsers/audio/local/** with the following protocol:
-  * AUDIO_FOLDER: str - relative path to the folder with audio files that is located inside ./media folder
-  * get(word: str, card_data: dict) -> tuple\[tuple\[list\[str], list\[str]], str] function that takes 
-  word for which audio is needed and current card data for the additional info and returns a list of paths, list of associated to each path information,
-  and error message.
+To register folder with audio files, create a python file inside **./src/plugins/parsers/audio/local/** with the following protocol:
+  * `config: LoadableConfig`
+    * plugin config
+  * `AUDIO_FOLDER: str`
+    * relative path to the folder with audio files that is located inside `./src/media/audio` folder
+  * `get(word: str, card_data: dict) -> AudioGenerator` 
+    * [AudioGenerator](#AudioGenerator) but instead of `audio urls` it returns `paths to local audio`. 
 
 ## [Saving](#plugins)
 ### [Card processors](#saving)
 You may want to create special card processors to other applications from Anki. These apps may have special requirements for card format. For
 Example, to add an audio file to anki, one has to wrap its file name in \[sound:\<filename>].
-To create a card processor, create a python file inside **./plugins/saving/card_processors/** with the following protocol:
-  * get_save_image_name(word: str, image_source: str, image_parser_name: str, card_data: dict) -> str function that returns saving image file name
-  * get_card_image_name(saved_image_path: str) -> str function that returns wrapped saved_image_path (this path is *absolute*)
-  * get_save_audio_name(word: str, audio_provider: str, multiple_postfix: str, card_data: dict) -> str function that returns saving audio file name
-  * get_card_audio_name(saved_audio_path: str) -> str function that returns wrapped saved_audio_path (this path is *absolute*)
-  * process_card(card: dict) -> None function that processes card in-place
+To create a card processor, create a python file inside **./src/plugins/saving/card_processors/** with the following protocol:
+  * `get_save_image_name(word: str, image_source: str, image_parser_name: str, card_data: dict) -> str`
+    * returns saving image file name
+  * `get_card_image_name(saved_image_path: str) -> str`
+    * returns wrapped saved_image_path (this path is *absolute*)
+  * `get_save_audio_name(word: str, audio_provider: str, multiple_postfix: str, card_data: dict) -> str`
+    * returns saving audio file name
+  * `get_card_audio_name(saved_audio_path: str) -> str`
+    * returns wrapped saved_audio_path (this path is *absolute*)
+  * `process_card(card: dict) -> None`
+    * processes card in-place
 
 ### [Format processors](#saving)
 Transforms saved card collection to needed file format
-To create a format processor, create a python file inside **./plugins/saving/format_processors/** with the following protocol:
-  * save(deck: SavedDataDeck,
+To create a format processor, create a python file inside **./src/plugins/saving/format_processors/** with the following protocol:
+  * `save(deck: SavedDataDeck,
          saving_card_status: CardStatus,
          saving_path: str,
-         image_names_wrapper: Callable\[\[str], str],
-         audio_names_wrapper: Callable\[\[str], str]) -> None function that iterates through SavedDataDeck (located in **./app_utils/cards.py**) and 
-    pickes cards with saving_card_status from which the format is formed. image_names_wrapper and audio_names_wrapper are wrappers from current 
-    card processor
+         image_names_wrapper: Callable[[str], str],
+         audio_names_wrapper: Callable[[str], str]) -> None`
+      * iterates through SavedDataDeck (located in **./src/app_utils/cards.py**) and pickes cards with saving_card_status from which the format is formed. image_names_wrapper and audio_names_wrapper are wrappers from current card processor
 
 ## [Themes](#plugins)
-To create a theme, create a python file inside **./plugins/themes/** with the following protocol:
+To create a theme, create a python file inside **./src/plugins/themes/** with the following protocol:
   * label_cfg: dict - Tkinter Label widget config, compatable with Text widget
   * button_cfg: dict - Tkinter Button widget config
   * text_cfg: dict - Tkinter Text widget config
@@ -227,8 +280,8 @@ To create a theme, create a python file inside **./plugins/themes/** with the fo
   * option_submenus_cfg: dict - config used to configure submenus of OptionMenu
 
 ## [Language packages](#plugins)
-To create a language package, create a python file inside **./plugins/language_packages/** with the protocol listed inside 
-  **./plugins_loading/interfaces.LanguagePackageInterface** class
+To create a language package, create a python file inside **./src/plugins/language_packages/** with the protocol listed inside 
+  **./src/plugins_loading/interfaces.LanguagePackageInterface** class
  
 # [Query language documentation](#structure)
 ```

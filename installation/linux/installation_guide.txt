@@ -1,0 +1,22 @@
+* sudo apt install python3.11
+* sudo apt install python3-tk
+* sudo apt install python3-gi
+* pip3 install -r installation/linux/requirements.txt
+
+==================
+[Dev] 
+
+!!Assuming that venv folder is at the project root!!
+Setting up virtual environment:
+   1) open project folder
+   
+   2) cd ./venv/lib/python3.11/
+
+   !!you may also have to find tkitner and gi location yourself!!
+   
+   3) ln -s /usr/lib/python3.11/tkinter tkinter
+   
+   4) cd ../../..
+   
+   5) ln -s /usr/lib/python3/dist-packages/gi gi
+==================

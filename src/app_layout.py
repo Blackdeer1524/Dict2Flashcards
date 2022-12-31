@@ -67,7 +67,7 @@ class App(Tk):
 
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'}
         self.session_start = datetime.now()
-        self.str_session_start = self.session_start.strftime("%d-%m-%Y-%H-%M-%S")
+        self.str_session_start = self.session_start.strftime("%Y|%m|%d %H:%M:%S")
 
         if not self.history.get(self.configurations["directories"]["last_open_file"]):
             self.history[self.configurations["directories"]["last_open_file"]] = 0
@@ -1473,7 +1473,7 @@ class App(Tk):
             },
             "deck": {
                 "tags_hierarchical_pref": ("", [str], []),
-                "saving_format":          ("csv", [str], []),
+                "saving_format":          ("anki_package", [str], []),
                 "card_processor":         ("Anki", [str], [])
             }
         }
@@ -2377,7 +2377,7 @@ class App(Tk):
 
         self.save_files()
         self.session_start = datetime.now()
-        self.str_session_start = self.session_start.strftime("%d-%m-%Y-%H-%M-%S")
+        self.str_session_start = self.session_start.strftime("%Y|%m|%d %H:%M:%S")
         self.configurations["directories"]["last_save_dir"] = new_save_dir
         self.configurations["directories"]["last_open_file"] = new_file_path
         if self.history.get(new_file_path) is None:
@@ -2405,7 +2405,7 @@ class App(Tk):
                 rewrite_flag = True
                 copy_encounter.destroy()
 
-            new_file_name = remove_special_chars(name_entry.get().strip(), sep="_")
+            new_file_name = name_entry.get().strip().replace("/", "|")
             if not new_file_name:
                 messagebox.showerror(title=self.lang_pack.error_title,
                                      message=self.lang_pack.create_file_no_file_name_was_given_message)
@@ -2447,7 +2447,7 @@ class App(Tk):
 
             self.save_files(not rewrite_flag)
             self.session_start = datetime.now()
-            self.str_session_start = self.session_start.strftime("%d-%m-%Y-%H-%M-%S")
+            self.str_session_start = self.session_start.strftime("%Y|%m|%d %H:%M:%S")
             self.configurations["directories"]["last_save_dir"] = new_save_dir
             self.configurations["directories"]["last_open_file"] = new_file_path
             if self.history.get(new_file_path) is None:
@@ -2499,19 +2499,19 @@ class App(Tk):
         saving_path = "{}/{}".format(self.configurations["directories"]["last_save_dir"], deck_name)
         self.deck_saver.save(self.saved_cards_data,
                              CardStatus.ADD,
-                             f"{saving_path}_{self.str_session_start}",
+                             f"{saving_path} {self.str_session_start}",
                              self.card_processor.get_card_image_name,
                              self.card_processor.get_card_audio_name)
 
         self.audio_saver.save(self.saved_cards_data,
                               CardStatus.ADD,
-                              f"{saving_path}_{self.str_session_start}_audios",
+                              f"{saving_path} {self.str_session_start} audios",
                               self.card_processor.get_card_image_name,
                               self.card_processor.get_card_audio_name)
 
         self.buried_saver.save(self.saved_cards_data,
                                CardStatus.BURY,
-                               f"{saving_path}_{self.str_session_start}_buried",
+                               f"{saving_path} {self.str_session_start} buried",
                                self.card_processor.get_card_image_name,
                                self.card_processor.get_card_audio_name)
 

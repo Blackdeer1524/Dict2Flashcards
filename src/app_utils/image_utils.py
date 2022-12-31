@@ -20,7 +20,8 @@ from .widgets import ScrolledFrame
 
 if SYSTEM == "Linux":
     import gi
-    gi.require_version('Gtk', '4.0')
+    gi.require_version('Gtk', '3.0')
+    gi.require_version('Gdk', '3.0')
     from gi.repository import Gdk, Gtk
 else:
     from PIL import ImageGrab

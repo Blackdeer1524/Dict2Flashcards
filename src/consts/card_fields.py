@@ -1,4 +1,4 @@
-from enum import StrEnum
+from .. import StrEnum
 from typing import TypedDict, NotRequired, Union
 
 

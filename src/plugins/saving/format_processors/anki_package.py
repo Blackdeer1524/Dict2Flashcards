@@ -1,10 +1,9 @@
 import os
 from typing import Callable
+
 import genanki
 
-from .. import app_utils
-from .. import consts
-
+from .. import app_utils, consts
 
 RESULTING_MODEL = genanki.Model(
   1869993568,  # just a random number
@@ -23,7 +22,9 @@ RESULTING_MODEL = genanki.Model(
       'afmt': """\
 {{FrontSide}}
 <hr id="answer">
-{{Word}}<br>
+<div class="accent">
+    {{Word}}
+</div><br>
 {{Definition}}<br>
 {{Image}}<br>
 {{Word Audio}}<br>

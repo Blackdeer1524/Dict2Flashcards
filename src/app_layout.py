@@ -910,7 +910,7 @@ class App(Tk):
                         values=[f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
                                [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
                         command=lambda parser_name: self.change_sentence_parser(parser_name))
-                    self.sentence_parsers_option_menu.grid(row=7, column=3, columnspan=4, sticky="news",
+                    self.sentence_parsers_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
                                                           pady=(self.text_pady, 0))
 
                 elif chosen_parser_type == "image_parsers":
@@ -937,7 +937,7 @@ class App(Tk):
                                [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
                                [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
                         command=lambda parser_name: self.change_audio_getter(parser_name))
-                    self.audio_getter_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
+                    self.audio_getter_option_menu.grid(row=6, column=3, columnspan=4, sticky="news",
                                                        padx=0, pady=0)
                 else:
                     raise NotImplementedError(f"Unknown chosen parser type: {chosen_parser_type}")
@@ -1848,7 +1848,7 @@ class App(Tk):
                 values=[f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
                        [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
                 command=lambda parser_name: self.change_sentence_parser(parser_name))
-            self.sentence_parsers_option_menu.grid(row=9, column=3, columnspan=4, sticky="news",
+            self.sentence_parsers_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
                                                   pady=(self.text_pady, 0))
 
         typed_sentence_parser_name = f"[{self.configurations['scrappers']['sentence']['type']}] {self.external_sentence_fetcher.data_generator.name}"

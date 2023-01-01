@@ -67,7 +67,11 @@ class App(Tk):
 
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'}
         self.session_start = datetime.now()
-        self.str_session_start = self.session_start.strftime("%Y|%m|%d %H:%M:%S")
+
+        if SYSTEM == "Windows":
+            self.str_session_start = self.session_start.strftime("%Y-%m-%d %H-%M-%S")
+        else:
+            self.str_session_start = self.session_start.strftime("%Y-%m-%d %H:%M:%S")
 
         if not self.history.get(self.configurations["directories"]["last_open_file"]):
             self.history[self.configurations["directories"]["last_open_file"]] = 0
@@ -2377,7 +2381,10 @@ class App(Tk):
 
         self.save_files()
         self.session_start = datetime.now()
-        self.str_session_start = self.session_start.strftime("%Y|%m|%d %H:%M:%S")
+        if SYSTEM == "Windows":
+            self.str_session_start = self.session_start.strftime("%Y-%m-%d %H-%M-%S")
+        else:
+            self.str_session_start = self.session_start.strftime("%Y-%m-%d %H:%M:%S")
         self.configurations["directories"]["last_save_dir"] = new_save_dir
         self.configurations["directories"]["last_open_file"] = new_file_path
         if self.history.get(new_file_path) is None:
@@ -2404,8 +2411,12 @@ class App(Tk):
                 nonlocal rewrite_flag
                 rewrite_flag = True
                 copy_encounter.destroy()
-
-            new_file_name = name_entry.get().strip().replace("/", "|")
+            
+            new_file_name = name_entry.get()
+            if SYSTEM == "Windows":
+                new_file_name = remove_special_chars(new_file_name.strip(), sep="_", special_chars="<>:\"/\\|?*").strip("_")
+            else:
+                new_file_name = remove_special_chars(new_file_name.strip(), sep="|", special_chars="/").strip("|")
             if not new_file_name:
                 messagebox.showerror(title=self.lang_pack.error_title,
                                      message=self.lang_pack.create_file_no_file_name_was_given_message)
@@ -2447,7 +2458,10 @@ class App(Tk):
 
             self.save_files(not rewrite_flag)
             self.session_start = datetime.now()
-            self.str_session_start = self.session_start.strftime("%Y|%m|%d %H:%M:%S")
+            if SYSTEM == "Windows":
+                self.str_session_start = self.session_start.strftime("%Y-%m-%d %H-%M-%S")
+            else:
+                self.str_session_start = self.session_start.strftime("%Y-%m-%d %H:%M:%S")
             self.configurations["directories"]["last_save_dir"] = new_save_dir
             self.configurations["directories"]["last_open_file"] = new_file_path
             if self.history.get(new_file_path) is None:
@@ -3320,7 +3334,8 @@ class App(Tk):
             self.sentence_search_entry.fill_placeholder()
 
         self.external_sentence_fetcher.force_update(word_data, self.dict_card_data)
-        dict_sentences = self.dict_card_data.get(CardFields.sentences, [""])
+        dict_sentences = self.dict_card_data.get(CardFields.sentences, [])
+        dict_sentences.append("")
         for sentence in dict_sentences:
             self.add_sentence_field(
                 source="",

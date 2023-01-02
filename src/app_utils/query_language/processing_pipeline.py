@@ -475,8 +475,8 @@ def keyword_factory(keyword_name: str) -> Callable[[Any], int]:
 
             if isinstance(collection, str):
                 return re.search(search_pattern, collection) is not None
-
-            for i in collection:
+            
+            for i in copy.deepcopy(collection):
                 if not isinstance(i, str):
                     raise ArgumentTypeError(f"Wrong collection item type: {type(i)}. String type wes expected")
 
@@ -569,6 +569,9 @@ class FieldDataGetter(Computable):
         seen = False
 
         def traverse_recursively(entry: Mapping | Any, chain_index: int = 0) -> None:
+            if entry is None:
+                return
+
             nonlocal result, seen
             if chain_index == len(self.query_chain):
                 end = list(entry.keys()) if isinstance(entry, Mapping) else entry
@@ -592,14 +595,19 @@ class FieldDataGetter(Computable):
                 elif current_key.lstrip("-").isdecimal():
                     current_key = float(current_key)
 
+            if current_key == FieldDataGetter.ANY_FIELD:
+                if result is None:
+                    result = []
+                if isinstance(entry, Mapping):
+                    for value in entry.values():
+                        traverse_recursively(value, chain_index + 1)
+                elif isinstance(entry, Iterable):
+                    for item in entry:
+                        traverse_recursively(item, chain_index + 1)
+                return
+
             if not isinstance(entry, Mapping):
                 return None
-
-            if current_key == FieldDataGetter.ANY_FIELD:
-                for key in entry:
-                    if (val := entry.get(key)) is not None:
-                        traverse_recursively(val, chain_index + 1)
-                return
 
             elif current_key == FieldDataGetter.SELF_FIELD:
                 return traverse_recursively(entry, chain_index + 1)

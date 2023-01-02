@@ -974,7 +974,7 @@ class App(Tk):
                     existing_chains_treeview.delete(selected_item_index)
                     remove_option(str(chain_name))
 
-                m = Menu(root, tearoff=0)
+                m = Menu(self, tearoff=0)
                 m.add_command(label=self.lang_pack.chain_management_pop_up_menu_edit_label,
                               command=edit_selected_chain)
                 m.add_command(label=self.lang_pack.chain_management_pop_up_menu_remove_label,

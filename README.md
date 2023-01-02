@@ -197,13 +197,13 @@ To create a web parser, create a python file inside **./src/plugins/parsers/word
     * function that converts `one` [dictionary entry](#DictionaryFormat) to a list of [СardFormat](#CardFormat)
 
 #### [Local](#word-parsers)
-Parses local JSON dictionary, that is located in **./src/media** folder
+Parses local JSON dictionary, that is located in **./media** folder
 
 To register a local dictionary, create a python file inside **./src/plugins/parsers/word/local/** with the following protocol:
   * `config: LoadableConfig`
     * plugin config
   * `DICTIONARY_NAME: str`
-    * Relative path to the JSON dictionary of list[tuple[str, WORD_DEFINITION_T]] [dictionary format](#dictionary-format). Dictionary is located inside **./src/media** folder
+    * Relative path to the JSON dictionary of list[tuple[str, WORD_DEFINITION_T]] [dictionary format](#dictionary-format). Dictionary is located inside **./media** folder
   * `SCHEME_DOCS: str`
     * documentation to the translated scheme
   * `translate(word: str, word_data: WORD_DEFINITION_T) -> list[CardFormat]`
@@ -236,7 +236,7 @@ To register folder with audio files, create a python file inside **./src/plugins
   * `config: LoadableConfig`
     * plugin config
   * `AUDIO_FOLDER: str`
-    * relative path to the folder with audio files that is located inside `./src/media/audio` folder
+    * relative path to the folder with audio files that is located inside `./media/audio` folder
   * `get(word: str, card_data: dict) -> AudioGenerator` 
     * [AudioGenerator](#AudioGenerator) but instead of `audio urls` it returns `paths to local audio`. 
 

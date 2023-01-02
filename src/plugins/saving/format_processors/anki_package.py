@@ -24,7 +24,7 @@ RESULTING_MODEL = genanki.Model(
 <hr id="answer">
 <div class="accent">
     {{Word}}
-</div><br>
+</div>
 {{Definition}}<br>
 {{Image}}<br>
 {{Word Audio}}<br>

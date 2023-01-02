@@ -70,12 +70,14 @@ def translate(word: str, word_data: list[POSData]) -> list[consts.CardFormat]:
                 "image_links": [image] if image else [],
                 "tags": {
                     "domain": domain,
-                    "level": level,
                     "region": region,
                     "usage": usage,
                     "pos": pos
                 }
             }
+            if level:
+                current_word_dict["tags"]["level"] = level
+
             word_list.append(current_word_dict)
     return word_list
 

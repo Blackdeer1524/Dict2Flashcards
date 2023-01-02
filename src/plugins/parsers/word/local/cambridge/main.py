@@ -101,11 +101,13 @@ def translate(word: str, word_data: list[POSData]) -> list[consts.CardFormat]:
                 "audio_links": region_audio_links,
                 "tags": {
                     "domain": domain,
-                    "level": level,
                     "region": region,
-                    "usage": usage,
-                    "pos": pos
+                    "usage":  usage,
+                    "pos":    pos
                     },
                 }
+            if level:
+                current_word_dict["tags"]["level"] = level
+
             word_list.append(current_word_dict)
     return word_list

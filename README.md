@@ -1,4 +1,4 @@
-# Dict2Anki
+# Dict2Flashcards
 Sentence-mining app written in Python using Tkinter.
 
 # Structure

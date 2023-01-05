@@ -1490,7 +1490,7 @@ class App(Tk):
         if not conf_file["directories"]["media_dir"] or not os.path.isdir(conf_file["directories"]["media_dir"]):
             conf_file["directories"]["media_dir"] = askdirectory(title=lang_pack.choose_media_dir_message,
                                                                  mustexist=True,
-                                                                 initialdir=MEDIA_DOWNLOADING_LOCATION)
+                                                                 initialdir=MEDIA_DOWNLOADED_LOCATION)
             if not conf_file["directories"]["media_dir"]:
                 return (conf_file, lang_pack, True)
 
@@ -2591,7 +2591,7 @@ class App(Tk):
     def change_media_dir(self):
         media_dir = askdirectory(title=self.lang_pack.choose_media_dir_message,
                                  mustexist=True,
-                                 initialdir=MEDIA_DOWNLOADING_LOCATION)
+                                 initialdir=MEDIA_DOWNLOADED_LOCATION)
         if media_dir:
             self.configurations["directories"]["media_dir"] = media_dir
 

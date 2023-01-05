@@ -12,7 +12,7 @@ hotkeys_and_buttons_help_menu_label = "Buttons/Hotkeys"
 query_settings_language_label_text = "Query language"
 help_master_menu_label = "Help"
 download_audio_menu_label = "Download audio"
-change_media_folder_menu_label = "Change downloading media directory"
+change_media_folder_menu_label = "Change downloaded media storage"
 file_master_menu_label = "File"
 
 add_card_menu_label = "Add"
@@ -76,7 +76,7 @@ user_tags_field_placeholder = "Tags"
 display_audio_getter_results_audio_not_found_message = "Audio not found"
 
 # choose files
-choose_media_dir_message = "Choose downloading media directory"
+choose_media_dir_message = "Choose downloaded media storage"
 choose_deck_file_message = "Choose deck"
 choose_save_dir_message = "Choose saving directory"
 
@@ -408,7 +408,7 @@ statistics_dialog_skipped_label = "Skipped"
 statistics_dialog_cards_left_label = "Left"
 statistics_dialog_current_file_label = "File"
 statistics_dialog_saving_dir_label = "Saving directory"
-statistics_dialog_media_dir_label = "Downloading media directory"
+statistics_dialog_media_dir_label = "downloaded media storage"
 
 # anki dialog
 anki_dialog_anki_window_title = "Anki settings"

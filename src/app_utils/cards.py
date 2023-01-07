@@ -2,7 +2,7 @@ import json
 import os
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Callable, Protocol, Union, runtime_checkable
+from typing import Any, Callable, Protocol, Union, runtime_checkable, NoReturn, Generator, Optional
 
 from ..consts.card_fields import CardFields
 from ..plugins_management.config_management import LoadableConfig
@@ -144,31 +144,38 @@ class WebCardGenerator(CardGenerator):
 
 
 class Deck(PointerList):
-    __slots__ = "deck_path", "_card_generator", "_cards_left"
+    __slots__ = "deck_path", "_card_generator", "_cards_left", \
+                "card_addition_limit", "card2deck_gen"
 
     def __init__(self, deck_path: str,
                  current_deck_pointer: int,
                  card_generator: CardGeneratorProtocol):
-        self.deck_path = deck_path
-        if os.path.isfile(self.deck_path):
-            with open(self.deck_path, "r", encoding="UTF-8") as f:
-                deck: list[dict[str, str | dict]] = json.load(f)
-            super(Deck, self).__init__(data=deck,
-                                       starting_position=min(current_deck_pointer, len(deck) - 1),
-                                       default_return_value=Card())
-        else:
+        if not os.path.isfile(deck_path):
             raise Exception("Invalid _deck path!")
 
+        self.deck_path = deck_path
+
         self._card_generator: CardGeneratorProtocol = card_generator
+        self.card2deck_gen = self._launch_card_to_deck_generator()
+        next(self.card2deck_gen)
+
+        with open(self.deck_path, "r", encoding="UTF-8") as f:
+            deck: list[dict[str, str | dict]] = json.load(f)
+        super(Deck, self).__init__(data=deck,
+                                    starting_position=min(current_deck_pointer, len(deck) - 1),
+                                    default_return_value=Card())
+
         for i in range(len(self)):
             self._data[i] = Card(self._data[i])
-
         self._cards_left = max(0, len(self) - self._pointer_position)
 
+        
     def update_card_generator(self, cd: CardGeneratorProtocol):
         if not isinstance(cd, CardGeneratorProtocol):
-            raise TypeError(f"{cd} is not of CardGenerator Protocol")
+            raise TypeError(f"{cd} does not implement CardGenerator Protocol")
         self._card_generator = cd
+        self.card2deck_gen = self._launch_card_to_deck_generator()
+        next(self.card2deck_gen)
 
     def get_n_cards_left(self) -> int:
         return self._cards_left
@@ -186,15 +193,27 @@ class Deck(PointerList):
                 last_found = current_index
         return PointerList(data=move_list)
 
-    def add_card_to_deck(self, query: str, **kwargs) -> tuple[int, str]:
-        res, error_message = self._card_generator.get(query, **kwargs)
+    def _launch_card_to_deck_generator(self) -> \
+        Generator[int | str, 
+                  bool | tuple[str, 
+                               Callable[[Card], bool], 
+                               Optional[Callable[[Card], bool]]], 
+                  NoReturn]:
+        error_message = ""
+        while True:
+            get_params = yield error_message
+            res, error_message = self._card_generator.get(*get_params)  # type: ignore
 
-        self._data = self[:self._pointer_position] + res + self[self._pointer_position:]
-        if res:
-            self._pointer_position = self._pointer_position - 1
+            cont_flag = yield len(res)
+            if not (cont_flag):
+                continue
 
-        self._cards_left += len(res)
-        return len(res), error_message
+            self._data = self[:self._pointer_position] + res + self[self._pointer_position:]
+            if res:
+                self._pointer_position = self._pointer_position - 1
+                self._cards_left += len(res)    
+
+            yield error_message
 
     def append(self, card: Card):
         self._data = self[:self._pointer_position] + [card] + self[self._pointer_position:]

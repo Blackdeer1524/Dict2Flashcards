@@ -2615,25 +2615,29 @@ class App(Tk):
 
         try:
             additional_filter = get_card_filter(additional_query) if additional_query else None
-            n_definitions_added_to_deck, error_message = self.deck.add_card_to_deck(query=word_query,
-                                                                                    word_filter=exact_word_filter,
-                                                                                    additional_filter=additional_filter)
-            message_already_shown = False
-            if error_message:
-                messagebox.showerror(title=self.typed_word_parser_name,
-                                     message=error_message)
-                message_already_shown = True
-            if n_definitions_added_to_deck:
-                card_insertion_limit_exceed = n_definitions_added_to_deck >= 2000
-                if not card_insertion_limit_exceed or card_insertion_limit_exceed and messagebox.askokcancel(
+
+            n_definitions_pending = self.deck.card2deck_gen.send((word_query, exact_word_filter, additional_filter))
+
+            card_insertion_limit_exceeded = n_definitions_pending >= 2000
+            if not card_insertion_limit_exceeded or \
+                    card_insertion_limit_exceeded and messagebox.askokcancel(
                         title=self.lang_pack.card_insertion_limit_exceed_title,
-                        message=self.lang_pack.card_insertion_limit_exceed_message.format(n_definitions_added_to_deck)):
-                    self.refresh()
-                    return False
-            elif not message_already_shown:
-                messagebox.showerror(
-                    title=self.typed_word_parser_name,
-                    message=self.lang_pack.define_word_word_not_found_message)
+                        message=self.lang_pack.card_insertion_limit_exceed_message.format(n_definitions_pending)):
+                
+                if error_message := self.deck.card2deck_gen.send(True):
+                    self.show_window(title=self.lang_pack.error_title,
+                                     text=str(error_message))
+
+                next(self.deck.card2deck_gen)
+                if not n_definitions_pending:
+                    messagebox.showerror(title=self.lang_pack.error_title,
+                                         message=self.lang_pack.define_word_word_not_found_message)
+                    return True
+
+                self.refresh()
+                return False
+
+            self.deck.card2deck_gen.send(False)
         except QueryLangException as e:
             self.show_window(title=self.lang_pack.error_title,
                              text=str(e))

@@ -68,6 +68,7 @@ def save(deck: app_utils.cards.SavedDataDeck,
         images = ""
         audios = ""
         hierarchical_prefix = ""
+        tags = []
         if (additional := card_page.get(app_utils.cards.SavedDataDeck.ADDITIONAL_DATA)):
             image_paths = additional.get(app_utils.cards.SavedDataDeck.SAVED_IMAGES_PATHS, [])
             images = " ".join([image_names_wrapper(name) for name in image_paths])
@@ -77,6 +78,11 @@ def save(deck: app_utils.cards.SavedDataDeck,
                 audios = " ".join([audio_names_wrapper(name) for name in audio_paths])
 
             hierarchical_prefix = additional.get(app_utils.cards.SavedDataDeck.HIERARCHICAL_PREFIX, "")
+            
+            user_tags = additional.get(app_utils.cards.SavedDataDeck.USER_TAGS, "").split()
+            if hierarchical_prefix:
+                user_tags = [f"{hierarchical_prefix}::{tag}" for tag in user_tags]
+            tags.extend(user_tags)
 
         sentence_example = card_data.get(consts.CardFields.sentences, [""])[0]
         saving_word = card_data.get(consts.CardFields.word, "")
@@ -86,10 +92,7 @@ def save(deck: app_utils.cards.SavedDataDeck,
                                                 sep="::",
                                                 tag_processor=lambda tag: app_utils.string_utils.remove_special_chars(tag, sep="_")).split()
 
-        user_tags = card_data.get(app_utils.cards.SavedDataDeck.USER_TAGS, "").split()
-        if hierarchical_prefix:
-            user_tags = [f"{hierarchical_prefix}::{tag}" for tag in user_tags]
-        tags = dict_tags + user_tags
+        tags.extend(dict_tags)
 
         note = genanki.Note(
             model=RESULTING_MODEL,

@@ -202,7 +202,11 @@ class Deck(PointerList):
         error_message = ""
         while True:
             get_params = yield error_message
-            res, error_message = self._card_generator.get(*get_params)  # type: ignore
+            try:
+                res, error_message = self._card_generator.get(*get_params)  # type: ignore
+            except Exception as e:
+                res = []
+                error_message = str(e)
 
             cont_flag = yield len(res)
             if not (cont_flag):

@@ -2603,20 +2603,9 @@ class App(Tk):
     @error_handler(show_exception_logs)
     def define_word(self, word_query: str, additional_query: str) -> bool:
         try:
-            exact_pattern = re.compile(r"\b{}\b".format(word_query.strip()), re.IGNORECASE)
-        except re.error:
-            messagebox.showerror(title=self.lang_pack.error_title,
-                                 message=self.lang_pack.define_word_wrong_regex_message)
-            return True
-
-        def exact_word_filter(comparable):
-            nonlocal exact_pattern
-            return re.search(exact_pattern, comparable)
-
-        try:
             additional_filter = get_card_filter(additional_query) if additional_query else None
 
-            n_definitions_pending = self.deck.card2deck_gen.send((word_query, exact_word_filter, additional_filter))
+            n_definitions_pending = self.deck.card2deck_gen.send((word_query, additional_filter))
 
             card_insertion_limit_exceeded = n_definitions_pending >= 2000
             if not card_insertion_limit_exceeded or \

@@ -269,16 +269,21 @@ def get_alt_terms(word_header_block: Optional[bs4.Tag]) -> ALT_TERMS_T:
     return alt_terms
 
 
+ERROR_T = str
+
 def define(word: str, 
            dictionary_index: DictionaryVariation=DictionaryVariation.English, 
            request_headers: Optional[dict]=None, 
-           timeout:float=5.0) -> RESULT_FORMAT:
+           timeout:float=5.0) -> tuple[RESULT_FORMAT, ERROR_T]:
     if request_headers is None:
         request_headers = DEFAULT_REQUESTS_HEADERS
 
     link = f"{LINK_PREFIX}/dictionary/english/{word}"
     # will raise error if request_headers are None
-    page = requests.get(link, headers=request_headers, timeout=timeout)
+    try:
+        page = requests.get(link, headers=request_headers, timeout=timeout)
+    except requests.Timeout:
+        return {}, "Request timeout"
 
     word_info: RESULT_FORMAT = {}
 
@@ -287,7 +292,7 @@ def define(word: str,
     # word block which contains definitions for every POS_T.
     primal_block = soup.find_all("div", {'class': 'pr di superentry'})
     if len(primal_block) <= dictionary_index:
-        return {}
+        return {}, ""
 
     main_block = primal_block[dictionary_index].find_all("div", {"class": "pr entry-body__el"})
     main_block.extend(primal_block[dictionary_index].find_all("div", {"class": "pv-block"}))
@@ -397,7 +402,7 @@ def define(word: str,
                              us_ipa=us_ipa,
                              uk_audio_links=uk_audio_links,
                              us_audio_links=us_audio_links)
-    return word_info
+    return word_info, ""
 
 
 if __name__ == "__main__":

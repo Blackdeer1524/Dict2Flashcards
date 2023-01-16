@@ -131,9 +131,6 @@ To view every plugin interface, see **./src/plugins_loading/interfaces.py**
 All types are located in **./src/plugin_management/parsers_return_types.py**.
 They are already available for plugins to use. 
 
-### [DictionaryFormat](#plugins-return-types)
- * `list[tuple[str, WORD_DEFINITION_T]]`
- * list of tuples of `words` and their `definitions`  
 #### [WORD_DEFINITION_T](#DictionaryFormat)
  * Generic type
 ---
@@ -196,10 +193,8 @@ To create a web parser, create a python file inside **./src/plugins/parsers/word
     * plugin config
   * `SCHEME_DOCS: str`
     * documentation to the resulting scheme
-  * `define(word: str) -> tuple[list[tuple[str, WORD_DEFINITION_T]], str]` 
-    * function that defines given word. Returns [dictionary format](#dictionary-format) accompanied with error message
-  * `translate(word: str, word_data: WORD_DEFINITION_T) -> list[CardFormat]` 
-    * function that converts `one` [dictionary entry](#DictionaryFormat) to a list of [СardFormat](#CardFormat)
+  * `define(query: str) -> tuple[list[CardFormat], str]` 
+    * function that defines given word. Returns list of [CardFormat](#cardformat) accompanied with error message
 
 #### [Local](#word-parsers)
 Parses local JSON dictionary, that is located in **./media** folder
@@ -208,11 +203,11 @@ To register a local dictionary, create a python file inside **./src/plugins/pars
   * `config: LoadableConfig`
     * plugin config
   * `DICTIONARY_NAME: str`
-    * Relative path to the JSON dictionary of list[tuple[str, WORD_DEFINITION_T]] [dictionary format](#dictionary-format). Dictionary is located inside **./media** folder
+    * Relative path to the JSON dictionary of any format. Dictionary is located inside **./media** folder
   * `SCHEME_DOCS: str`
     * documentation to the translated scheme
-  * `translate(word: str, word_data: WORD_DEFINITION_T) -> list[CardFormat]`
-    * function that converts `one` [dictionary entry](#DictionaryFormat) to a list of [СardFormat](#CardFormat)
+  * `define(query: str, dictionary: DICTIONARY_T) -> tuple[list[CardFormat], str]`
+    * function that returns list of [CardFormat](#cardformat) accompanied with error message in response to a given query
 
 ### [Sentence parsers](#parsers)
 To create a sentence parser, create a python file inside **./src/plugins/parsers/sentence/** with the following protocol:

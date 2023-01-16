@@ -12,7 +12,8 @@ from ..app_utils.cards import (Card, CardGenerator, LocalCardGenerator,
                                WebCardGenerator)
 from ..consts.parser_types import ParserTypes
 from ..consts.paths import *
-# from plugins_loading.factory import self
+from ..consts import CardFormat
+
 from ..plugins_management.config_management import LoadableConfig
 from ..plugins_management.parsers_return_types import (AudioData,
                                                        AudioGenerator,
@@ -22,17 +23,8 @@ from .containers import (CardProcessorContainer, DeckSavingFormatContainer,
                          ImageParserContainer, LanguagePackageContainer,
                          LocalAudioGetterContainer, LocalWordParserContainer,
                          ThemeContainer, WebAudioGetterContainer,
-                         WebSentenceParserContainer, webWordParserContainer)
+                         WebSentenceParserContainer, WebWordParserContainer)
 from .exceptions import LoaderError, UnknownPluginName
-
-# from ..plugins import language_packages, themes
-# from ..plugins.parsers import image as image_parsers
-# from ..plugins.parsers import sentence as sentence_parsers
-# from ..plugins.parsers.audio import local as local_audio_parsers
-# from ..plugins.parsers.audio import web as web_audio_parsers
-# from ..plugins.parsers.word import web as web_word_parsers
-# from ..plugins.parsers.word import local as local_word_parsers
-# from ..plugins.saving import card_processors, format_processors
 
 
 
@@ -172,7 +164,7 @@ class PluginFactory:
 
     language_packages:   PluginLoader[LanguagePackageContainer]
     themes:              PluginLoader[ThemeContainer]
-    web_word_parsers:    PluginLoader[webWordParserContainer]
+    web_word_parsers:    PluginLoader[WebWordParserContainer]
     local_word_parsers:  PluginLoader[LocalWordParserContainer]
     web_sent_parsers:    PluginLoader[WebSentenceParserContainer]
     web_image_parsers:   PluginLoader[ImageParserContainer]
@@ -197,7 +189,7 @@ class PluginFactory:
         object.__setattr__(self, "web_word_parsers",    PluginLoader(plugin_type="web word parser",
                                                                      module=plugins.parsers.word.web,
                                                                      configurable=True,
-                                                                     container_type=webWordParserContainer))
+                                                                     container_type=WebWordParserContainer))
         object.__setattr__(self, "local_word_parsers",  PluginLoader(plugin_type="local word parser",
                                                                      module=plugins.parsers.word.local,
                                                                      configurable=True,
@@ -265,13 +257,12 @@ class PluginFactory:
 
         def get(chain_self,
                 query: str,
-                word_filter: Callable[[str], bool],
-                additional_filter: Callable[[Card], bool] = None) -> tuple[list[Card], str]:
+                additional_filter: Callable[[CardFormat], bool] | None = None) -> tuple[list[Card], str]:
             current_result = []
             errors = []
             for enum_name, generator in chain_self.enum_name2generator.items():
                 chain_self.config.update_config(enum_name)
-                cards, error_message = generator.get(query, word_filter, additional_filter)
+                cards, error_message = generator.get(query, additional_filter)
                 if chain_self.config["error_verbosity"] == "silent":
                     error_message = ""
 
@@ -508,8 +499,7 @@ class PluginFactory:
             if (web_parser := self.web_word_parsers.get(name)) is None:
                 raise UnknownPluginName(f"Unknown web word parser: {name}")
             return WebCardGenerator(name=web_parser.name,
-                                    parsing_function=web_parser.define,
-                                    item_converter=web_parser.translate,
+                                    word_definition_function=web_parser.define,
                                     config=web_parser.config,
                                     scheme_docs=web_parser.scheme_docs)
         elif gen_type == ParserTypes.local:
@@ -518,7 +508,7 @@ class PluginFactory:
             return LocalCardGenerator(name=local_parser.name,
                                     local_dict_path=os.path.join(LOCAL_DICTIONARIES_DIR,
                                                                 f"{local_parser.local_dict_name}.json"),
-                                    item_converter=local_parser.translate,
+                                    word_definition_function=local_parser.define,
                                     config=local_parser.config,
                                     scheme_docs=local_parser.scheme_docs)
         elif gen_type == ParserTypes.chain:

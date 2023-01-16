@@ -222,25 +222,20 @@ class ThemeInterface(Protocol):
     option_submenus_cfg: dict
 
 
-WORD_T = str
 ERROR_MESSAGE_T = str
-WORD_DEFINITION_T = TypeVar('WORD_DEFINITION_T')
 
 @runtime_checkable
-class WebWordParserInterface(Protocol, Generic[WORD_DEFINITION_T]):
+class WebWordParserInterface(Protocol):
     SCHEME_DOCS: str
     config: LoadableConfig
 
     @staticmethod
-    def define(word: str) -> tuple[list[tuple[WORD_T, WORD_DEFINITION_T]], ERROR_MESSAGE_T]:
-        ...
-
-    @staticmethod
-    def translate(word: str, word_data: WORD_DEFINITION_T) -> list[CardFormat]:
+    def define(query: str) -> tuple[list[CardFormat], ERROR_MESSAGE_T]:
         ...
 
 
-WORD_DEFINITION_Q = TypeVar('WORD_DEFINITION_Q')
+WORD_T = str
+DICTIONARY_T = TypeVar("DICTIONARY_T")
 
 @runtime_checkable
 class LocalWordParserInterface(Protocol):
@@ -249,7 +244,7 @@ class LocalWordParserInterface(Protocol):
     DICTIONARY_NAME: str
 
     @staticmethod
-    def translate(word: str, word_data: WORD_DEFINITION_Q) -> list[CardFormat]:
+    def define(query: str, dictionary: DICTIONARY_T) -> tuple[list[CardFormat], ERROR_MESSAGE_T]:
         ...
 
 
@@ -260,6 +255,7 @@ class WebSentenceParserInterface(Protocol):
     @staticmethod
     def get(word: str, card_data: dict) -> SentenceGenerator:
         ...
+
 
 @runtime_checkable
 class ImageParserInterface(Protocol):

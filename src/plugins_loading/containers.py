@@ -3,10 +3,10 @@ from dataclasses import dataclass
 from typing import Callable
 
 from ..app_utils.cards import CardStatus, SavedDataDeck
+from ..consts import CardFormat
 from ..consts.paths import LOCAL_AUDIO_DIR, LOCAL_DICTIONARIES_DIR
 from ..plugins_management.config_management import LoadableConfig
 from ..plugins_management.parsers_return_types import (AudioGenerator,
-                                                       DictionaryFormat,
                                                        ImageGenerator,
                                                        SentenceGenerator)
 from .exceptions import LoaderError, WrongPluginProtocol
@@ -25,22 +25,23 @@ class _PluginContainer:
         object.__setattr__(self, "name", name)
 
 
+ERROR_MESSAGE_T = str
+
+
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class webWordParserContainer(_PluginContainer):
+class WebWordParserContainer(_PluginContainer):
     scheme_docs: str
     config: LoadableConfig
-    define: Callable[[str], tuple[DictionaryFormat, str]]
-    translate: Callable[[str, dict], list[dict]]
+    define: Callable[[str], tuple[list[CardFormat], ERROR_MESSAGE_T]]
 
     def __init__(self, name: str, source_module: WebWordParserInterface):
         if not isinstance(source_module, WebWordParserInterface):
             raise WrongPluginProtocol(f"{source_module} should have WebWordParserInterface protocol!")
 
-        super(webWordParserContainer, self).__init__(name)
+        super(WebWordParserContainer, self).__init__(name)
         object.__setattr__(self, "scheme_docs", source_module.SCHEME_DOCS)
         object.__setattr__(self, "config", source_module.config)
         object.__setattr__(self, "define", source_module.define)
-        object.__setattr__(self, "translate", source_module.translate)
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
@@ -48,8 +49,8 @@ class LocalWordParserContainer(_PluginContainer):
     scheme_docs: str
     config: LoadableConfig
     local_dict_name: str
-    translate: Callable[[str, dict], list[dict]]
-
+    define: Callable[[str], tuple[list[CardFormat], ERROR_MESSAGE_T]]
+    
     def __init__(self, name: str, source_module: LocalWordParserInterface):
         if not isinstance(source_module, LocalWordParserInterface):
             raise WrongPluginProtocol(f"{source_module} should have LocalWordParserInterface protocol!")
@@ -61,7 +62,7 @@ class LocalWordParserContainer(_PluginContainer):
         object.__setattr__(self, "local_dict_name", source_module.DICTIONARY_NAME)
         object.__setattr__(self, "scheme_docs", source_module.SCHEME_DOCS)
         object.__setattr__(self, "config", source_module.config)
-        object.__setattr__(self, "translate", source_module.translate)
+        object.__setattr__(self, "define", source_module.define)
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)

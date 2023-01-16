@@ -1,10 +1,8 @@
 import os
 
-from .. import app_utils  # .preprocessing import remove_empty_keys
 from .. import config_management  # import LoadableConfig
 from .. import consts  # .card_fields import CardFields
-from .. import parsers_return_types  # import DictionaryFormat
-from .utils import POSData
+from .utils import RESULT_FORMAT
 from .utils import define as _define
 
 SCHEME_DOCS = """
@@ -40,47 +38,49 @@ config = config_management.LoadableConfig(
     docs=_CONFIG_DOCS)
 
 
-def translate(word: str, word_data: list[POSData]) -> list[consts.CardFormat]:
+def translate(definitons_data: RESULT_FORMAT) -> list[consts.CardFormat]:
     audio_region_field = f"{config['audio_region'].upper()}_audio_links"
     word_list = []
 
-    for pos_data in word_data:
-        pos = pos_data["POS"]
-        pos_fields = pos_data["data"]
+    for word, pos_lists in definitons_data.items():
+        for pos_data in pos_lists: 
+            pos = pos_data["POS"]
+            pos_fields = pos_data["data"]
 
-        for definition, examples, domain, level, \
-            region, usage, image, alt_terms, irreg_forms, region_audio_links \
-                in zip(pos_fields["definitions"],
-                       pos_fields["examples"],
-                       pos_fields["domains"],
-                       pos_fields["levels"],
-                       pos_fields["regions"],
-                       pos_fields["usages"],
-                       pos_fields["image_links"],
-                       pos_fields["alt_terms"],
-                       pos_fields["irregular_forms"],
-                       pos_fields[audio_region_field]):  # type: ignore
+            for definition, examples, domain, level, \
+                region, usage, image, alt_terms, irreg_forms, region_audio_links \
+                    in zip(pos_fields["definitions"],
+                        pos_fields["examples"],
+                        pos_fields["domains"],
+                        pos_fields["levels"],
+                        pos_fields["regions"],
+                        pos_fields["usages"],
+                        pos_fields["image_links"],
+                        pos_fields["alt_terms"],
+                        pos_fields["irregular_forms"],
+                        pos_fields[audio_region_field]):  # type: ignore
 
-            current_word_dict: consts.CardFormat = {
-                "word": word.strip(),
-                "special": irreg_forms + alt_terms,
-                "definition": definition,
-                "examples": examples,
-                "audio_links": region_audio_links,
-                "image_links": [image] if image else [],
-                "tags": {
-                    "domain": domain,
-                    "region": region,
-                    "usage": usage,
-                    "pos": pos
+                current_word_dict: consts.CardFormat = {
+                    "word": word.strip(),
+                    "special": irreg_forms + alt_terms,
+                    "definition": definition,
+                    "examples": examples,
+                    "audio_links": region_audio_links,
+                    "image_links": [image] if image else [],
+                    "tags": {
+                        "domain": domain,
+                        "region": region,
+                        "usage": usage,
+                        "pos": pos
+                    }
                 }
-            }
-            if level:
-                current_word_dict["tags"]["level"] = level
+                if level:
+                    current_word_dict["tags"]["level"] = level
 
-            word_list.append(current_word_dict)
+                word_list.append(current_word_dict)
     return word_list
 
 
-def define(word: str) -> tuple[parsers_return_types.DictionaryFormat, str]:
-    return list(_define(word=word, timeout=config["timeout"]).items()), ""
+def define(word: str) -> tuple[list[consts.CardFormat], str]:
+    definitions, error = _define(word=word, timeout=config["timeout"])
+    return translate(definitions), error

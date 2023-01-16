@@ -2,11 +2,11 @@ import json
 import os
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Callable, Protocol, Union, runtime_checkable, NoReturn, Generator, Optional
+from typing import (Any, Callable, Generator, Generic, NoReturn, Optional,
+                    Protocol, TypeVar, Union, runtime_checkable)
 
-from ..consts.card_fields import CardFields
+from ..consts.card_fields import CardFields, CardFormat
 from ..plugins_management.config_management import LoadableConfig
-from ..plugins_management.parsers_return_types import DictionaryFormat
 from .storages import FrozenDict, FrozenDictJSONEncoder, PointerList
 
 
@@ -54,93 +54,78 @@ class Card(FrozenDict):
         return " ".join(tags_container)
 
 
+QUERY_T = str
+ERROR_MESSAGE_T = str
+DICTIONARY_T = TypeVar("DICTIONARY_T")
+WEB_DEFITION_FUNCTION_T = Callable[[QUERY_T], tuple[list[CardFormat], ERROR_MESSAGE_T]]
+LOCAL_DEFITION_FUNCTION_T = Callable[[QUERY_T, DICTIONARY_T], tuple[list[CardFormat], ERROR_MESSAGE_T]]
+
+
 @runtime_checkable
 class CardGeneratorProtocol(Protocol):
     name: str
     config: LoadableConfig
     scheme_docs: str
+    word_definition_function: WEB_DEFITION_FUNCTION_T | LOCAL_DEFITION_FUNCTION_T
 
     def get(self,
             query: str,
-            word_filter: Callable[[str], bool],
-            additional_filter: Callable[[Card], bool] | None = None) -> tuple[list[Card], str]:
+            additional_filter: Callable[[CardFormat], bool] | None = None) -> tuple[list[CardFormat], str]:
         ...
 
 
 class CardGenerator(ABC):
-    def __init__(self,
-                 name: str,
-                 item_converter: Callable[[str, dict], list[dict]],
-                 config: LoadableConfig,
-                 scheme_docs: str):
-        self.name = name
-        self.item_converter = item_converter
-        self.config = config
-        self.scheme_docs = scheme_docs
-
     @abstractmethod
-    def _get_search_subset(self, query: str) -> tuple[DictionaryFormat, str]:
+    def _get_search_subset(self, query: str) -> tuple[list[CardFormat], str]:
         pass
 
     def get(self,
             query: str,
-            word_filter: Callable[[str], bool],
-            additional_filter: Callable[[Card], bool] | None = None) -> tuple[list[Card], str]:
+            additional_filter: Callable[[CardFormat], bool] | None = None) -> tuple[list[Card], str]:
         if additional_filter is None:
             additional_filter = lambda _: True
 
-        source, error_message = self._get_search_subset(query)
-        res: list[Card] = []
-        for word, word_data in source:
-            if word_filter(word):
-                for item in self.item_converter(word, word_data):
-                    if additional_filter(card := Card(item)):
-                        res.append(card)
+        results, error_message = self._get_search_subset(query)
+        res: list[Card] = [Card(item) for item in results if additional_filter(item)]
 
-        def sorting_key(card: Card) -> tuple[int, int, str]:
-            word = card[CardFields.word]
-            return len(word.split()), len(word), word
-
-        return sorted(res, key=sorting_key), error_message
+        return res, error_message
 
 
-class LocalCardGenerator(CardGenerator):
+class LocalCardGenerator(CardGenerator, Generic[DICTIONARY_T]):
     def __init__(self,
+                 word_definition_function: LOCAL_DEFITION_FUNCTION_T,
                  name: str,
                  local_dict_path: str,
-                 item_converter: Callable[[str, dict], list[dict]],
                  config: LoadableConfig,
                  scheme_docs: str):
-        super(LocalCardGenerator, self).__init__(name=name,
-                                                 item_converter=item_converter,
-                                                 config=config,
-                                                 scheme_docs=scheme_docs)
-
+        self.name=name
+        self.word_definition_function=word_definition_function
+        self.config=config
+        self.scheme_docs=scheme_docs
+        
         if not os.path.isfile(local_dict_path):
             raise FileNotFoundError(f"Local dictionary with path \"{local_dict_path}\" doesn't exist")
 
         with open(local_dict_path, "r", encoding="UTF-8") as f:
-            self.local_dictionary: DictionaryFormat = json.load(f)
+            self.local_dictionary = json.load(f)
 
-    def _get_search_subset(self, query: str) -> tuple[DictionaryFormat, str]:
-        return self.local_dictionary, ""
+    def _get_search_subset(self, query: str) -> tuple[list[CardFormat], str]:
+        return self.word_definition_function(query, self.local_dictionary)
 
 
 class WebCardGenerator(CardGenerator):
     def __init__(self,
+                 word_definition_function: WEB_DEFITION_FUNCTION_T,
                  name: str,
-                 parsing_function: Callable[[str], tuple[DictionaryFormat, str]],
-                 item_converter: Callable[[str, dict], list[dict]],
                  config: LoadableConfig,
                  scheme_docs: str):
-        super(WebCardGenerator, self).__init__(name=name,
-                                               item_converter=item_converter,
-                                               config=config,
-                                               scheme_docs=scheme_docs)
-        self.parsing_function = parsing_function
+        self.name=name
+        self.word_definition_function=word_definition_function
+        self.config=config
+        self.scheme_docs=scheme_docs
 
-    def _get_search_subset(self, query: str) -> tuple[DictionaryFormat, str]:
-        return self.parsing_function(query)
+    def _get_search_subset(self, query: str) -> tuple[list[CardFormat], str]:
+        return self.word_definition_function(query)
 
 
 class Deck(PointerList):
@@ -195,9 +180,7 @@ class Deck(PointerList):
 
     def _launch_card_to_deck_generator(self) -> \
         Generator[int | str, 
-                  bool | tuple[str, 
-                               Callable[[Card], bool], 
-                               Optional[Callable[[Card], bool]]], 
+                  bool | tuple[str, Optional[Callable[[Card], bool]]], 
                   NoReturn]:
         error_message = ""
         while True:

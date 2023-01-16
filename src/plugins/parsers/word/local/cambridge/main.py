@@ -1,4 +1,5 @@
 import os
+import re
 from typing import TypedDict
 
 from .. import config_management, consts
@@ -111,3 +112,13 @@ def translate(word: str, word_data: list[POSData]) -> list[consts.CardFormat]:
 
             word_list.append(current_word_dict)
     return word_list
+
+
+def define(query: str, dictionary: list[tuple[WORD_T, list[POSData]]]) -> tuple[list[consts.CardFormat], str]:
+    word_query = re.compile(query)
+    results: list[consts.CardFormat] = []
+    for word, word_data in dictionary:
+        if not re.search(word_query, word):
+            continue
+        results.extend(translate(word=word, word_data=word_data))
+    return results, ""

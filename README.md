@@ -131,8 +131,6 @@ To view every plugin interface, see **./src/plugins_loading/interfaces.py**
 All types are located in **./src/plugin_management/parsers_return_types.py**.
 They are already available for plugins to use. 
 
-#### [WORD_DEFINITION_T](#DictionaryFormat)
- * Generic type
 ---
 ### [ImageGenerator](#plugins-return-types)
  * `Generator[tuple[list[str], str], int, tuple[list[str], str]]` 

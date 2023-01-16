@@ -4,6 +4,7 @@ from .. import config_management  # import LoadableConfig
 from .. import consts  # .card_fields import CardFields
 from .utils import RESULT_FORMAT
 from .utils import define as _define
+from .. import app_utils
 
 SCHEME_DOCS = """
 tags: {
@@ -82,5 +83,8 @@ def translate(definitons_data: RESULT_FORMAT) -> list[consts.CardFormat]:
 
 
 def define(word: str) -> tuple[list[consts.CardFormat], str]:
-    definitions, error = _define(word=word, timeout=config["timeout"])
+    definitions, error = _define(word=app_utils.string_utils.remove_special_chars(word, 
+                                                                                  " ", 
+                                                                                  '№!"#%\'()*,./:;<>?@[\\]^_`{|}~'),  # $ & + - =
+                                 timeout=config["timeout"])
     return translate(definitions), error

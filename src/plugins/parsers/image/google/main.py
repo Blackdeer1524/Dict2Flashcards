@@ -25,7 +25,7 @@ config = config_management.LoadableConfig(config_location=os.path.dirname(__file
                                           docs=_CONF_DOCS)
 
 
-def get(word: str) -> parsers_return_types.ImageGenerator:
+def get(word: str) -> parsers_return_types.ImageGeneratorProtocol:
     link = f"https://www.google.com/search?tbm=isch&q={word}"
     user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) ApplewebKit/537.36 (KHTML, like Gecko) " \
                  "Chrome/70.0.3538.67 Safari/537.36"

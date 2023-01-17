@@ -25,7 +25,7 @@ from .app_utils.cards import Card, CardStatus, Deck, FrozenDict, SavedDataDeck
 from .app_utils.error_handling import create_exception_message, error_handler
 from .app_utils.global_bindings import Binder
 from .app_utils.image_utils import ImageSearch
-from .app_utils.plugin_wrappers import ExternalDataGeneratorWrapper
+from .app_utils.plugin_wrappers import ExternalDataGenerator
 from .app_utils.query_language.exceptions import QueryLangException
 from .app_utils.query_language.query_processing import get_card_filter
 from .app_utils.string_utils import remove_special_chars
@@ -34,7 +34,7 @@ from .app_utils.widgets import ScrolledFrame
 from .app_utils.widgets import TextWithPlaceholder as Text
 from .app_utils.window_utils import get_option_menu, spawn_window_in_center
 from .consts import CardFields
-from .consts.parser_types import ParserTypes
+from .consts import ParserType
 from .consts.paths import *
 from .plugins_loading.containers import LanguagePackageContainer
 from .plugins_loading.factory import loaded_plugins
@@ -46,7 +46,7 @@ class App(Tk):
     @dataclass(slots=True, frozen=True)
     class AudioGetterInfo:
         name: str
-        type: ParserTypes
+        type: ParserType
         fetching_word: str
 
     def __init__(self, *args, **kwargs):
@@ -107,7 +107,7 @@ class App(Tk):
             parser_type=self.configurations["scrappers"]["sentence"]["type"],
             chain_data=self.chaining_data["sentence_parsers"].get(self.configurations["scrappers"]["sentence"]["name"])
         )
-        self.external_sentence_fetcher = ExternalDataGeneratorWrapper(
+        self.external_sentence_fetcher = ExternalDataGenerator(
             data_generator=sentence_parser)
 
         self.image_parser = loaded_plugins.get_image_parser(
@@ -117,9 +117,9 @@ class App(Tk):
         )
 
         if (audio_getter_name := self.configurations["scrappers"]["audio"]["name"]):
-            if self.configurations["scrappers"]["audio"]["type"] in (ParserTypes.web,
-                                                                     ParserTypes.local,
-                                                                     ParserTypes.chain):
+            if self.configurations["scrappers"]["audio"]["type"] in (ParserType.web,
+                                                                     ParserType.local,
+                                                                     ParserType.chain):
                 audio_getter = loaded_plugins.get_audio_getter(
                     name=audio_getter_name,
                     getter_type=self.configurations["scrappers"]["audio"]["type"],
@@ -163,9 +163,9 @@ class App(Tk):
         self.word_parser_option_menu = self.get_option_menu(
             self,
             init_text=self.typed_word_parser_name,
-            values=[f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_word_parsers.loaded] +
-                   [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_word_parsers.loaded] +
-                   [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["word_parsers"]],
+            values=[f"{ParserType.web.prefix()} {item}" for item in loaded_plugins.web_word_parsers.loaded] +
+                   [f"{ParserType.local.prefix()} {item}" for item in loaded_plugins.local_word_parsers.loaded] +
+                   [f"{ParserType.chain.prefix()} {name}" for name in self.chaining_data["word_parsers"]],
             command=lambda typed_parser: self.change_word_parser(typed_parser))
         self.word_parser_option_menu.grid(row=0, column=3, columnspan=4, sticky="news",
                                           pady=(self.text_pady, 0))
@@ -224,8 +224,8 @@ class App(Tk):
         self.image_parsers_option_menu = self.get_option_menu(
             self,
             init_text=typed_image_parser_name,
-            values=[f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
-                   [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["image_parsers"]],
+            values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
+                   [f"[{ParserType.chain}] {name}" for name in self.chaining_data["image_parsers"]],
             command=lambda parser_name: self.change_image_parser(parser_name))
         self.image_parsers_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
                                            padx=0, pady=(0, self.text_pady))
@@ -235,8 +235,8 @@ class App(Tk):
             text="</>",
             command=lambda: self.call_configuration_window(
                 plugin_name=self.image_parser.name if self.configurations["scrappers"]["image"][
-                                                          "type"] == ParserTypes.web
-                else f"[{ParserTypes.chain}] {self.image_parser.name}",
+                                                          "type"] == ParserType.web
+                else f"[{ParserType.chain}] {self.image_parser.name}",
                 plugin_config=self.image_parser.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()))
@@ -273,9 +273,9 @@ class App(Tk):
             self,
             init_text=typed_audio_getter,
             values=["default"] +
-                   [f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
-                   [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
-                   [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
+                   [f"{ParserType.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
+                   [f"{ParserType.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                   [f"{ParserType.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
             command=lambda parser_name: self.change_audio_getter(parser_name))
         self.audio_getter_option_menu.grid(row=6, column=3, columnspan=4, sticky="news",
                                            padx=0, pady=0)
@@ -355,10 +355,10 @@ class App(Tk):
                     return
 
                 sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-                if sentence_parser_type == ParserTypes.chain:
+                if sentence_parser_type == ParserType.chain:
                     results = parser_results
-                elif sentence_parser_type == ParserTypes.web:
-                    results.append((f"{ParserTypes.web.prefix()} {self.external_sentence_fetcher.data_generator.name}", parser_results))
+                elif sentence_parser_type == ParserType.web:
+                    results.append((f"{ParserType.web.prefix()} {self.external_sentence_fetcher.data_generator.name}", parser_results))
                 else:
                     raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
 
@@ -400,8 +400,8 @@ class App(Tk):
         self.sentence_parsers_option_menu = self.get_option_menu(
             self,
             init_text=typed_sentence_parser_name,
-            values=[f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
-                   [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
+            values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
+                   [f"[{ParserType.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
             command=lambda parser_name: self.change_sentence_parser(parser_name))
         self.sentence_parsers_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
                                               pady=(self.text_pady, 0))
@@ -411,8 +411,8 @@ class App(Tk):
             text="</>",
             command=lambda: self.call_configuration_window(
                 plugin_name=self.external_sentence_fetcher.data_generator.name
-                if self.configurations["scrappers"]["sentence"]["type"] == ParserTypes.web
-                else f"[{ParserTypes.chain}] {self.external_sentence_fetcher.data_generator.name}",
+                if self.configurations["scrappers"]["sentence"]["type"] == ParserType.web
+                else f"[{ParserType.chain}] {self.external_sentence_fetcher.data_generator.name}",
                 plugin_config=self.external_sentence_fetcher.data_generator.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()),
@@ -893,10 +893,10 @@ class App(Tk):
                     self.word_parser_option_menu = self.get_option_menu(
                         self,
                         init_text=self.typed_word_parser_name,
-                        values=[f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_word_parsers.loaded] +
-                               [f"{ParserTypes.local.prefix()} {item}" for item in
+                        values=[f"{ParserType.web.prefix()} {item}" for item in loaded_plugins.web_word_parsers.loaded] +
+                               [f"{ParserType.local.prefix()} {item}" for item in
                                 loaded_plugins.local_word_parsers.loaded] +
-                               [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["word_parsers"]],
+                               [f"{ParserType.chain.prefix()} {name}" for name in self.chaining_data["word_parsers"]],
                         command=lambda typed_parser: self.change_word_parser(typed_parser))
                     self.word_parser_option_menu.grid(row=0, column=3, columnspan=4, sticky="news",
                                                       pady=(self.text_pady, 0))
@@ -907,8 +907,8 @@ class App(Tk):
                     self.sentence_parsers_option_menu = self.get_option_menu(
                         self,
                         init_text=typed_sentence_parser_name,
-                        values=[f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
-                               [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
+                        values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
+                               [f"[{ParserType.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
                         command=lambda parser_name: self.change_sentence_parser(parser_name))
                     self.sentence_parsers_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
                                                           pady=(self.text_pady, 0))
@@ -919,8 +919,8 @@ class App(Tk):
                     self.image_parsers_option_menu = self.get_option_menu(
                         self,
                         init_text=typed_image_parser_name,
-                        values=[f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
-                               [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["image_parsers"]],
+                        values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
+                               [f"[{ParserType.chain}] {name}" for name in self.chaining_data["image_parsers"]],
                         command=lambda parser_name: self.change_image_parser(parser_name))
                     self.image_parsers_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
                                                        padx=0, pady=(0, self.text_pady))
@@ -933,9 +933,9 @@ class App(Tk):
                         else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
                                               self.external_audio_generator.data_generator.name),
                         values=["default"] +
-                               [f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
-                               [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
-                               [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
+                               [f"{ParserType.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
+                               [f"{ParserType.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                               [f"{ParserType.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
                         command=lambda parser_name: self.change_audio_getter(parser_name))
                     self.audio_getter_option_menu.grid(row=6, column=3, columnspan=4, sticky="news",
                                                        padx=0, pady=0)
@@ -1040,17 +1040,17 @@ class App(Tk):
                 if chain_type == "word_parsers":
                     displaying_options = \
                         itertools.chain(
-                            (f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_word_parsers.loaded),
-                            (f"[{ParserTypes.local}] {name}" for name in loaded_plugins.local_word_parsers.loaded))
+                            (f"[{ParserType.web}] {name}" for name in loaded_plugins.web_word_parsers.loaded),
+                            (f"[{ParserType.local}] {name}" for name in loaded_plugins.local_word_parsers.loaded))
                 elif chain_type == "sentence_parsers":
-                    displaying_options = (f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded)
+                    displaying_options = (f"[{ParserType.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded)
                 elif chain_type == "image_parsers":
-                    displaying_options = (f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded)
+                    displaying_options = (f"[{ParserType.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded)
                 elif chain_type == "audio_getters":
                     displaying_options = \
                         itertools.chain(
-                            (f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_audio_getters.loaded),
-                            (f"[{ParserTypes.local}] {name}" for name in loaded_plugins.local_audio_getters.loaded))
+                            (f"[{ParserType.web}] {name}" for name in loaded_plugins.web_audio_getters.loaded),
+                            (f"[{ParserType.local}] {name}" for name in loaded_plugins.local_audio_getters.loaded))
                 else:
                     raise NotImplementedError(f"Unknown chain type: {chain_type}")
 
@@ -1187,7 +1187,7 @@ class App(Tk):
                             if chain_name == self.card_generator.name:
                                 self.card_generator = loaded_plugins.get_card_generator(
                                     name=new_chain_name,
-                                    gen_type=ParserTypes.chain,
+                                    gen_type=ParserType.chain,
                                     chain_data=chosen_chain_config)
                                 self.configurations["scrappers"]["word"]["name"] = new_chain_name
 
@@ -1195,7 +1195,7 @@ class App(Tk):
                             if chain_name == self.external_sentence_fetcher.data_generator.name:
                                 sentence_parser = loaded_plugins.get_sentence_parser(
                                     name=new_chain_name,
-                                    parser_type=ParserTypes.chain,
+                                    parser_type=ParserType.chain,
                                     chain_data=chosen_chain_config)
                                 self.external_sentence_fetcher = \
                                     ExternalDataGeneratorWrapper(data_generator=sentence_parser)
@@ -1205,7 +1205,7 @@ class App(Tk):
                             if chain_name == self.image_parser.name:
                                 self.image_parser = loaded_plugins.get_image_parser(
                                     name=new_chain_name,
-                                    parser_type=ParserTypes.chain,
+                                    parser_type=ParserType.chain,
                                     chain_data=chosen_chain_config)
                                 self.configurations["scrappers"]["image"]["name"] = new_chain_name
 
@@ -1218,7 +1218,7 @@ class App(Tk):
                                 self.external_audio_generator = ExternalDataGeneratorWrapper(
                                     data_generator=loaded_plugins.get_audio_getter(
                                         name=new_chain_name,
-                                        getter_type=ParserTypes.chain,
+                                        getter_type=ParserType.chain,
                                         chain_data=chosen_chain_config))
                                 self.external_audio_generator.data_generator.config["get_all"] = old_get_all_val
                                 self.external_audio_generator.data_generator.config[
@@ -1417,19 +1417,19 @@ class App(Tk):
         {
             "scrappers": {
                 "word": {
-                    "type": (ParserTypes.web, [str], [ParserTypes.web, ParserTypes.local, ParserTypes.chain]),
+                    "type": (ParserType.web, [str], [ParserType.web, ParserType.local, ParserType.chain]),
                     "name": ("cambridge", [str], [])
                 },
                 "sentence": {
-                    "type": (ParserTypes.web, [str], [ParserTypes.web, ParserTypes.chain]),
+                    "type": (ParserType.web, [str], [ParserType.web, ParserType.chain]),
                     "name": ("sentencedict", [str], [])
                 },
                 "image": {
-                    "type": (ParserTypes.web, [str], [ParserTypes.web, ParserTypes.chain]),
+                    "type": (ParserType.web, [str], [ParserType.web, ParserType.chain]),
                     "name": ("google", [str], [])
                 },
                 "audio": {
-                    "type": (ParserTypes.web, [str], ["default", ParserTypes.web, ParserTypes.local, ParserTypes.chain]),
+                    "type": (ParserType.web, [str], ["default", ParserType.web, ParserType.local, ParserType.chain]),
                     "name": ("forvo", [str], [])
                 }
             },
@@ -1654,8 +1654,8 @@ class App(Tk):
             self.image_parsers_option_menu = self.get_option_menu(
                 self,
                 init_text=typed_image_parser_name,
-                values=[f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
-                       [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["image_parsers"]],
+                values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
+                       [f"[{ParserType.chain}] {name}" for name in self.chaining_data["image_parsers"]],
                 command=lambda parser_name: self.change_image_parser(parser_name))
             self.image_parsers_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
                                                padx=0, pady=(0, self.text_pady))
@@ -1664,8 +1664,8 @@ class App(Tk):
         editor_image_parsers_option_menu = self.get_option_menu(
             item_editor_frame,
             init_text=typed_image_parser_name,
-            values=[f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
-                   [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["image_parsers"]],
+            values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
+                   [f"[{ParserType.chain}] {name}" for name in self.chaining_data["image_parsers"]],
             command=global_change_image_parser)
         editor_image_parsers_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
                                            padx=0, pady=0)
@@ -1675,8 +1675,8 @@ class App(Tk):
             text="</>",
             command=lambda: self.call_configuration_window(
                 plugin_name=self.image_parser.name if self.configurations["scrappers"]["image"][
-                                                          "type"] == ParserTypes.web
-                else f"[{ParserTypes.chain}] {self.image_parser.name}",
+                                                          "type"] == ParserType.web
+                else f"[{ParserType.chain}] {self.image_parser.name}",
                 plugin_config=self.image_parser.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()))
@@ -1725,9 +1725,9 @@ class App(Tk):
                 self,
                 init_text=typed_audio_getter,
                 values=["default"] +
-                       [f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
-                       [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
-                       [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
+                       [f"{ParserType.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
+                       [f"{ParserType.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                       [f"{ParserType.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
                 command=lambda parser_name: self.change_audio_getter(parser_name))
             self.audio_getter_option_menu.grid(row=6, column=3, columnspan=4, sticky="news",
                                                padx=0, pady=0)
@@ -1736,9 +1736,9 @@ class App(Tk):
             item_editor_frame,
             init_text=typed_audio_getter,
             values=["default"] +
-                   [f"{ParserTypes.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
-                   [f"{ParserTypes.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
-                   [f"{ParserTypes.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
+                   [f"{ParserType.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
+                   [f"{ParserType.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
+                   [f"{ParserType.chain.prefix()} {name}" for name in self.chaining_data["audio_getters"]],
             command=global_change_audio_getter)
         editor_audio_getter_option_menu.grid(row=6, column=3, columnspan=4, sticky="news",
                                              padx=0, pady=0)
@@ -1797,9 +1797,9 @@ class App(Tk):
                     return
 
                 sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-                if sentence_parser_type == ParserTypes.chain:
+                if sentence_parser_type == ParserType.chain:
                     results = parser_results
-                elif sentence_parser_type == ParserTypes.web:
+                elif sentence_parser_type == ParserType.web:
                     results.append((self.external_sentence_fetcher.data_generator.name, parser_results))
                 else:
                     raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
@@ -1845,8 +1845,8 @@ class App(Tk):
             self.sentence_parsers_option_menu = self.get_option_menu(
                 self,
                 init_text=typed_sentence_parser_name,
-                values=[f"[{ParserTypes.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
-                       [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
+                values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
+                       [f"[{ParserType.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
                 command=lambda parser_name: self.change_sentence_parser(parser_name))
             self.sentence_parsers_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
                                                   pady=(self.text_pady, 0))
@@ -1855,8 +1855,8 @@ class App(Tk):
         editor_sentence_parsers_option_menu = self.get_option_menu(
             item_editor_frame,
             init_text=typed_sentence_parser_name,
-            values=[f"[{ParserTypes.chain}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
-                   [f"[{ParserTypes.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
+            values=[f"[{ParserType.chain}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
+                   [f"[{ParserType.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
             command=global_change_sentence_parser)
         editor_sentence_parsers_option_menu.grid(row=9, column=3, columnspan=4, sticky="news",
                                               pady=(editor_text_pady, 0))
@@ -1866,8 +1866,8 @@ class App(Tk):
             text="</>",
             command=lambda: self.call_configuration_window(
                 plugin_name=self.external_sentence_fetcher.data_generator.name
-                if self.configurations["scrappers"]["sentence"]["type"] == ParserTypes.web
-                else f"[{ParserTypes.chain}] {self.external_sentence_fetcher.data_generator.name}",
+                if self.configurations["scrappers"]["sentence"]["type"] == ParserType.web
+                else f"[{ParserType.chain}] {self.external_sentence_fetcher.data_generator.name}",
                 plugin_config=self.external_sentence_fetcher.data_generator.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()),
@@ -2135,7 +2135,7 @@ class App(Tk):
                 for audio_src, audio_srcs_type, saving_path in zip(picked_audio_data[SavedDataDeck.AUDIO_SRCS], 
                                                                    picked_audio_data[SavedDataDeck.AUDIO_SRCS_TYPE],
                                                                    picked_audio_data[SavedDataDeck.AUDIO_SAVING_PATHS]):
-                    parser_results.append([("", ParserTypes(audio_srcs_type)), (([audio_src], [self.card_processor.get_card_audio_name(saving_path)]), "")])
+                    parser_results.append([("", ParserType(audio_srcs_type)), (([audio_src], [self.card_processor.get_card_audio_name(saving_path)]), "")])
 
                 self.display_audio_on_frame(
                     word=word_data,
@@ -2196,8 +2196,8 @@ class App(Tk):
             assert self.external_audio_generator is not None, \
                 "display_audio_getter_results cannot be called because self.external_audio_generator is None"
 
-            audio_getter_type = ParserTypes(self.configurations["scrappers"]["audio"]["type"])
-            if audio_getter_type in (ParserTypes.web, ParserTypes.local):
+            audio_getter_type = ParserType(self.configurations["scrappers"]["audio"]["type"])
+            if audio_getter_type in (ParserType.web, ParserType.local):
                 audio_data = self.external_audio_generator.get(
                     word=word,
                     card_data=card_data,
@@ -2206,7 +2206,7 @@ class App(Tk):
                     parser_results = []
                     return
                 parser_results = [(("{} {}".format(audio_getter_type.prefix(), self.configurations["scrappers"]["audio"]["name"]), audio_getter_type), audio_data)]
-            elif audio_getter_type == ParserTypes.chain:
+            elif audio_getter_type == ParserType.chain:
                 parser_results = self.external_audio_generator.get(
                     word=word,
                     card_data=card_data,
@@ -2240,7 +2240,7 @@ class App(Tk):
     def display_audio_on_frame(self,
                                word: str,
                                card_data: dict,
-                               parser_results: list[tuple[tuple[str, ParserTypes], AudioData]],
+                               parser_results: list[tuple[tuple[str, ParserType], AudioData]],
                                audio_sf,
                                audio_inner_frame,
                                show_errors: bool,
@@ -2282,7 +2282,7 @@ class App(Tk):
         if show_errors and not parser_results:
             audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
             messagebox.showerror(
-                title=self.external_audio_generator.data_generator.name if audio_getter_type == ParserTypes.web
+                title=self.external_audio_generator.data_generator.name if audio_getter_type == ParserType.web
                 else f"[{audio_getter_type}] {self.external_audio_generator.data_generator.name}",
                 message=self.lang_pack.display_audio_getter_results_audio_not_found_message
             )
@@ -2314,9 +2314,9 @@ class App(Tk):
                 audio_inner_frame.source_display_frame.grid_propagate(False)
                 audio_inner_frame.source_display_frame.pack(side="top", fill="x", expand=True)
 
-            if audio_getter_type == ParserTypes.web:
+            if audio_getter_type == ParserType.web:
                 play_audio_button_cmd = partial(web_playsound, src=getter_label)
-            elif audio_getter_type == ParserTypes.local:
+            elif audio_getter_type == ParserType.local:
                 play_audio_button_cmd = playsound_in_another_thread
             else:
                 raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
@@ -2958,15 +2958,15 @@ class App(Tk):
 
     @error_handler(show_exception_logs)
     def change_word_parser(self, typed_parser: str):
-        if typed_parser.startswith(ParserTypes.web.prefix()):
-            raw_name = typed_parser[len(ParserTypes.web.prefix()) + 1:]
-            self.configurations["scrappers"]["word"]["type"] = ParserTypes.web
-        elif typed_parser.startswith(ParserTypes.local.prefix()):
-            raw_name = typed_parser[len(ParserTypes.local.prefix()) + 1:]
-            self.configurations["scrappers"]["word"]["type"] = ParserTypes.local
-        elif typed_parser.startswith(ParserTypes.chain.prefix()):
-            raw_name = typed_parser[len(ParserTypes.chain.prefix()) + 1:]
-            self.configurations["scrappers"]["word"]["type"] = ParserTypes.chain
+        if typed_parser.startswith(ParserType.web.prefix()):
+            raw_name = typed_parser[len(ParserType.web.prefix()) + 1:]
+            self.configurations["scrappers"]["word"]["type"] = ParserType.web
+        elif typed_parser.startswith(ParserType.local.prefix()):
+            raw_name = typed_parser[len(ParserType.local.prefix()) + 1:]
+            self.configurations["scrappers"]["word"]["type"] = ParserType.local
+        elif typed_parser.startswith(ParserType.chain.prefix()):
+            raw_name = typed_parser[len(ParserType.chain.prefix()) + 1:]
+            self.configurations["scrappers"]["word"]["type"] = ParserType.chain
         else:
             raise NotImplementedError(f"Parser of unknown type: {typed_parser}")
 
@@ -2988,15 +2988,15 @@ class App(Tk):
             self.configure_audio_getter_button["state"] = "disabled"
             return
 
-        if typed_getter.startswith(ParserTypes.web.prefix()):
-            raw_name = typed_getter[len(ParserTypes.web.prefix()) + 1:]
-            self.configurations["scrappers"]["audio"]["type"] = ParserTypes.web
-        elif typed_getter.startswith(ParserTypes.local.prefix()):
-            raw_name = typed_getter[len(ParserTypes.local.prefix()) + 1:]
-            self.configurations["scrappers"]["audio"]["type"] = ParserTypes.local
-        elif typed_getter.startswith(ParserTypes.chain.prefix()):
-            raw_name = typed_getter[len(ParserTypes.chain.prefix()) + 1:]
-            self.configurations["scrappers"]["audio"]["type"] = ParserTypes.chain
+        if typed_getter.startswith(ParserType.web.prefix()):
+            raw_name = typed_getter[len(ParserType.web.prefix()) + 1:]
+            self.configurations["scrappers"]["audio"]["type"] = ParserType.web
+        elif typed_getter.startswith(ParserType.local.prefix()):
+            raw_name = typed_getter[len(ParserType.local.prefix()) + 1:]
+            self.configurations["scrappers"]["audio"]["type"] = ParserType.local
+        elif typed_getter.startswith(ParserType.chain.prefix()):
+            raw_name = typed_getter[len(ParserType.chain.prefix()) + 1:]
+            self.configurations["scrappers"]["audio"]["type"] = ParserType.chain
         else:
             raise NotImplementedError(f"Audio getter with unknown type: {typed_getter}")
 
@@ -3018,13 +3018,13 @@ class App(Tk):
 
     @error_handler(show_exception_logs)
     def change_image_parser(self, given_image_parser_name: str):
-        if given_image_parser_name.startswith(ParserTypes.chain.prefix()):
-            self.configurations["scrappers"]["image"]["type"] = ParserTypes.chain
-            given_image_parser_name = given_image_parser_name[len(ParserTypes.chain.prefix()) + 1:]
-        elif given_image_parser_name.startswith(ParserTypes.web.prefix()):
-            self.configurations["scrappers"]["image"]["type"] = ParserTypes.web
-            given_image_parser_name = given_image_parser_name[len(ParserTypes.web.prefix()) + 1:]
-        elif given_image_parser_name.startswith(ParserTypes.local.prefix()):
+        if given_image_parser_name.startswith(ParserType.chain.prefix()):
+            self.configurations["scrappers"]["image"]["type"] = ParserType.chain
+            given_image_parser_name = given_image_parser_name[len(ParserType.chain.prefix()) + 1:]
+        elif given_image_parser_name.startswith(ParserType.web.prefix()):
+            self.configurations["scrappers"]["image"]["type"] = ParserType.web
+            given_image_parser_name = given_image_parser_name[len(ParserType.web.prefix()) + 1:]
+        elif given_image_parser_name.startswith(ParserType.local.prefix()):
             raise NotImplementedError("Local image parsers are not implemented")
         else:
             raise NotImplementedError(f"Unknown image parser: {given_image_parser_name}")
@@ -3037,13 +3037,13 @@ class App(Tk):
 
     @error_handler(show_exception_logs)
     def change_sentence_parser(self, given_sentence_parser_name: str):
-        if given_sentence_parser_name.startswith(ParserTypes.chain.prefix()):
-            self.configurations["scrappers"]["sentence"]["type"] = ParserTypes.chain
-            given_sentence_parser_name = given_sentence_parser_name[len(ParserTypes.chain.prefix()) + 1:]
-        elif given_sentence_parser_name.startswith(ParserTypes.web.prefix()):
-            self.configurations["scrappers"]["sentence"]["type"] = ParserTypes.web
-            given_sentence_parser_name = given_sentence_parser_name[len(ParserTypes.web.prefix()) + 1:]
-        elif given_sentence_parser_name.startswith(ParserTypes.local.prefix()):
+        if given_sentence_parser_name.startswith(ParserType.chain.prefix()):
+            self.configurations["scrappers"]["sentence"]["type"] = ParserType.chain
+            given_sentence_parser_name = given_sentence_parser_name[len(ParserType.chain.prefix()) + 1:]
+        elif given_sentence_parser_name.startswith(ParserType.web.prefix()):
+            self.configurations["scrappers"]["sentence"]["type"] = ParserType.web
+            given_sentence_parser_name = given_sentence_parser_name[len(ParserType.web.prefix()) + 1:]
+        elif given_sentence_parser_name.startswith(ParserType.local.prefix()):
             raise NotImplementedError("Local sentence parsers are not implemented")
         else:
             raise NotImplementedError(f"Unknown sentence parser: {given_sentence_parser_name}")
@@ -3129,8 +3129,8 @@ class App(Tk):
                 raise NotImplementedError(f"Unknown audio autochoose mode: {audio_autochoose_mode}")
 
             if (dictionary_audio_links := self.dict_card_data.get(CardFields.audio_links, [])):
-                add_audio_data_to_card(audio_getter_info=App.AudioGetterInfo(f"dict {ParserTypes.web.prefix()} {self.card_generator.name}",
-                                                                             type=ParserTypes.web,  
+                add_audio_data_to_card(audio_getter_info=App.AudioGetterInfo(f"dict {ParserType.web.prefix()} {self.card_generator.name}",
+                                                                             type=ParserType.web,  
                                                                              fetching_word=self.word),
                                        audio_links=dictionary_audio_links[:choosing_slice])
 
@@ -3144,15 +3144,15 @@ class App(Tk):
                                                                     card_data=self.dict_card_data,
                                                                     batch_size=choosing_slice)
                 
-                audio_getter_type = ParserTypes(self.configurations["scrappers"]["audio"]["type"])
-                if audio_getter_type in (ParserTypes.web, ParserTypes.local):
+                audio_getter_type = ParserType(self.configurations["scrappers"]["audio"]["type"])
+                if audio_getter_type in (ParserType.web, ParserType.local):
                     if audio_data_pack is not None:
                         ((audio_links, additional_info), error_message) = audio_data_pack
                         add_audio_data_to_card(audio_getter_info=App.AudioGetterInfo(name=f"{audio_getter_type.prefix()} {self.external_audio_generator.data_generator.name}",
                                                                                      type=audio_getter_type,
                                                                                      fetching_word=word_for_audio_query),
                                                audio_links=audio_links)
-                elif audio_getter_type == ParserTypes.chain:
+                elif audio_getter_type == ParserType.chain:
                     if audio_data_pack is not None:
                         audio_gen = (i for i in audio_data_pack)
 
@@ -3161,7 +3161,7 @@ class App(Tk):
                                 ((getter_name, getter_type), ((audio_links, additional_info), error_message)) = next(
                                     audio_gen)
                                 add_audio_data_to_card(App.AudioGetterInfo(name=getter_name,
-                                                                           type=ParserTypes(getter_type),
+                                                                           type=ParserType(getter_type),
                                                                            fetching_word=word_for_audio_query),
                                                        audio_links=audio_links[:choosing_slice])
                             except StopIteration:
@@ -3169,7 +3169,7 @@ class App(Tk):
                         elif audio_autochoose_mode == "all":
                             for ((getter_name, getter_type), ((audio_links, additional_info), error_message)) in audio_gen:
                                 add_audio_data_to_card(App.AudioGetterInfo(name=getter_name,
-                                                                           type=ParserTypes(getter_type),
+                                                                           type=ParserType(getter_type),
                                                                            fetching_word=word_for_audio_query),
                                                        audio_links=audio_links[:choosing_slice])
                         else:
@@ -3357,7 +3357,7 @@ class App(Tk):
 
         if (audio_sources := self.dict_card_data.get(CardFields.audio_links)) is not None and audio_sources:
             additional_info = ("" for _ in range(len(audio_sources)))
-            parser_results = [((f"dict {self.typed_word_parser_name}", ParserTypes.web), 
+            parser_results = [((f"dict {self.typed_word_parser_name}", ParserType.web), 
                               ((audio_sources, additional_info), ""))]
             self.display_audio_on_frame(
                 word=self.word,

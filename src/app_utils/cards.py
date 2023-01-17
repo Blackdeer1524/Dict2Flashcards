@@ -1,12 +1,16 @@
 import json
 import os
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
-from typing import (Any, Callable, Generator, Generic, NoReturn, Optional,
-                    Protocol, TypeVar, Union, runtime_checkable)
+from typing import (Any, Callable, Generator, Generic, Literal, NoReturn,
+                    Optional, Protocol, TypeVar, Union, final,
+                    runtime_checkable)
 
+from ..consts import ParserType, TypedParserName
 from ..consts.card_fields import CardFields, CardFormat
 from ..plugins_management.config_management import LoadableConfig
+from .parser_interfaces import CardGeneratorProtocol, GeneratorReturn
 from .storages import FrozenDict, FrozenDictJSONEncoder, PointerList
 
 
@@ -54,80 +58,6 @@ class Card(FrozenDict):
         return " ".join(tags_container)
 
 
-QUERY_T = str
-ERROR_MESSAGE_T = str
-DICTIONARY_T = TypeVar("DICTIONARY_T")
-WEB_DEFITION_FUNCTION_T = Callable[[QUERY_T], tuple[list[CardFormat], ERROR_MESSAGE_T]]
-LOCAL_DEFITION_FUNCTION_T = Callable[[QUERY_T, DICTIONARY_T], tuple[list[CardFormat], ERROR_MESSAGE_T]]
-
-
-@runtime_checkable
-class CardGeneratorProtocol(Protocol):
-    name: str
-    config: LoadableConfig
-    scheme_docs: str
-    word_definition_function: WEB_DEFITION_FUNCTION_T | LOCAL_DEFITION_FUNCTION_T
-
-    def get(self,
-            query: str,
-            additional_filter: Callable[[CardFormat], bool] | None = None) -> tuple[list[CardFormat], str]:
-        ...
-
-
-class CardGenerator(ABC):
-    @abstractmethod
-    def _get_search_subset(self, query: str) -> tuple[list[CardFormat], str]:
-        pass
-
-    def get(self,
-            query: str,
-            additional_filter: Callable[[CardFormat], bool] | None = None) -> tuple[list[Card], str]:
-        if additional_filter is None:
-            additional_filter = lambda _: True
-
-        results, error_message = self._get_search_subset(query)
-        res: list[Card] = [Card(item) for item in results if additional_filter(item)]
-
-        return res, error_message
-
-
-class LocalCardGenerator(CardGenerator, Generic[DICTIONARY_T]):
-    def __init__(self,
-                 word_definition_function: LOCAL_DEFITION_FUNCTION_T,
-                 name: str,
-                 local_dict_path: str,
-                 config: LoadableConfig,
-                 scheme_docs: str):
-        self.name=name
-        self.word_definition_function=word_definition_function
-        self.config=config
-        self.scheme_docs=scheme_docs
-        
-        if not os.path.isfile(local_dict_path):
-            raise FileNotFoundError(f"Local dictionary with path \"{local_dict_path}\" doesn't exist")
-
-        with open(local_dict_path, "r", encoding="UTF-8") as f:
-            self.local_dictionary = json.load(f)
-
-    def _get_search_subset(self, query: str) -> tuple[list[CardFormat], str]:
-        return self.word_definition_function(query, self.local_dictionary)
-
-
-class WebCardGenerator(CardGenerator):
-    def __init__(self,
-                 word_definition_function: WEB_DEFITION_FUNCTION_T,
-                 name: str,
-                 config: LoadableConfig,
-                 scheme_docs: str):
-        self.name=name
-        self.word_definition_function=word_definition_function
-        self.config=config
-        self.scheme_docs=scheme_docs
-
-    def _get_search_subset(self, query: str) -> tuple[list[CardFormat], str]:
-        return self.word_definition_function(query)
-
-
 class Deck(PointerList):
     __slots__ = "deck_path", "_card_generator", "_cards_left", \
                 "card_addition_limit", "card2deck_gen"
@@ -157,7 +87,7 @@ class Deck(PointerList):
         
     def update_card_generator(self, cd: CardGeneratorProtocol):
         if not isinstance(cd, CardGeneratorProtocol):
-            raise TypeError(f"{cd} does not implement CardGenerator Protocol")
+            raise TypeError(f"{cd} does not implement CardGeneratorProtocol Protocol")
         self._card_generator = cd
         self.card2deck_gen = self._launch_card_to_deck_generator()
         next(self.card2deck_gen)
@@ -186,7 +116,7 @@ class Deck(PointerList):
         while True:
             get_params = yield error_message
             try:
-                res, error_message = self._card_generator.get(*get_params)  # type: ignore
+                res, error_message = self._card_generator.get(*get_params)
             except Exception as e:
                 res = []
                 error_message = str(e)

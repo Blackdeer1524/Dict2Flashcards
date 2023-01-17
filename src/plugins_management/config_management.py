@@ -2,7 +2,7 @@ import json
 import os
 from collections import UserDict
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Optional, Sequence, Type, Union
+from typing import Any, ClassVar, Optional, Sequence, Type, Union, Protocol
 
 
 class Config(UserDict):
@@ -12,8 +12,8 @@ class Config(UserDict):
 
     @dataclass(slots=True, frozen=True)
     class SchemeCheckResults:
-        wrong_type: list =   field(default_factory=list)
-        wrong_value: list =  field(default_factory=list)
+        wrong_type:   list = field(default_factory=list)
+        wrong_value:  list = field(default_factory=list)
         unknown_keys: list = field(default_factory=list)
         missing_keys: list = field(default_factory=list)
 
@@ -84,18 +84,15 @@ class Config(UserDict):
                     current_layer_res.wrong_type.append((c_key, type(c_val), dict))
             elif len(v_val[1]) and type(c_val) not in v_val[1]:
                 checking_part[c_key] = v_val[0]
-                current_layer_res.wrong_type.append((c_key, type(c_val), v_val[1]))
-            elif len(v_val[2]) and c_val not in v_val[2]:
-                current_layer_res.wrong_value.append((c_key, c_val, v_val[2]))
-                checking_part[c_key] = v_val[0]
-            validating_keys.remove(c_key)
+                LoadableConfig
 
-        current_layer_res.missing_keys.extend(validating_keys)
-        Config.__assign_recursively(checking_part, {key: validating_part[key] for key in validating_keys})
-        return current_layer_res
 
-    def restore_defaults(self):
-        self.data = self.default_scheme
+class LoadableConfigProtocol(Protocol):
+    def load(self) -> Optional[Config.SchemeCheckResults]:
+        ...  
+    
+    def save(self) -> None:
+        ...
 
 
 class LoadableConfig(Config):

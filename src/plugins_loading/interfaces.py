@@ -2,9 +2,9 @@ from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 from ..app_utils.cards import CardStatus, SavedDataDeck
 from ..plugins_management.config_management import LoadableConfig
-from ..plugins_management.parsers_return_types import (AudioGenerator,
-                                                       ImageGenerator,
-                                                       SentenceGenerator)
+from ..plugins_management.parsers_return_types import (AudioGeneratorProtocol,
+                                                       ImageGeneratorProtocol,
+                                                       SentenceGeneratorProtocol)
 from ..consts import CardFormat
 
 @runtime_checkable
@@ -253,7 +253,7 @@ class WebSentenceParserInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def get(word: str, card_data: dict) -> SentenceGenerator:
+    def get(word: str, card_data: dict) -> SentenceGeneratorProtocol:
         ...
 
 
@@ -262,7 +262,7 @@ class ImageParserInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def get(word: str) -> ImageGenerator:
+    def get(word: str) -> ImageGeneratorProtocol:
         ...
 
 
@@ -272,7 +272,7 @@ class LocalAudioGetterInterface(Protocol):
     AUDIO_FOLDER: str
 
     @staticmethod
-    def get(word: str, card_data: dict) -> AudioGenerator:
+    def get(word: str, card_data: dict) -> AudioGeneratorProtocol:
         ...
 
 
@@ -281,7 +281,7 @@ class WebAudioGetterInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def get(word: str, card_data: dict) -> AudioGenerator:
+    def get(word: str, card_data: dict) -> AudioGeneratorProtocol:
         ...
 
 

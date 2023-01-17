@@ -6,7 +6,7 @@ from tkinter import (BooleanVar, Button, Checkbutton, Label, Toplevel,
 
 import requests
 
-from ..consts.parser_types import ParserTypes
+from ..consts.parser_types import ParserType
 from ..plugins_loading.containers import LanguagePackageContainer
 from .cards import SavedDataDeck
 from .storages import FrozenDict
@@ -104,11 +104,11 @@ class AudioDownloader(Toplevel):
         def iterate(src_type: str, src: str, dst: str, index: int = 1):
             def write_to_dst(_src_type: str, _src: str, _dst: str) -> bool:
                 wait_flag = False
-                if _src_type == ParserTypes.web:
+                if _src_type == ParserType.web:
                     wait_flag = self.fetch_audio(_src, _dst, self.headers, self.timeout,
                                                  self.catch_fetching_error)
 
-                elif _src_type == ParserTypes.local:
+                elif _src_type == ParserType.local:
                     shutil.copy(src, _dst)
                 return wait_flag
 

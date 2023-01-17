@@ -1,14 +1,14 @@
 import os.path
 from dataclasses import dataclass
-from typing import Callable
-
+from typing import Callable, TypeVar, Generic
 from ..app_utils.cards import CardStatus, SavedDataDeck
+from ..app_utils.parser_interfaces import Named, Configurable, ERROR_MESSAGE_T
 from ..consts import CardFormat
 from ..consts.paths import LOCAL_AUDIO_DIR, LOCAL_DICTIONARIES_DIR
 from ..plugins_management.config_management import LoadableConfig
-from ..plugins_management.parsers_return_types import (AudioGenerator,
-                                                       ImageGenerator,
-                                                       SentenceGenerator)
+from ..plugins_management.parsers_return_types import (AudioGeneratorProtocol,
+                                                       ImageGeneratorProtocol,
+                                                       SentenceGeneratorProtocol)
 from .exceptions import LoaderError, WrongPluginProtocol
 from .interfaces import (CardProcessorInterface, DeckSavingFormatInterface,
                          ImageParserInterface, LanguagePackageInterface,
@@ -18,18 +18,8 @@ from .interfaces import (CardProcessorInterface, DeckSavingFormatInterface,
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class _PluginContainer:
+class WebWordParserContainer(Named, Configurable):
     name: str
-    
-    def __init__(self, name: str):
-        object.__setattr__(self, "name", name)
-
-
-ERROR_MESSAGE_T = str
-
-
-@dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class WebWordParserContainer(_PluginContainer):
     scheme_docs: str
     config: LoadableConfig
     define: Callable[[str], tuple[list[CardFormat], ERROR_MESSAGE_T]]
@@ -38,18 +28,21 @@ class WebWordParserContainer(_PluginContainer):
         if not isinstance(source_module, WebWordParserInterface):
             raise WrongPluginProtocol(f"{source_module} should have WebWordParserInterface protocol!")
 
-        super(WebWordParserContainer, self).__init__(name)
+        object.__setattr__(self, "name",        name)
         object.__setattr__(self, "scheme_docs", source_module.SCHEME_DOCS)
-        object.__setattr__(self, "config", source_module.config)
-        object.__setattr__(self, "define", source_module.define)
+        object.__setattr__(self, "config",      source_module.config)
+        object.__setattr__(self, "define",      source_module.define)
 
+
+DICTIONARY_T = TypeVar("DICTIONARY_T")
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class LocalWordParserContainer(_PluginContainer):
+class LocalWordParserContainer(Named, Configurable, Generic[DICTIONARY_T]):
+    name: str
     scheme_docs: str
     config: LoadableConfig
     local_dict_name: str
-    define: Callable[[str], tuple[list[CardFormat], ERROR_MESSAGE_T]]
+    define: Callable[[str, DICTIONARY_T], tuple[list[CardFormat], ERROR_MESSAGE_T]]
     
     def __init__(self, name: str, source_module: LocalWordParserInterface):
         if not isinstance(source_module, LocalWordParserInterface):
@@ -58,7 +51,7 @@ class LocalWordParserContainer(_PluginContainer):
         if not os.path.exists(os.path.join(LOCAL_DICTIONARIES_DIR, source_module.DICTIONARY_NAME + ".json")):
             raise LoaderError(f"Local dictionary doesn't exists!")
 
-        super(LocalWordParserContainer, self).__init__(name)
+        object.__setattr__(self, "name",        name)
         object.__setattr__(self, "local_dict_name", source_module.DICTIONARY_NAME)
         object.__setattr__(self, "scheme_docs", source_module.SCHEME_DOCS)
         object.__setattr__(self, "config", source_module.config)
@@ -66,23 +59,25 @@ class LocalWordParserContainer(_PluginContainer):
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class WebAudioGetterContainer(_PluginContainer):
+class WebAudioGetterContainer(Named, Configurable):
+    name: str
     config: LoadableConfig
-    get: Callable[[str, dict], AudioGenerator]
+    get: Callable[[str, CardFormat], AudioGeneratorProtocol]
 
     def __init__(self, name: str, source_module: WebAudioGetterInterface):
         if not isinstance(source_module, WebAudioGetterInterface):
             raise WrongPluginProtocol(f"{source_module} should have WebAudioGetterInterface protocol!")
 
-        super(WebAudioGetterContainer, self).__init__(name)
+        object.__setattr__(self, "name",        name)
         object.__setattr__(self, "config", source_module.config)
         object.__setattr__(self, "get", source_module.get)
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class LocalAudioGetterContainer(_PluginContainer):
+class LocalAudioGetterContainer(Named, Configurable):
+    name: str
     config: LoadableConfig
-    get: Callable[[str, dict], AudioGenerator]
+    get: Callable[[str, CardFormat], AudioGeneratorProtocol]
 
     def __init__(self, name: str, source_module: LocalAudioGetterInterface):
         if not isinstance(source_module, LocalAudioGetterInterface):
@@ -91,41 +86,44 @@ class LocalAudioGetterContainer(_PluginContainer):
         if not os.path.exists(os.path.join(LOCAL_AUDIO_DIR, source_module.AUDIO_FOLDER)):
             raise LoaderError(f"Local dictionary doesn't exists!")
 
-        super(LocalAudioGetterContainer, self).__init__(name)
+        object.__setattr__(self, "name",        name)
         object.__setattr__(self, "config", source_module.config)
         object.__setattr__(self, "get", source_module.get)
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class WebSentenceParserContainer(_PluginContainer):
+class WebSentenceParserContainer(Named, Configurable):
+    name: str
     config: LoadableConfig
-    get: Callable[[str], SentenceGenerator]
+    get: Callable[[str, CardFormat], SentenceGeneratorProtocol]
 
     def __init__(self, name: str, source_module: WebSentenceParserInterface):
         if not isinstance(source_module, WebSentenceParserInterface):
             raise WrongPluginProtocol(f"{source_module} should have WebSentenceParserInterface protocol!")
 
-        super(WebSentenceParserContainer, self).__init__(name)
+        object.__setattr__(self, "name",        name)
         object.__setattr__(self, "config", source_module.config)
         object.__setattr__(self, "get", source_module.get)
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class ImageParserContainer(_PluginContainer):
+class ImageParserContainer(Named, Configurable):
+    name: str
     config: LoadableConfig
-    get: Callable[[str], ImageGenerator]
+    get: Callable[[str, CardFormat], ImageGeneratorProtocol]
 
     def __init__(self, name: str, source_module: ImageParserInterface):
         if not isinstance(source_module, ImageParserInterface):
             raise WrongPluginProtocol(f"{source_module} should have ImageParserInterface protocol!")
 
-        super(ImageParserContainer, self).__init__(name)
+        object.__setattr__(self, "name",        name)
         object.__setattr__(self, "config", source_module.config)
         object.__setattr__(self, "get", source_module.get)
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class CardProcessorContainer(_PluginContainer):
+class CardProcessorContainer(Named):
+    name: str
     get_save_image_name: Callable[[str, str, dict], str]
     get_card_image_name: Callable[[str], str]
     get_save_audio_name: Callable[[str, str, str, dict], str]
@@ -136,7 +134,7 @@ class CardProcessorContainer(_PluginContainer):
         if not isinstance(source_module, CardProcessorInterface):
             raise WrongPluginProtocol(f"{source_module} should have CardProcessorInterface protocol!")
 
-        super(CardProcessorContainer, self).__init__(name)
+        object.__setattr__(self, "name",        name)
         object.__setattr__(self, "get_save_image_name", source_module.get_save_image_name)
         object.__setattr__(self, "get_card_image_name", source_module.get_card_image_name)
         object.__setattr__(self, "get_save_audio_name", source_module.get_save_audio_name)
@@ -145,24 +143,27 @@ class CardProcessorContainer(_PluginContainer):
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class DeckSavingFormatContainer(_PluginContainer):
+class DeckSavingFormatContainer(Named):
+    name: str
     save: Callable[[SavedDataDeck, CardStatus, str, Callable[[str], str], Callable[[str], str]], None]
 
     def __init__(self, name: str, source_module: DeckSavingFormatInterface):
         if not isinstance(source_module, DeckSavingFormatInterface):
             raise WrongPluginProtocol(f"{source_module} should have DeckSavingFormatInterface protocol!")
 
-        super(DeckSavingFormatContainer, self).__init__(name)
+        object.__setattr__(self, "name", name)
         object.__setattr__(self, "save", source_module.save)
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class ThemeContainer(_PluginContainer, ThemeInterface):
+class ThemeContainer(Named, ThemeInterface):
+    name: str
+    
     def __init__(self, name: str, source_module: ThemeInterface):
         if not isinstance(source_module, ThemeInterface):
             raise WrongPluginProtocol(f"{source_module} should have ThemeInterface protocol!")
 
-        super(ThemeContainer, self).__init__(name)
+        object.__setattr__(self, "name",                name)
         object.__setattr__(self, "label_cfg",           source_module.label_cfg)
         object.__setattr__(self, "button_cfg",          source_module.button_cfg)
         object.__setattr__(self, "text_cfg",            source_module.text_cfg)
@@ -176,12 +177,14 @@ class ThemeContainer(_PluginContainer, ThemeInterface):
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class LanguagePackageContainer(_PluginContainer, LanguagePackageInterface):
+class LanguagePackageContainer(Named, LanguagePackageInterface):
+    name: str
+
     def __init__(self, name: str, source_module: LanguagePackageInterface):
         if not isinstance(source_module, LanguagePackageInterface):
             raise WrongPluginProtocol(f"{source_module} should have LanguagePackageInterface protocol!")
 
-        super(LanguagePackageContainer, self).__init__(name)
+        object.__setattr__(self, "name",        name)
         # errors
         object.__setattr__(self, "error_title", source_module.error_title)
 

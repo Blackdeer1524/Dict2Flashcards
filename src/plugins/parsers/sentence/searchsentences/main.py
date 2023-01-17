@@ -23,7 +23,7 @@ config = config_management.LoadableConfig(config_location=os.path.dirname(__file
                                           docs=_CONF_DOCS)
 
 
-def get(word: str, card_data: dict) -> parsers_return_types.SentenceGenerator:
+def get(word: str, card_data: dict) -> parsers_return_types.SentenceGeneratorProtocol:
     try:
         page = requests.get(f"https://searchsentences.com/words/{word}-in-a-sentence",
                             timeout=config["timeout"])

@@ -1,8 +1,9 @@
 import json
 import os
+from abc import ABC, abstractmethod, abstractproperty
 from collections import UserDict
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Optional, Sequence, Type, Union, Protocol
+from typing import ClassVar, Optional, Sequence, Type, Union, final
 
 
 class Config(UserDict):
@@ -39,6 +40,7 @@ class Config(UserDict):
             self.validate_config(self.data, self.validation_scheme)
 
     @staticmethod
+    @final
     def __assign_recursively(dst: dict, src: dict):
         for key in src:
             if isinstance((s_val := src[key]), dict):
@@ -48,6 +50,7 @@ class Config(UserDict):
                 dst[key] = s_val[0]
 
     @staticmethod
+    @final
     def validate_config(checking_part: dict, validating_part: dict) -> "Config.SchemeCheckResults":
         """INPLACE!!!"""
         current_layer_res = Config.SchemeCheckResults()
@@ -84,18 +87,38 @@ class Config(UserDict):
                     current_layer_res.wrong_type.append((c_key, type(c_val), dict))
             elif len(v_val[1]) and type(c_val) not in v_val[1]:
                 checking_part[c_key] = v_val[0]
-                LoadableConfig
+                current_layer_res.wrong_type.append((c_key, type(c_val), v_val[1]))
+            elif len(v_val[2]) and c_val not in v_val[2]:
+                current_layer_res.wrong_value.append((c_key, c_val, v_val[2]))
+                checking_part[c_key] = v_val[0]
+            validating_keys.remove(c_key)
+
+        current_layer_res.missing_keys.extend(validating_keys)
+        Config.__assign_recursively(checking_part, {key: validating_part[key] for key in validating_keys})
+        return current_layer_res
+
+    @final
+    def restore_defaults(self):
+        self.data = self.default_scheme
 
 
-class LoadableConfigProtocol(Protocol):
+class LoadableConfigProtocol(Config, ABC):
+    @abstractmethod
     def load(self) -> Optional[Config.SchemeCheckResults]:
         ...  
     
+    @abstractmethod
     def save(self) -> None:
         ...
 
 
-class LoadableConfig(Config):
+class HasConfigFile(ABC):
+    @abstractproperty
+    def config(self) -> LoadableConfigProtocol:
+        ...
+
+
+class LoadableConfig(LoadableConfigProtocol):
     ENCODING: ClassVar[str] = "UTF-8"
 
     def __init__(self,

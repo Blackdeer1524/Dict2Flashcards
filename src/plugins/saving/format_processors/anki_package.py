@@ -48,8 +48,8 @@ Tags{{#Tags}}｜{{/Tags}}{{Tags}}
 """)
 
 
-def save(deck: app_utils.cards.SavedDataDeck,
-         saving_card_status: app_utils.cards.CardStatus,
+def save(deck: app_utils.decks.SavedDataDeck,
+         saving_card_status: app_utils.decks.CardStatus,
          saving_path: str,
          image_names_wrapper: Callable[[str], str],
          audio_names_wrapper: Callable[[str], str]):
@@ -61,25 +61,25 @@ def save(deck: app_utils.cards.SavedDataDeck,
     anki_deck = genanki.Deck(anki_deck_id, anki_deck_name)
 
     for card_page in deck:
-        if card_page[app_utils.cards.SavedDataDeck.CARD_STATUS] != saving_card_status:
+        if card_page[app_utils.decks.SavedDataDeck.CARD_STATUS] != saving_card_status:
             continue
-        card_data = card_page[app_utils.cards.SavedDataDeck.CARD_DATA]
+        card_data = card_page[app_utils.decks.SavedDataDeck.CARD_DATA]
 
         images = ""
         audios = ""
         hierarchical_prefix = ""
         tags = []
-        if (additional := card_page.get(app_utils.cards.SavedDataDeck.ADDITIONAL_DATA)):
-            image_paths = additional.get(app_utils.cards.SavedDataDeck.SAVED_IMAGES_PATHS, [])
+        if (additional := card_page.get(app_utils.decks.SavedDataDeck.ADDITIONAL_DATA)):
+            image_paths = additional.get(app_utils.decks.SavedDataDeck.SAVED_IMAGES_PATHS, [])
             images = " ".join([image_names_wrapper(name) for name in image_paths])
 
-            if (audio_data := additional.get(app_utils.cards.SavedDataDeck.AUDIO_DATA)) is not None:
-                audio_paths = audio_data[app_utils.cards.SavedDataDeck.AUDIO_SAVING_PATHS]
+            if (audio_data := additional.get(app_utils.decks.SavedDataDeck.AUDIO_DATA)) is not None:
+                audio_paths = audio_data[app_utils.decks.SavedDataDeck.AUDIO_SAVING_PATHS]
                 audios = " ".join([audio_names_wrapper(name) for name in audio_paths])
 
-            hierarchical_prefix = additional.get(app_utils.cards.SavedDataDeck.HIERARCHICAL_PREFIX, "")
+            hierarchical_prefix = additional.get(app_utils.decks.SavedDataDeck.HIERARCHICAL_PREFIX, "")
             
-            user_tags = additional.get(app_utils.cards.SavedDataDeck.USER_TAGS, "").split()
+            user_tags = additional.get(app_utils.decks.SavedDataDeck.USER_TAGS, "").split()
             if hierarchical_prefix:
                 user_tags = [f"{hierarchical_prefix}::{tag}" for tag in user_tags]
             tags.extend(user_tags)

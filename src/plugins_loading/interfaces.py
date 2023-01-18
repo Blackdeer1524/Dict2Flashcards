@@ -1,11 +1,9 @@
-from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
+from typing import Callable, Protocol, TypeVar, runtime_checkable
 
-from ..app_utils.cards import CardStatus, SavedDataDeck
+from ..app_utils.decks import CardStatus, SavedDataDeck
 from ..plugins_management.config_management import LoadableConfig
-from ..plugins_management.parsers_return_types import (AudioGeneratorProtocol,
-                                                       ImageGeneratorProtocol,
-                                                       SentenceGeneratorProtocol)
 from ..consts import CardFormat
+from ..plugins_management.parsers_return_types import AUDIO_SCRAPPER_RETURN_T, IMAGE_SCRAPPER_RETURN_T, SENTENCE_SCRAPPER_RETURN_T
 
 @runtime_checkable
 class LanguagePackageInterface(Protocol):
@@ -253,7 +251,7 @@ class WebSentenceParserInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def get(word: str, card_data: dict) -> SentenceGeneratorProtocol:
+    def get(word: str, card_data: dict) -> SENTENCE_SCRAPPER_RETURN_T:
         ...
 
 
@@ -262,7 +260,7 @@ class ImageParserInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def get(word: str) -> ImageGeneratorProtocol:
+    def get(word: str) -> IMAGE_SCRAPPER_RETURN_T:
         ...
 
 
@@ -272,7 +270,7 @@ class LocalAudioGetterInterface(Protocol):
     AUDIO_FOLDER: str
 
     @staticmethod
-    def get(word: str, card_data: dict) -> AudioGeneratorProtocol:
+    def get(word: str, card_data: dict) -> AUDIO_SCRAPPER_RETURN_T:
         ...
 
 
@@ -281,7 +279,7 @@ class WebAudioGetterInterface(Protocol):
     config: LoadableConfig
 
     @staticmethod
-    def get(word: str, card_data: dict) -> AudioGeneratorProtocol:
+    def get(word: str, card_data: dict) -> AUDIO_SCRAPPER_RETURN_T:
         ...
 
 

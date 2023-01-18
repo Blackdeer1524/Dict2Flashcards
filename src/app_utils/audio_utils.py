@@ -8,7 +8,7 @@ import requests
 
 from ..consts.parser_types import ParserType
 from ..plugins_loading.containers import LanguagePackageContainer
-from .cards import SavedDataDeck
+from .decks import SavedDataDeck
 from .storages import FrozenDict
 from .window_utils import spawn_window_in_center
 

@@ -1,8 +1,7 @@
 import copy
 from json import JSONEncoder
-from typing import Any, Generic, Mapping, TypeVar
-
-from .preprocessing import validate_json
+from typing import Any, Generic, Mapping, TypeVar, Sequence
+from functools import singledispatchmethod
 
 
 class _FrozenDictNode(Mapping):
@@ -66,14 +65,16 @@ class FrozenDictJSONEncoder(JSONEncoder):
         return o.to_dict()
 
 
-_T = TypeVar("_T")
-class PointerList(Generic[_T]):
+T = TypeVar("T")
+DEFAULT_T = TypeVar("DEFAULT_T")
+class PointerList(Generic[T, DEFAULT_T]):
     __slots__ = "_data", "_starting_position", "_pointer_position", "_default_return_value"
 
-    def __init__(self, data: list[_T] = None,
+    def __init__(self, 
+                 data: list[T] | None = None,
                  starting_position: int = 0,
-                 default_return_value: Any = None):
-        self._data: list[_T] = data if data is not None else []
+                 default_return_value: DEFAULT_T | None = None):
+        self._data: list[T] = data if data is not None else []
         self._starting_position = min(len(self._data), starting_position)
         self._pointer_position: int = self._starting_position
         self._default_return_value: Any = default_return_value
@@ -84,12 +85,18 @@ class PointerList(Generic[_T]):
     def __bool__(self):
         return bool(self._data)
 
+    @singledispatchmethod
     def __getitem__(self, item):
-        if isinstance(item, int):
-            return self._data[item] if self._starting_position <= item < len(self) \
-                                    else self._default_return_value
-        elif isinstance(item, slice):
-            return self._data[item]
+        raise NotImplementedError("__getitem__ not implemented")
+    
+    @__getitem__.register
+    def _(self, item: int) -> T | DEFAULT_T:
+        return self._data[item] if self._starting_position <= item < len(self) \
+                                else self._default_return_value
+
+    @__getitem__.register
+    def _(self, item: slice) -> Sequence[T | DEFAULT_T]:
+        return self._data[item]
 
     def __iter__(self):
         return (self._data[i] for i in range(self._starting_position, len(self._data)))
@@ -117,7 +124,7 @@ class PointerList(Generic[_T]):
     def get_pointer_position(self) -> int:
         return self._pointer_position
 
-    def get_pointed_item(self) -> Any:
+    def get_pointed_item(self) -> T | DEFAULT_T:
         return self[self._pointer_position]
 
     def move(self, n: int) -> None:
@@ -125,6 +132,9 @@ class PointerList(Generic[_T]):
 
 
 def main():
+    a = PointerList(data=[(1, 2), (2, 3), (3, 4), (4, 5)],
+                default_return_value=(0, 0))
+
     standard_conf_file = {"app": {"theme": "dark",
                                   "main_window_geometry": "500x800+0+0",
                                   "image_search_position": "+0+0"},
@@ -175,8 +185,8 @@ def main():
             else:
                 assert src_val == frozen_src_val
 
-    validate_json(checking, standard_conf_file)
-    assert checking == standard_conf_file
+    # validate_json(checking, standard_conf_file)
+    # assert checking == standard_conf_file
 
 
 if __name__ == "__main__":

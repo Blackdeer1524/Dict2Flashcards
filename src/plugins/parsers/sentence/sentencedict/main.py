@@ -24,7 +24,7 @@ config = config_management.LoadableConfig(config_location=os.path.dirname(__file
                                           docs=_CONF_DOCS)
 
 
-def get(word: str, card_data: dict) -> parsers_return_types.SentenceGeneratorProtocol:
+def get(word: str, card_data: dict) -> parsers_return_types.SENTENCE_SCRAPPER_RETURN_T:
     re_pattern = re.compile("^(.?\d+.? )")
 
     try:

@@ -104,7 +104,7 @@ All plugins can use
 * all contents of ./src/plugins_management/parsers_return_types
 * all contents of ./src/plugins_management/config_management
 * all contents of ./src/consts
-* cards, preprocessing, query_language, storages, string_utils from ./src/app_utils
+* cards, decks, preprocessing, query_language, storages, string_utils from ./src/app_utils
 
 Just add 
 `from .. import app_utils, parsers_return_types, config_management, consts`

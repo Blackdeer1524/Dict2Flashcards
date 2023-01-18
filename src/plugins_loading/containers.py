@@ -1,28 +1,30 @@
 import os.path
 from dataclasses import dataclass
-from typing import Callable, TypeVar, Generic
-from ..app_utils.cards import CardStatus, SavedDataDeck
-from ..app_utils.parser_interfaces import Named, Configurable, ERROR_MESSAGE_T
+from typing import Callable, Generic, TypeVar
+
+from ..app_utils.decks import CardStatus, SavedDataDeck
 from ..consts import CardFormat
 from ..consts.paths import LOCAL_AUDIO_DIR, LOCAL_DICTIONARIES_DIR
-from ..plugins_management.config_management import LoadableConfig
-from ..plugins_management.parsers_return_types import (AudioGeneratorProtocol,
-                                                       ImageGeneratorProtocol,
-                                                       SentenceGeneratorProtocol)
+from ..plugins_management.config_management import (HasConfigFile,
+                                                    LoadableConfig)
+from ..plugins_management.parsers_return_types import (
+    AUDIO_SCRAPPER_RETURN_T, IMAGE_SCRAPPER_RETURN_T,
+    SENTENCE_SCRAPPER_RETURN_T)
 from .exceptions import LoaderError, WrongPluginProtocol
 from .interfaces import (CardProcessorInterface, DeckSavingFormatInterface,
                          ImageParserInterface, LanguagePackageInterface,
                          LocalAudioGetterInterface, LocalWordParserInterface,
                          ThemeInterface, WebAudioGetterInterface,
                          WebSentenceParserInterface, WebWordParserInterface)
+from .wrappers import Named
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class WebWordParserContainer(Named, Configurable):
+class WebWordParserContainer(Named, HasConfigFile):
     name: str
     scheme_docs: str
     config: LoadableConfig
-    define: Callable[[str], tuple[list[CardFormat], ERROR_MESSAGE_T]]
+    define: Callable[[str], tuple[list[CardFormat], str]]
 
     def __init__(self, name: str, source_module: WebWordParserInterface):
         if not isinstance(source_module, WebWordParserInterface):
@@ -37,12 +39,12 @@ class WebWordParserContainer(Named, Configurable):
 DICTIONARY_T = TypeVar("DICTIONARY_T")
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class LocalWordParserContainer(Named, Configurable, Generic[DICTIONARY_T]):
+class LocalWordParserContainer(Named, HasConfigFile, Generic[DICTIONARY_T]):
     name: str
     scheme_docs: str
     config: LoadableConfig
     local_dict_name: str
-    define: Callable[[str, DICTIONARY_T], tuple[list[CardFormat], ERROR_MESSAGE_T]]
+    define: Callable[[str, DICTIONARY_T], tuple[list[CardFormat], str]]
     
     def __init__(self, name: str, source_module: LocalWordParserInterface):
         if not isinstance(source_module, LocalWordParserInterface):
@@ -59,10 +61,10 @@ class LocalWordParserContainer(Named, Configurable, Generic[DICTIONARY_T]):
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class WebAudioGetterContainer(Named, Configurable):
+class WebAudioGetterContainer(Named, HasConfigFile):
     name: str
     config: LoadableConfig
-    get: Callable[[str, CardFormat], AudioGeneratorProtocol]
+    get: Callable[[str, CardFormat], AUDIO_SCRAPPER_RETURN_T]
 
     def __init__(self, name: str, source_module: WebAudioGetterInterface):
         if not isinstance(source_module, WebAudioGetterInterface):
@@ -74,10 +76,10 @@ class WebAudioGetterContainer(Named, Configurable):
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class LocalAudioGetterContainer(Named, Configurable):
+class LocalAudioGetterContainer(Named, HasConfigFile):
     name: str
     config: LoadableConfig
-    get: Callable[[str, CardFormat], AudioGeneratorProtocol]
+    get: Callable[[str, CardFormat], AUDIO_SCRAPPER_RETURN_T]
 
     def __init__(self, name: str, source_module: LocalAudioGetterInterface):
         if not isinstance(source_module, LocalAudioGetterInterface):
@@ -92,10 +94,10 @@ class LocalAudioGetterContainer(Named, Configurable):
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class WebSentenceParserContainer(Named, Configurable):
+class WebSentenceParserContainer(Named, HasConfigFile):
     name: str
     config: LoadableConfig
-    get: Callable[[str, CardFormat], SentenceGeneratorProtocol]
+    get: Callable[[str, CardFormat], SENTENCE_SCRAPPER_RETURN_T]
 
     def __init__(self, name: str, source_module: WebSentenceParserInterface):
         if not isinstance(source_module, WebSentenceParserInterface):
@@ -107,10 +109,10 @@ class WebSentenceParserContainer(Named, Configurable):
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)
-class ImageParserContainer(Named, Configurable):
+class ImageParserContainer(Named, HasConfigFile):
     name: str
     config: LoadableConfig
-    get: Callable[[str, CardFormat], ImageGeneratorProtocol]
+    get: Callable[[str, CardFormat], IMAGE_SCRAPPER_RETURN_T]
 
     def __init__(self, name: str, source_module: ImageParserInterface):
         if not isinstance(source_module, ImageParserInterface):

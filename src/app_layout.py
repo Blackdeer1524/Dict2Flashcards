@@ -21,11 +21,11 @@ from playsound import playsound
 from tkinterdnd2 import Tk
 
 from .app_utils.audio_utils import AudioDownloader
-from .app_utils.cards import Card, CardStatus, Deck, FrozenDict, SavedDataDeck
+from .app_utils.cards import Card
+from .app_utils.decks import CardStatus, Deck, FrozenDict, SavedDataDeck
 from .app_utils.error_handling import create_exception_message, error_handler
 from .app_utils.global_bindings import Binder
 from .app_utils.image_utils import ImageSearch
-from .app_utils.plugin_wrappers import ExternalDataGenerator
 from .app_utils.query_language.exceptions import QueryLangException
 from .app_utils.query_language.query_processing import get_card_filter
 from .app_utils.string_utils import remove_special_chars
@@ -33,13 +33,15 @@ from .app_utils.widgets import EntryWithPlaceholder as Entry
 from .app_utils.widgets import ScrolledFrame
 from .app_utils.widgets import TextWithPlaceholder as Text
 from .app_utils.window_utils import get_option_menu, spawn_window_in_center
-from .consts import CardFields
-from .consts import ParserType
+from .consts import CardFields, ParserType, TypedParserName
 from .consts.paths import *
 from .plugins_loading.containers import LanguagePackageContainer
 from .plugins_loading.factory import loaded_plugins
+from .plugins_loading.wrappers import ExternalDataGenerator, GeneratorReturn
 from .plugins_management.config_management import Config, LoadableConfig
-from .plugins_management.parsers_return_types import AudioData, SentenceData
+from .plugins_management.parsers_return_types import (
+    AUDIO_DATA_T, AUDIO_SCRAPPER_RETURN_T, IMAGE_DATA_T,
+    IMAGE_SCRAPPER_RETURN_T, SENTENCE_DATA_T, SENTENCE_SCRAPPER_RETURN_T)
 
 
 class App(Tk):
@@ -49,7 +51,7 @@ class App(Tk):
         type: ParserType
         fetching_word: str
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super(App, self).__init__(*args, **kwargs)
 
         if not os.path.exists(f"{WORDS_DIR}/custom.json"):
@@ -91,40 +93,40 @@ class App(Tk):
         wp_name = self.configurations["scrappers"]["word"]["name"]
         wp_type = self.configurations["scrappers"]["word"]["type"]
         self.card_generator = loaded_plugins.get_card_generator(
-            name=self.configurations["scrappers"]["word"]["name"],
-            gen_type=self.configurations["scrappers"]["word"]["type"],
-            chain_data=self.chaining_data["word_parsers"].get(wp_name))
-        self.typed_word_parser_name = f"[{wp_type}] {wp_name}"
+            parser_info=TypedParserName(parser_t=ParserType(wp_type), 
+                                        name=wp_name),
+            chain_data=self.chaining_data["word_parsers"])
         self.deck = Deck(deck_path=self.configurations["directories"]["last_open_file"],
                          current_deck_pointer=self.history[self.configurations["directories"]["last_open_file"]],
                          card_generator=self.card_generator)
 
-        self.card_processor = loaded_plugins.get_card_processor("Anki")
+        self.card_processor = loaded_plugins.get_card_processor(self.configurations["deck"]["card_processor"])
         self.dict_card_data: dict = {}
 
         sentence_parser = loaded_plugins.get_sentence_parser(
-            name=self.configurations["scrappers"]["sentence"]["name"],
-            parser_type=self.configurations["scrappers"]["sentence"]["type"],
-            chain_data=self.chaining_data["sentence_parsers"].get(self.configurations["scrappers"]["sentence"]["name"])
+            parser_info=TypedParserName(parser_t=ParserType(self.configurations["scrappers"]["sentence"]["type"]),
+                                        name=self.configurations["scrappers"]["sentence"]["name"]),
+            chain_data=self.chaining_data["sentence_parsers"]
         )
-        self.external_sentence_fetcher = ExternalDataGenerator(
+        self.external_sentence_fetcher: ExternalDataGenerator[list[str]] = ExternalDataGenerator(
             data_generator=sentence_parser)
 
         self.image_parser = loaded_plugins.get_image_parser(
-            name=self.configurations["scrappers"]["image"]["name"],
-            parser_type=self.configurations["scrappers"]["image"]["type"],
-            chain_data=self.chaining_data["image_parsers"].get(self.configurations["scrappers"]["image"]["name"])
+            parser_info=TypedParserName(parser_t=ParserType(self.configurations["scrappers"]["image"]["type"]),
+                                        name=self.configurations["scrappers"]["image"]["name"]),
+            chain_data=self.chaining_data["image_parsers"]
         )
 
-        if (audio_getter_name := self.configurations["scrappers"]["audio"]["name"]):
+        if (self.configurations["scrappers"]["audio"]["name"]):
             if self.configurations["scrappers"]["audio"]["type"] in (ParserType.web,
                                                                      ParserType.local,
                                                                      ParserType.chain):
                 audio_getter = loaded_plugins.get_audio_getter(
-                    name=audio_getter_name,
-                    getter_type=self.configurations["scrappers"]["audio"]["type"],
-                    chain_data=self.chaining_data["audio_getters"].get(audio_getter_name))
-                self.external_audio_generator = ExternalDataGeneratorWrapper(data_generator=audio_getter)
+                    parser_info=TypedParserName(parser_t=ParserType(self.configurations["scrappers"]["audio"]["type"]),
+                                                name=self.configurations["scrappers"]["audio"]["name"]),
+                    chain_data=self.chaining_data["audio_getters"]
+                )
+                self.external_audio_generator: ExternalDataGenerator[tuple[list[str], list[str]]] | None = ExternalDataGenerator(data_generator=audio_getter)
             else:
                 self.configurations["scrappers"]["audio"]["type"] = "default"
                 self.configurations["scrappers"]["audio"]["name"] = ""
@@ -341,26 +343,16 @@ class App(Tk):
 
         @error_handler(self.show_exception_logs)
         def fetch_external_sentences() -> None:
-            results: list[tuple[str, SentenceData]] = []
+            results: GeneratorReturn[list[str]] | None = None
 
             fill_search_fields()
 
             def schedule_sentence_fetcher():
                 nonlocal results
-                parser_results = self.external_sentence_fetcher.get(
+                results = self.external_sentence_fetcher.get(
                     word=self.sentence_search_entry.get(),
                     card_data=self.dict_card_data,
                     batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
-                if parser_results is None:
-                    return
-
-                sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-                if sentence_parser_type == ParserType.chain:
-                    results = parser_results
-                elif sentence_parser_type == ParserType.web:
-                    results.append((f"{ParserType.web.prefix()} {self.external_sentence_fetcher.data_generator.name}", parser_results))
-                else:
-                    raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
 
             def wait_sentence_fetcher(thread: Thread):
                 if thread.is_alive():
@@ -1186,27 +1178,27 @@ class App(Tk):
                         if chain_type == "word_parsers":
                             if chain_name == self.card_generator.name:
                                 self.card_generator = loaded_plugins.get_card_generator(
-                                    name=new_chain_name,
-                                    gen_type=ParserType.chain,
-                                    chain_data=chosen_chain_config)
+                                    parser_info=TypedParserName(parser_t=ParserType.chain,
+                                                                name=new_chain_name),
+                                    chain_data=self.chaining_data["word_parsers"])
                                 self.configurations["scrappers"]["word"]["name"] = new_chain_name
 
                         elif chain_type == "sentence_parsers":
                             if chain_name == self.external_sentence_fetcher.data_generator.name:
                                 sentence_parser = loaded_plugins.get_sentence_parser(
-                                    name=new_chain_name,
-                                    parser_type=ParserType.chain,
-                                    chain_data=chosen_chain_config)
+                                    parser_info=TypedParserName(parser_t=ParserType.chain,
+                                                                name=new_chain_name),
+                                    chain_data=self.chaining_data["sentence_parsers"])
                                 self.external_sentence_fetcher = \
-                                    ExternalDataGeneratorWrapper(data_generator=sentence_parser)
+                                    ExternalDataGenerator(data_generator=sentence_parser)
                                 self.configurations["scrappers"]["sentence"]["name"] = new_chain_name
 
                         elif chain_type == "image_parsers":
                             if chain_name == self.image_parser.name:
                                 self.image_parser = loaded_plugins.get_image_parser(
-                                    name=new_chain_name,
-                                    parser_type=ParserType.chain,
-                                    chain_data=chosen_chain_config)
+                                    parser_info=TypedParserName(parser_t=ParserType.chain,
+                                                                name=new_chain_name),
+                                    chain_data=self.chaining_data["image_parsers"])
                                 self.configurations["scrappers"]["image"]["name"] = new_chain_name
 
                         elif chain_type == "audio_getters":
@@ -1215,11 +1207,11 @@ class App(Tk):
                                 old_get_all_val = self.external_audio_generator.data_generator.config["get_all"]
                                 old_error_verbosity_val = self.external_audio_generator.data_generator.config[
                                     "error_verbosity"]
-                                self.external_audio_generator = ExternalDataGeneratorWrapper(
+                                self.external_audio_generator = ExternalDataGenerator(
                                     data_generator=loaded_plugins.get_audio_getter(
-                                        name=new_chain_name,
-                                        getter_type=ParserType.chain,
-                                        chain_data=chosen_chain_config))
+                                        parser_info=TypedParserName(parser_t=ParserType.chain,
+                                                                    name=new_chain_name),
+                                        chain_data=self.chaining_data["audio_getters"]))
                                 self.external_audio_generator.data_generator.config["get_all"] = old_get_all_val
                                 self.external_audio_generator.data_generator.config[
                                     "error_verbosity"] = old_error_verbosity_val
@@ -1387,7 +1379,7 @@ class App(Tk):
 
         self.tried_to_display_audio_getters_on_refresh = False
         self.waiting_for_audio_display = False
-        self.last_refresh_call_time = 0
+        self.last_refresh_call_time = 0.0
 
         self.refresh()
 
@@ -2971,9 +2963,9 @@ class App(Tk):
             raise NotImplementedError(f"Parser of unknown type: {typed_parser}")
 
         self.card_generator = loaded_plugins.get_card_generator(
-            name=raw_name,
-            gen_type=self.configurations["scrappers"]["word"]["type"],
-            chain_data=self.chaining_data["word_parsers"].get(raw_name))
+             parser_info=TypedParserName(parser_t=ParserType(self.configurations["scrappers"]["word"]["type"]),
+                                         name=raw_name),
+            chain_data=self.chaining_data["word_parsers"])
         self.configurations["scrappers"]["word"]["name"] = raw_name
         self.typed_word_parser_name = typed_parser
         self.deck.update_card_generator(self.card_generator)
@@ -3001,10 +2993,10 @@ class App(Tk):
             raise NotImplementedError(f"Audio getter with unknown type: {typed_getter}")
 
         audio_getter = loaded_plugins.get_audio_getter(
-            name=raw_name,
-            getter_type=self.configurations["scrappers"]["audio"]["type"],
-            chain_data=self.chaining_data["audio_getters"].get(raw_name))
-        self.external_audio_generator = ExternalDataGeneratorWrapper(data_generator=audio_getter)
+            parser_info=TypedParserName(parser_t=ParserType(self.configurations["scrappers"]["audio"]["type"]),
+                                        name=raw_name),
+            chain_data=self.chaining_data["audio_getters"])
+        self.external_audio_generator = ExternalDataGenerator(data_generator=audio_getter)
         self.configurations["scrappers"]["audio"]["name"] = raw_name
         self.fetch_audio_data_button["state"] = "normal"
 
@@ -3031,9 +3023,9 @@ class App(Tk):
 
         self.configurations["scrappers"]["image"]["name"] = given_image_parser_name
         self.image_parser = loaded_plugins.get_image_parser(
-            name=given_image_parser_name,
-            parser_type=self.configurations["scrappers"]["image"]["type"],
-            chain_data=self.chaining_data["image_parsers"].get(given_image_parser_name))
+            parser_info=TypedParserName(parser_t=ParserType(self.configurations["scrappers"]["image"]["type"]),
+                                        name=given_image_parser_name),
+            chain_data=self.chaining_data["image_parsers"])
 
     @error_handler(show_exception_logs)
     def change_sentence_parser(self, given_sentence_parser_name: str):
@@ -3050,12 +3042,12 @@ class App(Tk):
 
         self.configurations["scrappers"]["sentence"]["name"] = given_sentence_parser_name
         sentence_parser = loaded_plugins.get_sentence_parser(
-            name=given_sentence_parser_name,
-            parser_type=self.configurations["scrappers"]["sentence"]["type"],
-            chain_data=self.chaining_data["sentence_parsers"].get(given_sentence_parser_name)
+            parser_info=TypedParserName(parser_t=ParserType(self.configurations["scrappers"]["sentence"]["type"]),
+                                        name=given_sentence_parser_name),
+            chain_data=self.chaining_data["sentence_parsers"]
         )
         self.external_sentence_fetcher = \
-            ExternalDataGeneratorWrapper(data_generator=sentence_parser)
+            ExternalDataGenerator(data_generator=sentence_parser)
 
     @error_handler(show_exception_logs)
     def choose_sentence(self, sentence_number: int):
@@ -3295,7 +3287,8 @@ class App(Tk):
         self.waiting_for_audio_display = False
         self.tried_to_display_audio_getters_on_refresh = False
 
-        self.dict_card_data = self.deck.get_card().to_dict()
+        parser_name, dict_card_data = self.deck.get_card()
+        self.dict_card_data = dict_card_data.to_dict()
         self.card_processor.process_card(self.dict_card_data)
 
         self.audio_inner_frame.destroy()

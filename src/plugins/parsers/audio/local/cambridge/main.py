@@ -30,7 +30,7 @@ _LETTERS = frozenset("abcdefghijklmnopqrstuvwxyz")
 _AUDIO_NAME_SPEC_CHARS = '/\\:*?\"<>| '
 
 
-def get(word, card_data: dict) -> parsers_return_types.AudioGeneratorProtocol:
+def get(word, card_data: dict) -> parsers_return_types.AUDIO_SCRAPPER_RETURN_T:
     word = word.strip()
     if not word:
         return ([], []), ""

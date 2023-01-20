@@ -2,7 +2,7 @@ from collections import Counter
 from typing import Callable, Generator, Optional, TypedDict, TypeVar, Sized
 
 from ..app_utils.cards import Card
-from ..consts import CardFormat
+from ..consts import CardFormat, ParserType
 from ..consts.parser_types import TypedParserName
 from ..consts.paths import *
 from ..plugins_management.config_management import (LoadableConfig,
@@ -84,7 +84,7 @@ def get_enumerated_names(names: list[TypedParserName]) -> list[str]:
 
 
 class ChainConfigurations(TypedDict):
-    chain:       list[TypedParserName]
+    chain:       list[tuple[ParserType, str]]
     config_name: str
 
 
@@ -94,15 +94,27 @@ CHAIN_INFO_T  = dict[CHAIN_NAME_T, ChainConfigurations]
 
 
 class CardGeneratorsChain(CardGeneratorProtocol):
-    name: str
-    config: ChainConfig
-    scheme_docs: str
+    _scheme_docs: str
+    _parser_info: TypedParserName
+    _config: ChainConfig
+
+    @property
+    def scheme_docs(self) -> str:
+        return self._scheme_docs
+
+    @property
+    def config(self) -> LoadableConfigProtocol:
+        return self._config
+
+    @property
+    def parser_info(self) -> TypedParserName:
+        return self._parser_info
 
     def __init__(self,
                  chain_name: str,
                  chain_data: CHAIN_INFO_T,
                  card_generator_getter: Callable[[TypedParserName, CHAIN_INFO_T], CardGeneratorProtocol]):
-        object.__setattr__(self, "name", chain_name)
+        self._parser_info = TypedParserName(parser_t=ParserType.chain, name=chain_name)
         self.enum_name2generator: dict[str, CardGeneratorProtocol] = {}
 
         parser_configs = []
@@ -120,19 +132,18 @@ class CardGeneratorsChain(CardGeneratorProtocol):
             parser_configs.append(generator.config)
             scheme_docs_list.append("{}\n{}".format(parser_data.full_name, generator.scheme_docs.replace("\n", "\n |\t")))
 
-        config: ChainConfig = ChainConfig(config_dir=str(CHAIN_WORD_PARSERS_DATA_DIR),
+        self._config = ChainConfig(config_dir=str(CHAIN_WORD_PARSERS_DATA_DIR),
                                           config_name=requested_chain_info["config_name"],
                                           name_config_pairs=[(parser_name, config) for parser_name, config in
                                                              zip(requested_chain_info["chain"], parser_configs)])
-        object.__setattr__(self, "config", config)
-        object.__setattr__(self, "scheme_docs", "\n".join(scheme_docs_list))
+        self._scheme_docs = "\n".join(scheme_docs_list)
 
     def get(self,
             query: str,
             additional_filter: Callable[[CardFormat], bool] | None = None) -> list[GeneratorReturn[list[Card]]]:
         res: list[GeneratorReturn[list[Card]]] = []
         for enum_name, generator in self.enum_name2generator.items():
-            self.config.update_config(enum_name)
+            self._config.update_config(enum_name)
             current_generator_results = generator.get(query, additional_filter)
         
             for i, parser_result in enumerate(current_generator_results):
@@ -149,17 +160,24 @@ class CardGeneratorsChain(CardGeneratorProtocol):
 
 BATCH_T = TypeVar("BATCH_T", bound=Sized)
 class ChainOfGenerators(WrappedBatchGeneratorProtocol[BATCH_T]):
-    name: str
-    config: ChainConfig
+    _parser_info: TypedParserName
+    _config: ChainConfig
+
+    @property
+    def config(self) -> LoadableConfigProtocol:
+        return self._config
+
+    @property
+    def parser_info(self) -> TypedParserName:
+        return self._parser_info
 
     def __init__(self,
-                chain_name: str,
-                chain_data: CHAIN_INFO_T,
-                generator_getter: Callable[[TypedParserName, CHAIN_INFO_T], WrappedBatchGeneratorProtocol]):
-        object.__setattr__(self, "name", chain_name)
-
+                 chain_name: str,
+                 chain_data: CHAIN_INFO_T,
+                 generator_getter: Callable[[TypedParserName, CHAIN_INFO_T], WrappedBatchGeneratorProtocol]):
         if (requested_chain_info := chain_data.get(chain_name)) is None:
             raise ValueError(f"{self.__class__.__name__}: {chain_name} not found")
+        self._parser_info = TypedParserName(parser_t=ParserType.chain, name=chain_name)
 
         self.enum_name2get_sentences_functions: dict[str, 
                                                      Callable[[str, CardFormat], 
@@ -171,11 +189,10 @@ class ChainOfGenerators(WrappedBatchGeneratorProtocol[BATCH_T]):
             batch_generator = generator_getter(parser_name, chain_data)
             self.enum_name2get_sentences_functions[enum_name] = batch_generator.get
             parser_configs.append(batch_generator.config)
-        config = ChainConfig(config_dir=str(CHAIN_SENTENCE_PARSERS_DATA_DIR),
-                             config_name=requested_chain_info["config_name"],
-                             name_config_pairs=[(parser_name, config) for parser_name, config in
-                                                 zip(requested_chain_info["chain"], parser_configs)])
-        object.__setattr__(self, "config", config)
+        self._config = ChainConfig(config_dir=str(CHAIN_SENTENCE_PARSERS_DATA_DIR),
+                                   config_name=requested_chain_info["config_name"],
+                                   name_config_pairs=[(parser_name, config) for parser_name, config in
+                                                       zip(requested_chain_info["chain"], parser_configs)])
 
     def get(self, word: str, card_data: CardFormat) -> Generator[list[GeneratorReturn[BATCH_T]], int, list[GeneratorReturn[BATCH_T]]]:
         batch_size = yield  # type: ignore
@@ -184,19 +201,23 @@ class ChainOfGenerators(WrappedBatchGeneratorProtocol[BATCH_T]):
         res_total_length = 0
 
         for i, (enum_name, get_sentences_generator) in enumerate(self.enum_name2get_sentences_functions.items()):
-            self.config.update_config(enum_name)
+            self._config.update_config(enum_name)
             sent_generator = get_sentences_generator(word, card_data)
             next(sent_generator)  # it is guaranteed that it will start without errors
 
             while True: 
                 try:
-                    res.extend(sent_generator.send(batch_size))
+                    current_res = sent_generator.send(batch_size)
                 except StopIteration as e:
-                    res.extend(e.value)
+                    current_res = e.value
                     break
                 finally:
-                    res_total_length += len(res[-1].result)
-                    object.__setattr__(res, "name", f"{self.name}::{enum_name}")
+                    for generator_result in current_res:
+                        object.__setattr__(generator_result, "name", f"{self.parser_info.name}::{enum_name}")
+                    
+                    res.extend(current_res)
+                    res_total_length += len(current_res)
+
                     if i == len(self.enum_name2get_sentences_functions) - 1:
                         return res
                     batch_size = yield res

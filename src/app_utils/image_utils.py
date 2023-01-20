@@ -13,10 +13,13 @@ import requests
 from PIL import Image, ImageTk
 from requests.exceptions import ConnectTimeout, RequestException
 from tkinterdnd2 import DND_FILES, DND_TEXT
+from ..consts import CardFormat
 
 from ..consts.paths import SYSTEM
 from ..plugins_loading.containers import LanguagePackageContainer
 from .widgets import ScrolledFrame
+from ..plugins_loading.wrappers import GeneratorReturn
+
 
 if SYSTEM == "Linux":
     import gi
@@ -87,10 +90,7 @@ class ImageSearch(Toplevel):
         self._init_local_img_paths: list[str] = [image_path for image_path in kwargs.get("local_images", []) if
                                                  os.path.isfile(image_path)]
         self._init_images = kwargs.get("init_images", [])
-        self._url_scrapper: Callable[[Any], Generator[tuple[list[str], str], int, tuple[list[str], str]]] = \
-            kwargs.get("url_scrapper")
-
-        self._image_url_gen = self._url_scrapper(search_term) if self._url_scrapper is not None else None
+        self._image_url_gen: Callable[[str, CardFormat, int], list[GeneratorReturn[list[str]]] | None] | None = kwargs.get("url_scrapper")
         self._scrapper_stop_flag = False
 
         self._button_bg = self.activebackground = "#FFFFFF"
@@ -187,26 +187,19 @@ class ImageSearch(Toplevel):
         self._command_widget_total_height = self._save_button.winfo_height() + self._search_field.winfo_height() + \
                                            2 * self._button_pady
 
-    def _start_url_generator(self) -> None:
+    def _generate_urls(self, batch_size: int) -> None:
         if self._image_url_gen is None:
-            self._scrapper_stop_flag = False
             return
-        try:
-            next(self._image_url_gen)
-        except StopIteration as exception:
-            messagebox.showerror(message=exception.value[1])
-            self._scrapper_stop_flag = True
-
-    def _generate_urls(self, batch_size):
-        if self._image_url_gen is not None and not self._scrapper_stop_flag:
-            try:
-                url_batch, error_message = self._image_url_gen.send(batch_size)
-            except StopIteration as exception:
-                url_batch, error_message = exception.value
-                self._scrapper_stop_flag = True
-            self._img_urls.extend(url_batch)
-            if error_message:
-                messagebox.showerror(message=error_message)
+        
+        scrapped_images = self._image_url_gen(self._search_field.get(), {"word": ""}, batch_size)
+        if scrapped_images is None:
+            return
+        
+        for scrapper_result in scrapped_images:
+            self._img_urls.extend(scrapper_result.result)
+            if scrapper_result.error_message:
+                messagebox.showerror(title=self.lang_pack.error_title,
+                                     message=scrapper_result.error_message)
 
     def start(self):
         if SYSTEM == "Linux":
@@ -232,8 +225,6 @@ class ImageSearch(Toplevel):
             return
 
         self._scrapper_stop_flag = False
-        self._image_url_gen = self._url_scrapper(self.search_term) if self._url_scrapper is not None else None
-        self._start_url_generator()
         self._inner_frame = self._sf.display_widget(partial(Frame, **self._frame_params))
         self._img_urls.clear()
 

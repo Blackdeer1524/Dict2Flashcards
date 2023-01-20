@@ -16,7 +16,13 @@ from .interfaces import (CardProcessorInterface, DeckSavingFormatInterface,
                          LocalAudioGetterInterface, LocalWordParserInterface,
                          ThemeInterface, WebAudioGetterInterface,
                          WebSentenceParserInterface, WebWordParserInterface)
-from .wrappers import Named
+from abc import ABC, abstractproperty
+
+
+class Named(ABC):
+    @abstractproperty
+    def name(self) -> str:
+        ...
 
 
 @dataclass(init=False, repr=False, frozen=True, eq=False, order=False, slots=True)

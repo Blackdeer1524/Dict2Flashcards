@@ -27,13 +27,13 @@ class GeneratorReturn(Generic[T]):
         object.__setattr__(self, "error_message", error_message)
 
 
-class Named(ABC):
+class TypedParser(ABC):
     @abstractproperty
-    def name(self) -> str:
+    def parser_info(self) -> TypedParserName:
         ...
 
 
-class CardGeneratorProtocol(Named, HasConfigFile, ABC):
+class CardGeneratorProtocol(TypedParser, HasConfigFile, ABC):
     @abstractproperty
     def scheme_docs(self) -> str:
         ...
@@ -48,7 +48,7 @@ class CardGeneratorProtocol(Named, HasConfigFile, ABC):
 WEB_DEFITION_FUNCTION_T = Callable[[str], tuple[list[CardFormat], str]]
 @dataclass(init=False, slots=True, frozen=True, eq=False, kw_only=True, order=False, repr=False, match_args=True, unsafe_hash=False)
 class WebCardGenerator(CardGeneratorProtocol):
-    name:                     str
+    parser_info:              TypedParserName
     word_definition_function: WEB_DEFITION_FUNCTION_T
     config:                   LoadableConfig
     scheme_docs:              str
@@ -58,7 +58,7 @@ class WebCardGenerator(CardGeneratorProtocol):
                  name: str,
                  config: LoadableConfig,
                  scheme_docs: str):
-        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "parser_info", TypedParserName(parser_t=ParserType.web, name=name))
         object.__setattr__(self, "word_definition_function", word_definition_function)
         object.__setattr__(self, "config", config)
         object.__setattr__(self, "scheme_docs", scheme_docs)
@@ -76,7 +76,7 @@ class WebCardGenerator(CardGeneratorProtocol):
         res: list[Card] = [Card(item) for item in results if additional_filter(item)]
 
         return [GeneratorReturn(generator_type=ParserType.web, 
-                                name=self.name, 
+                                name=self.parser_info.name, 
                                 result=res, 
                                 error_message=error_message)]
 
@@ -86,7 +86,7 @@ DICTIONARY_T = TypeVar("DICTIONARY_T")
 LOCAL_DEFITION_FUNCTION_T = Callable[[str, DICTIONARY_T], tuple[list[CardFormat], str]]
 @dataclass(init=False, slots=True, frozen=True, eq=False, kw_only=True, order=False, repr=False, match_args=True, unsafe_hash=False)
 class LocalCardGenerator(Generic[DICTIONARY_T], CardGeneratorProtocol):
-    name:                     str
+    parser_info:              TypedParserName
     word_definition_function: LOCAL_DEFITION_FUNCTION_T
     config:                   LoadableConfig
     scheme_docs:              str
@@ -98,7 +98,7 @@ class LocalCardGenerator(Generic[DICTIONARY_T], CardGeneratorProtocol):
                  local_dict_path: str,
                  config: LoadableConfig,
                  scheme_docs: str):
-        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "parser_info", TypedParserName(parser_t=ParserType.local, name=name))
         object.__setattr__(self, "word_definition_function", word_definition_function)
         object.__setattr__(self, "config", config)
         object.__setattr__(self, "scheme_docs", scheme_docs)
@@ -122,13 +122,13 @@ class LocalCardGenerator(Generic[DICTIONARY_T], CardGeneratorProtocol):
         res: list[Card] = [Card(item) for item in results if additional_filter(item)]
 
         return [GeneratorReturn(generator_type=ParserType.local, 
-                                name=self.name, 
+                                name=self.parser_info.name, 
                                 result=res, 
                                 error_message=error_message)]
 
 
 S = TypeVar("S")
-class WrappedBatchGeneratorProtocol(Named, HasConfigFile, ABC, Generic[S]):
+class WrappedBatchGeneratorProtocol(TypedParser, HasConfigFile, ABC, Generic[S]):
     @abstractmethod
     def get(self, word: str, card_data: CardFormat) -> Generator[list[GeneratorReturn[S]], int, list[GeneratorReturn[S]]]:
         ...
@@ -137,25 +137,34 @@ class WrappedBatchGeneratorProtocol(Named, HasConfigFile, ABC, Generic[S]):
 BATCH_T =  TypeVar("BATCH_T")
 class BatchGeneratorWrapper(WrappedBatchGeneratorProtocol[BATCH_T]):
     """It is guaranteed that it will start"""
-    name:                  str
-    config:                LoadableConfigProtocol 
+    _parser_type:          Literal[ParserType.web, ParserType.local]
     generator_initializer: Callable[[str, CardFormat], 
                                      Generator[tuple[BATCH_T, str], 
                                                int, 
                                                tuple[BATCH_T, str]]]
-    parser_type:            Literal[ParserType.web, ParserType.local]
+    _parser_info: TypedParserName
+    _config: LoadableConfigProtocol
+
+    @property
+    def config(self) -> LoadableConfigProtocol:
+        return self._config
+
+    @property
+    def parser_info(self) -> TypedParserName:
+        return self._parser_info
 
     def __init__(self,
-                 parser_info: TypedParserName,
+                 parser_type: Literal[ParserType.web, ParserType.local],
+                 parser_name: str,
                  config: LoadableConfigProtocol,
                  generator_initializer: Callable[[str, CardFormat], 
                                                  Generator[tuple[BATCH_T, str], 
                                                            int, 
                                                            tuple[BATCH_T, str]]]) -> None:
-        object.__setattr__(self, "name", parser_info.name)
-        object.__setattr__(self, "parser_type", parser_info.parser_t)
-        object.__setattr__(self, "config", config)
-        object.__setattr__(self, "generator_initializer", generator_initializer)
+        self._parser_info = TypedParserName(parser_t=parser_type, name=parser_name)
+        self._parser_type = parser_type
+        self._config = config
+        self.generator_initializer = generator_initializer
 
     def get(self,
             word: str,
@@ -167,36 +176,38 @@ class BatchGeneratorWrapper(WrappedBatchGeneratorProtocol[BATCH_T]):
         try:
             next(generator)
         except StopIteration as e:
-            return [GeneratorReturn(generator_type=ParserType.web,
-                                   name=self.name,
-                                   result=e.value[0],
-                                   error_message=e.value[1])] 
+            return [GeneratorReturn(generator_type=self._parser_type,
+                                    name=self.parser_info.name,
+                                    result=e.value[0],
+                                    error_message=e.value[1])] 
 
         while True:
             try:
                 batch_results, error_message = generator.send(batch_size)
-                batch_size = yield [GeneratorReturn(generator_type=self.parser_type,
-                                                   name=self.name,
-                                                   result=batch_results,
-                                                   error_message=error_message)]
+                batch_size = yield [GeneratorReturn(generator_type=self._parser_type,
+                                                    name=self.parser_info.name,
+                                                    result=batch_results,
+                                                    error_message=error_message)]
             except StopIteration as e:
-                return [GeneratorReturn(generator_type=self.parser_type,
-                                       name=self.name,
-                                       result=batch_results,
-                                       error_message=error_message)]
+                return [GeneratorReturn(generator_type=self._parser_type,
+                                        name=self.parser_info.name,
+                                        result=e.value[0],
+                                        error_message=e.value[1])]
 
 
 BATCH_V = TypeVar("BATCH_V")
 @dataclass(slots=True)
-class ExternalDataGenerator(Generic[BATCH_V]):
+class ExternalDataGenerator(TypedParser, Generic[BATCH_V]):
     data_generator: WrappedBatchGeneratorProtocol
 
+    parser_info:     TypedParserName = field(init=False)
     _word:           str  = field(init=False, default="")
     _card_data:      dict = field(init=False, default_factory=dict)
     _update_status:  bool = field(init=False, default=False)
-    _data_generator: Generator[GeneratorReturn[BATCH_V], int, None] = field(init=False)
+    _data_generator: Generator[list[GeneratorReturn[BATCH_V]], int, None] = field(init=False)
 
     def __post_init__(self):
+        object.__setattr__(self, "parser_info", self.data_generator.parser_info)
         self._start()
 
     def _start(self):
@@ -209,7 +220,7 @@ class ExternalDataGenerator(Generic[BATCH_V]):
         self._update_status = True
         self._start()
 
-    def _get_data_generator(self) -> Generator[GeneratorReturn[BATCH_V], int, None]:
+    def _get_data_generator(self) -> Generator[list[GeneratorReturn[BATCH_V]], int, None]:
         batch_size = yield  # type: ignore
 
         data_generator = self.data_generator.get(self._word, self._card_data)
@@ -229,7 +240,7 @@ class ExternalDataGenerator(Generic[BATCH_V]):
                 yield e.value
                 return
 
-    def get(self, word: str, card_data:dict, batch_size: int) -> Optional[GeneratorReturn[BATCH_V]]:
+    def get(self, word: str, card_data:dict, batch_size: int) -> Optional[list[GeneratorReturn[BATCH_V]]]:
         if self._word != word or self._card_data != card_data:
             self.force_update(word, card_data)
 

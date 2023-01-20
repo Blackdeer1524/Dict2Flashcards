@@ -15,7 +15,7 @@ from tkinter import (BooleanVar, Button, Checkbutton, Frame, Label, LabelFrame,
 from tkinter.filedialog import askdirectory, askopenfilename
 from tkinter.font import Font
 from tkinter.ttk import Scrollbar, Treeview
-from typing import Callable
+from typing import Callable, Literal
 
 from playsound import playsound
 from tkinterdnd2 import Tk
@@ -47,8 +47,7 @@ from .plugins_management.parsers_return_types import (
 class App(Tk):
     @dataclass(slots=True, frozen=True)
     class AudioGetterInfo:
-        name: str
-        type: ParserType
+        parser_info: TypedParserName
         fetching_word: str
 
     def __init__(self, *args, **kwargs) -> None:
@@ -111,10 +110,13 @@ class App(Tk):
         self.external_sentence_fetcher: ExternalDataGenerator[list[str]] = ExternalDataGenerator(
             data_generator=sentence_parser)
 
-        self.image_parser = loaded_plugins.get_image_parser(
+        image_parser = loaded_plugins.get_image_parser(
             parser_info=TypedParserName(parser_t=ParserType(self.configurations["scrappers"]["image"]["type"]),
                                         name=self.configurations["scrappers"]["image"]["name"]),
             chain_data=self.chaining_data["image_parsers"]
+        )
+        self.external_image_generator: ExternalDataGenerator[list[str]] = ExternalDataGenerator(
+            data_generator=image_parser
         )
 
         if (self.configurations["scrappers"]["audio"]["name"]):
@@ -164,7 +166,7 @@ class App(Tk):
 
         self.word_parser_option_menu = self.get_option_menu(
             self,
-            init_text=self.typed_word_parser_name,
+            init_text=self.card_generator.parser_info.full_name,
             values=[f"{ParserType.web.prefix()} {item}" for item in loaded_plugins.web_word_parsers.loaded] +
                    [f"{ParserType.local.prefix()} {item}" for item in loaded_plugins.local_word_parsers.loaded] +
                    [f"{ParserType.chain.prefix()} {name}" for name in self.chaining_data["word_parsers"]],
@@ -175,7 +177,7 @@ class App(Tk):
         self.configure_word_parser_button = self.Button(self,
                                                         text="</>",
                                                         command=lambda: self.call_configuration_window(
-                                                            plugin_name=self.card_generator.name,
+                                                            plugin_name=self.card_generator.parser_info.name,
                                                             plugin_config=self.card_generator.config,
                                                             plugin_load_function=lambda conf: conf.load(),
                                                             saving_action=lambda conf: conf.save()))
@@ -222,7 +224,7 @@ class App(Tk):
         self.fetch_images_button.grid(row=5, column=0, columnspan=3, sticky="news",
                                       padx=(self.text_padx, 0), pady=(0, self.text_pady))
 
-        typed_image_parser_name = f"[{self.configurations['scrappers']['image']['type']}] {self.image_parser.name}"
+        typed_image_parser_name = self.external_image_generator.parser_info.full_name
         self.image_parsers_option_menu = self.get_option_menu(
             self,
             init_text=typed_image_parser_name,
@@ -236,18 +238,17 @@ class App(Tk):
             self,
             text="</>",
             command=lambda: self.call_configuration_window(
-                plugin_name=self.image_parser.name if self.configurations["scrappers"]["image"][
+                plugin_name=self.external_image_generator.parser_info.full_name if self.configurations["scrappers"]["image"][
                                                           "type"] == ParserType.web
-                else f"[{ParserType.chain}] {self.image_parser.name}",
-                plugin_config=self.image_parser.config,
+                else f"[{ParserType.chain}] {self.external_image_generator.parser_info.full_name}",
+                plugin_config=self.external_image_generator.data_generator.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()))
         self.configure_image_parser_button.grid(row=5, column=7, sticky="news",
                                                 padx=(0, self.text_padx), pady=(0, self.text_pady))
 
         typed_audio_getter = "default" if self.external_audio_generator is None \
-            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                  self.external_audio_generator.data_generator.name)
+            else self.external_audio_generator.parser_info.full_name
 
         def display_audio_getter_results_on_button_click():
             fill_search_fields()
@@ -343,7 +344,7 @@ class App(Tk):
 
         @error_handler(self.show_exception_logs)
         def fetch_external_sentences() -> None:
-            results: GeneratorReturn[list[str]] | None = None
+            results: list[GeneratorReturn[list[str]]] | None = None
 
             fill_search_fields()
 
@@ -354,18 +355,19 @@ class App(Tk):
                     card_data=self.dict_card_data,
                     batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
 
-            def wait_sentence_fetcher(thread: Thread):
+            def wait_sentence_fetcher(thread: Thread) -> None:
                 if thread.is_alive():
                     self.after(100, lambda: wait_sentence_fetcher(thread))
                     return
 
                 nonlocal results
+                if results is None:
+                    return
 
-                for (typed_parser_name, (sent_batch, error_message)) in results:
-                    sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-                    for sentence in sent_batch:
+                for generator_result in results:
+                    for sentence in generator_result.result:
                         self.add_sentence_field(
-                            source=f"{typed_parser_name}: {self.sentence_search_entry.get()}",
+                            source=f"{generator_result.parser_info.full_name}: {self.sentence_search_entry.get()}",
                             sentence=sentence,
                             text_widgets_frame=self.text_widgets_frame,
                             text_widgets_sf=self.text_widgets_sf,
@@ -373,10 +375,10 @@ class App(Tk):
                             choose_sentence_action=self.choose_sentence
                         )
 
-                    if error_message:
+                    if generator_result.error_message:
                         messagebox.showerror(
-                            title=f"[{sentence_parser_type}] {self.external_sentence_fetcher.data_generator.name}",
-                            message=error_message)
+                            title=f"{generator_result.parser_info.full_name}",
+                            message=generator_result.error_message)
 
             place_sentences_thread = Thread(target=schedule_sentence_fetcher)
             place_sentences_thread.start()
@@ -388,7 +390,7 @@ class App(Tk):
         self.fetch_ext_sentences_button.grid(row=10, column=0, columnspan=3, sticky="news",
                                              padx=(self.text_padx, 0), pady=(self.text_pady, 0))
 
-        typed_sentence_parser_name = f"[{self.configurations['scrappers']['sentence']['type']}] {self.external_sentence_fetcher.data_generator.name}"
+        typed_sentence_parser_name = self.external_sentence_fetcher.parser_info.full_name
         self.sentence_parsers_option_menu = self.get_option_menu(
             self,
             init_text=typed_sentence_parser_name,
@@ -884,7 +886,7 @@ class App(Tk):
                     self.word_parser_option_menu.destroy()
                     self.word_parser_option_menu = self.get_option_menu(
                         self,
-                        init_text=self.typed_word_parser_name,
+                        init_text=self.card_generator.parser_info.full_name,
                         values=[f"{ParserType.web.prefix()} {item}" for item in loaded_plugins.web_word_parsers.loaded] +
                                [f"{ParserType.local.prefix()} {item}" for item in
                                 loaded_plugins.local_word_parsers.loaded] +
@@ -907,7 +909,7 @@ class App(Tk):
 
                 elif chosen_parser_type == "image_parsers":
                     self.image_parsers_option_menu.destroy()
-                    typed_image_parser_name = f"[{self.configurations['scrappers']['image']['type']}] {self.image_parser.name}"
+                    typed_image_parser_name = self.external_image_generator.parser_info.full_name
                     self.image_parsers_option_menu = self.get_option_menu(
                         self,
                         init_text=typed_image_parser_name,
@@ -1194,11 +1196,12 @@ class App(Tk):
                                 self.configurations["scrappers"]["sentence"]["name"] = new_chain_name
 
                         elif chain_type == "image_parsers":
-                            if chain_name == self.image_parser.name:
-                                self.image_parser = loaded_plugins.get_image_parser(
+                            if chain_name == self.external_image_generator.parser_info.name:
+                                image_parser = loaded_plugins.get_image_parser(
                                     parser_info=TypedParserName(parser_t=ParserType.chain,
                                                                 name=new_chain_name),
                                     chain_data=self.chaining_data["image_parsers"])
+                                self.external_image_generator = ExternalDataGenerator(data_generator=image_parser)
                                 self.configurations["scrappers"]["image"]["name"] = new_chain_name
 
                         elif chain_type == "audio_getters":
@@ -1513,7 +1516,7 @@ class App(Tk):
                 history_json = json.load(f)
         return history_json
 
-    def added_cards_browser(self):
+    def added_cards_browser(self) -> None:
         added_cards_browser_window = self.Toplevel(self)
         added_cards_browser_window.grab_set()
 
@@ -1642,7 +1645,7 @@ class App(Tk):
         def global_change_image_parser(parser_name):
             self.change_image_parser(parser_name)
             self.image_parsers_option_menu.destroy()
-            typed_image_parser_name = f"[{self.configurations['scrappers']['image']['type']}] {self.image_parser.name}"
+            typed_image_parser_name = self.external_image_generator.parser_info.full_name
             self.image_parsers_option_menu = self.get_option_menu(
                 self,
                 init_text=typed_image_parser_name,
@@ -1652,7 +1655,7 @@ class App(Tk):
             self.image_parsers_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
                                                padx=0, pady=(0, self.text_pady))
 
-        typed_image_parser_name = f"[{self.configurations['scrappers']['image']['type']}] {self.image_parser.name}"
+        typed_image_parser_name = self.external_image_generator.parser_info.full_name
         editor_image_parsers_option_menu = self.get_option_menu(
             item_editor_frame,
             init_text=typed_image_parser_name,
@@ -1666,10 +1669,8 @@ class App(Tk):
             item_editor_frame,
             text="</>",
             command=lambda: self.call_configuration_window(
-                plugin_name=self.image_parser.name if self.configurations["scrappers"]["image"][
-                                                          "type"] == ParserType.web
-                else f"[{ParserType.chain}] {self.image_parser.name}",
-                plugin_config=self.image_parser.config,
+                plugin_name=self.external_image_generator.parser_info.full_name,
+                plugin_config=self.external_image_generator.data_generator.config,
                 plugin_load_function=lambda conf: conf.load(),
                 saving_action=lambda conf: conf.save()))
         editor_configure_image_parser_button.grid(row=5, column=7, sticky="news", padx=(0, editor_text_padx), pady=0)
@@ -1775,7 +1776,7 @@ class App(Tk):
 
         @error_handler(self.show_exception_logs)
         def editor_fetch_external_sentences() -> None:
-            results: list[tuple[str, SentenceData]] = []
+            results: list[GeneratorReturn[list[str]]] = []
 
             editor_fill_search_fields()
 
@@ -1957,7 +1958,7 @@ class App(Tk):
         # =======================================
 
         @error_handler(self.show_exception_logs)
-        def save_progress(selection_index: str):
+        def save_progress(selection_index: str) -> None:
             if not full_saved_card_data:
                 return
 
@@ -1996,14 +1997,14 @@ class App(Tk):
                     SavedDataDeck.AUDIO_SRCS].extend(audio_links)
                 full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][
                     SavedDataDeck.AUDIO_SRCS_TYPE].extend(
-                    (audio_getter_info.type for _ in range(len(audio_links))))
+                    (audio_getter_info.parser_info.parser_t for _ in range(len(audio_links))))
                 full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][
                     SavedDataDeck.AUDIO_SAVING_PATHS].extend((
                         os.path.join(self.configurations["directories"]["media_dir"],
                                     self.card_processor
                                     .get_save_audio_name(
                                         word=editor_word_text.get(1.0, "end").rstrip(),
-                                        audio_provider=f"{audio_getter_info.type.prefix()} {audio_getter_info.name}",
+                                        audio_provider=audio_getter_info.parser_info.full_name,
                                         uniqueness_postfix=str(abs(hash(link)))[:8],
                                         card_data=editor_card_data))
                         for link in audio_links))
@@ -2037,7 +2038,7 @@ class App(Tk):
 
         previously_selected_item: str = ""
 
-        def display_card_in_editor(event):
+        def display_card_in_editor(event) -> bool:
             nonlocal \
                 previously_selected_item, \
                 full_saved_card_data, \
@@ -2123,16 +2124,20 @@ class App(Tk):
 
             picked_audio_data = additional_data.get(SavedDataDeck.AUDIO_DATA, {})
             if picked_audio_data:
-                parser_results = []
+                parser_results: list[GeneratorReturn[tuple[list[str], list[str]]]] = []
                 for audio_src, audio_srcs_type, saving_path in zip(picked_audio_data[SavedDataDeck.AUDIO_SRCS], 
                                                                    picked_audio_data[SavedDataDeck.AUDIO_SRCS_TYPE],
                                                                    picked_audio_data[SavedDataDeck.AUDIO_SAVING_PATHS]):
-                    parser_results.append([("", ParserType(audio_srcs_type)), (([audio_src], [self.card_processor.get_card_audio_name(saving_path)]), "")])
+                    parser_results.append(GeneratorReturn(generator_type=ParserType.web if audio_srcs_type == ParserType.web else ParserType.local,
+                                                          error_message="",
+                                                          name="",
+                                                          result=([audio_src], [self.card_processor.get_card_audio_name(saving_path)])))
+                    # parser_results.append([("", ParserType(audio_srcs_type)), (([audio_src], [self.card_processor.get_card_audio_name(saving_path)]), "")])
 
                 self.display_audio_on_frame(
                     word=word_data,
                     card_data=editor_card_data,
-                    parser_results=parser_results,
+                    generator_results=parser_results,
                     audio_sf=editor_audio_sf,
                     audio_inner_frame=editor_audio_inner_frame,
                     show_errors=False,
@@ -2180,7 +2185,7 @@ class App(Tk):
                                      show_errors: bool,
                                      audio_sf,
                                      audio_inner_frame):
-        parser_results: list[tuple[tuple[str, str], AudioData]] = []
+        parser_results: list[GeneratorReturn[tuple[list[str], list[str]]]] | None = []
 
         def fill_parser_results() -> None:
             nonlocal parser_results, word
@@ -2188,25 +2193,10 @@ class App(Tk):
             assert self.external_audio_generator is not None, \
                 "display_audio_getter_results cannot be called because self.external_audio_generator is None"
 
-            audio_getter_type = ParserType(self.configurations["scrappers"]["audio"]["type"])
-            if audio_getter_type in (ParserType.web, ParserType.local):
-                audio_data = self.external_audio_generator.get(
-                    word=word,
-                    card_data=card_data,
-                    batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
-                if audio_data is None:
-                    parser_results = []
-                    return
-                parser_results = [(("{} {}".format(audio_getter_type.prefix(), self.configurations["scrappers"]["audio"]["name"]), audio_getter_type), audio_data)]
-            elif audio_getter_type == ParserType.chain:
-                parser_results = self.external_audio_generator.get(
-                    word=word,
-                    card_data=card_data,
-                    batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
-                if parser_results is None:
-                    parser_results = []
-            else:
-                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
+            parser_results = self.external_audio_generator.get(
+                word=word,
+                card_data=card_data,
+                batch_size=self.configurations["extern_audio_placer"]["n_audios_per_batch"])
 
         def display_audio_if_done(thread: Thread):
             if not self.waiting_for_audio_display:
@@ -2217,7 +2207,7 @@ class App(Tk):
             else:
                 self.display_audio_on_frame(word=word,
                                             card_data=card_data,
-                                            parser_results=parser_results,
+                                            generator_results=parser_results,
                                             audio_sf=audio_sf,
                                             audio_inner_frame=audio_inner_frame,
                                             show_errors=show_errors,
@@ -2232,12 +2222,11 @@ class App(Tk):
     def display_audio_on_frame(self,
                                word: str,
                                card_data: dict,
-                               parser_results: list[tuple[tuple[str, ParserType], AudioData]],
+                               generator_results: list[GeneratorReturn[tuple[list[str], list[str]]]],
                                audio_sf,
                                audio_inner_frame,
                                show_errors: bool,
-                               is_picked: bool,
-                               ):
+                               is_picked: bool) -> None:
         @error_handler(self.show_exception_logs)
         def playsound_in_another_thread(audio_path: str):
             @error_handler(self.show_exception_logs)
@@ -2248,7 +2237,7 @@ class App(Tk):
             Thread(target=lambda: quite_playsound(audio_path)).start()
 
         @error_handler(self.show_exception_logs)
-        def web_playsound(audio_url: str, src: str):
+        def web_playsound(audio_url: str, src: str) -> None:
             audio_name = self.card_processor.get_save_audio_name(
                 word=word, 
                 audio_provider=src, 
@@ -2271,25 +2260,18 @@ class App(Tk):
             if success:
                 playsound_in_another_thread(temp_audio_path)
 
-        if show_errors and not parser_results:
-            audio_getter_type = self.configurations["scrappers"]["audio"]["type"]
-            messagebox.showerror(
-                title=self.external_audio_generator.data_generator.name if audio_getter_type == ParserType.web
-                else f"[{audio_getter_type}] {self.external_audio_generator.data_generator.name}",
-                message=self.lang_pack.display_audio_getter_results_audio_not_found_message
-            )
-
-        error_messages: list[tuple[str, str]] = []
-        for (getter_label, audio_getter_type), ((audio_sources, additional_info), error_message) in parser_results:
-            getter_label = f"{getter_label}: {word}" if getter_label else ""
-            if not audio_sources:
+        error_messages: list[tuple[str, str]] = []        
+        for scrapper_result in generator_results:
+            getter_label = scrapper_result.parser_info.full_name
+            if not scrapper_result.result:
                 continue
-
+            
+            # can be destroyed while this cycle is stiil working
             if not audio_inner_frame.winfo_exists():
                 return
 
-            if error_message:
-                error_messages.append((getter_label, error_message))
+            if scrapper_result.error_message:
+                error_messages.append((getter_label, scrapper_result.error_message))
             
             if audio_inner_frame.last_getter_label != getter_label:
                 audio_inner_frame.last_getter_label = getter_label
@@ -2299,21 +2281,20 @@ class App(Tk):
                     fg=self.theme.button_cfg.get("foreground"),
                     **self.theme.frame_cfg)
                 audio_inner_frame.source_display_frame.audio_getter_data = App.AudioGetterInfo(
-                    name=getter_label,
-                    type=audio_getter_type,
+                    parser_info=scrapper_result.parser_info,
                     fetching_word=word)  
                 audio_sf.bind_scroll_wheel(audio_inner_frame.source_display_frame)
                 audio_inner_frame.source_display_frame.grid_propagate(False)
                 audio_inner_frame.source_display_frame.pack(side="top", fill="x", expand=True)
 
-            if audio_getter_type == ParserType.web:
+            if scrapper_result.parser_info.parser_t == ParserType.web:
                 play_audio_button_cmd = partial(web_playsound, src=getter_label)
-            elif audio_getter_type == ParserType.local:
+            elif scrapper_result.parser_info.parser_t == ParserType.local:
                 play_audio_button_cmd = playsound_in_another_thread
             else:
-                raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
+                raise NotImplementedError(f"Unknown audio getter type: {scrapper_result.parser_info.parser_t}")
 
-            for audio, info in zip(audio_sources, additional_info):
+            for audio, info in zip(scrapper_result.result[0], scrapper_result.result[1]):
                 audio_info_frame = self.Frame(audio_inner_frame.source_display_frame)
                 audio_info_frame.pack(side="top", fill="x", expand=True)
                 audio_info_frame.columnconfigure(2, weight=1)
@@ -2340,9 +2321,15 @@ class App(Tk):
                 info_label.grid(row=0, column=2, sticky="news")
                 audio_sf.bind_scroll_wheel(info_label)
 
-        if show_errors and error_messages:
-            self.show_window(title=self.lang_pack.error_title,
-                             text="\n\n".join([f"{parser_name}\n{error}" for parser_name, error in error_messages]))
+        if show_errors:
+            if generator_results:
+                messagebox.showerror(
+                    title=self.lang_pack.error_title,
+                    message=self.lang_pack.display_audio_getter_results_audio_not_found_message
+                )
+            elif error_messages:
+                self.show_window(title=self.lang_pack.error_title,
+                                 text="\n\n".join([f"{parser_name}\n{error}" for parser_name, error in error_messages]))
 
     @property
     @error_handler(show_exception_logs)
@@ -2967,7 +2954,6 @@ class App(Tk):
                                          name=raw_name),
             chain_data=self.chaining_data["word_parsers"])
         self.configurations["scrappers"]["word"]["name"] = raw_name
-        self.typed_word_parser_name = typed_parser
         self.deck.update_card_generator(self.card_generator)
 
     @error_handler(show_exception_logs)
@@ -3022,10 +3008,11 @@ class App(Tk):
             raise NotImplementedError(f"Unknown image parser: {given_image_parser_name}")
 
         self.configurations["scrappers"]["image"]["name"] = given_image_parser_name
-        self.image_parser = loaded_plugins.get_image_parser(
+        image_parser = loaded_plugins.get_image_parser(
             parser_info=TypedParserName(parser_t=ParserType(self.configurations["scrappers"]["image"]["type"]),
                                         name=given_image_parser_name),
             chain_data=self.chaining_data["image_parsers"])
+        self.external_image_generator = ExternalDataGenerator(data_generator=image_parser)
 
     @error_handler(show_exception_logs)
     def change_sentence_parser(self, given_sentence_parser_name: str):
@@ -3080,13 +3067,13 @@ class App(Tk):
 
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS].extend(audio_links)
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS_TYPE].extend(
-                (audio_getter_info.type for _ in range(len(audio_links))))
+                (audio_getter_info.parser_info.parser_t for _ in range(len(audio_links))))
             additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SAVING_PATHS].extend((
                 os.path.join(self.configurations["directories"]["media_dir"],
                              self.card_processor
                              .get_save_audio_name(
                                  word=audio_getter_info.fetching_word,
-                                 audio_provider=audio_getter_info.name,
+                                 audio_provider=audio_getter_info.parser_info.full_name,
                                  uniqueness_postfix=str(abs(hash(link)))[:8],
                                  card_data=self.dict_card_data))
                 for link in audio_links
@@ -3112,62 +3099,36 @@ class App(Tk):
             add_audio_data_to_card(audio_getter_info=last_audio_getter_data,
                                    audio_links=audio_getters_audios)
 
+        audio_autochoose_mode: Literal["off",
+                                       "first_default_audio",
+                                       "all_default_audios",
+                                       "first_available_audio",
+                                       "first_available_audio_source",
+                                       "all"]
         if not chosen_smth and (audio_autochoose_mode := self.configurations["app"]["audio_autochoose_mode"]) != "off":
-            if audio_autochoose_mode in ("first_default_audio", "first_available_audio"):
-                choosing_slice = 1
-            elif audio_autochoose_mode in ("all_default_audios", "first_available_audio_source", "all"):
-                choosing_slice = 999
-            else:
-                raise NotImplementedError(f"Unknown audio autochoose mode: {audio_autochoose_mode}")
-
-            if (dictionary_audio_links := self.dict_card_data.get(CardFields.audio_links, [])):
-                add_audio_data_to_card(audio_getter_info=App.AudioGetterInfo(f"dict {ParserType.web.prefix()} {self.card_generator.name}",
-                                                                             type=ParserType.web,  
-                                                                             fetching_word=self.word),
-                                       audio_links=dictionary_audio_links[:choosing_slice])
-
-            if self.external_audio_generator is not None and \
-                    (audio_autochoose_mode == "all" or
-                     not dictionary_audio_links and
-                     audio_autochoose_mode in ("first_available_audio", "first_available_audio_source")):
-
+            if audio_autochoose_mode in ("all", "first_default_audio", "all_default_audios"):
+                dictionary_audio_links = self.dict_card_data.get(CardFields.audio_links, [])
+                add_audio_data_to_card(
+                    audio_getter_info=App.AudioGetterInfo(
+                        parser_info=TypedParserName(
+                            parser_t=ParserType.web, 
+                            name=self.card_generator.parser_info.name),
+                        fetching_word=self.word),
+                    audio_links=dictionary_audio_links[:1 if audio_autochoose_mode == "first_default_audio" else 9999])
+            if self.external_audio_generator is not None and audio_autochoose_mode in ("all", "first_available_audio", "first_available_audio_source"):
                 self.external_audio_generator.force_update(word_for_audio_query, self.dict_card_data)
                 audio_data_pack = self.external_audio_generator.get(word=word_for_audio_query,
                                                                     card_data=self.dict_card_data,
-                                                                    batch_size=choosing_slice)
-                
-                audio_getter_type = ParserType(self.configurations["scrappers"]["audio"]["type"])
-                if audio_getter_type in (ParserType.web, ParserType.local):
-                    if audio_data_pack is not None:
-                        ((audio_links, additional_info), error_message) = audio_data_pack
-                        add_audio_data_to_card(audio_getter_info=App.AudioGetterInfo(name=f"{audio_getter_type.prefix()} {self.external_audio_generator.data_generator.name}",
-                                                                                     type=audio_getter_type,
-                                                                                     fetching_word=word_for_audio_query),
-                                               audio_links=audio_links)
-                elif audio_getter_type == ParserType.chain:
-                    if audio_data_pack is not None:
-                        audio_gen = (i for i in audio_data_pack)
-
-                        if audio_autochoose_mode in ("first_available_audio", "first_available_audio_source"):
-                            try:
-                                ((getter_name, getter_type), ((audio_links, additional_info), error_message)) = next(
-                                    audio_gen)
-                                add_audio_data_to_card(App.AudioGetterInfo(name=getter_name,
-                                                                           type=ParserType(getter_type),
-                                                                           fetching_word=word_for_audio_query),
-                                                       audio_links=audio_links[:choosing_slice])
-                            except StopIteration:
-                                pass
-                        elif audio_autochoose_mode == "all":
-                            for ((getter_name, getter_type), ((audio_links, additional_info), error_message)) in audio_gen:
-                                add_audio_data_to_card(App.AudioGetterInfo(name=getter_name,
-                                                                           type=ParserType(getter_type),
-                                                                           fetching_word=word_for_audio_query),
-                                                       audio_links=audio_links[:choosing_slice])
-                        else:
-                            raise NotImplementedError(f"Unreachable audio_autochoose_mode: {audio_autochoose_mode}")
-                else:
-                    raise NotImplementedError(f"Unknown audio getter type: {audio_getter_type}")
+                                                                    batch_size=1 if audio_autochoose_mode == "first_available_audio" else 9999)
+                if audio_data_pack is not None:
+                    for generator_results in audio_data_pack:
+                        add_audio_data_to_card(
+                            audio_getter_info=App.AudioGetterInfo(
+                                parser_info=TypedParserName(
+                                    parser_t=generator_results.parser_info.parser_t, 
+                                    name=generator_results.parser_info.name),
+                                fetching_word=self.word),
+                            audio_links=generator_results.result)
 
         if (hierarchical_prefix := self.tag_prefix_field.get().strip()):
             additional[SavedDataDeck.HIERARCHICAL_PREFIX] = hierarchical_prefix
@@ -3183,9 +3144,6 @@ class App(Tk):
     @error_handler(show_exception_logs)
     def skip_command(self):
         self.move_decks_pointers(1)
-        # if self.deck.get_n_cards_left():
-        #     self.saved_cards_data.append(CardStatus.SKIP)
-        # self.refresh()
 
     @error_handler(show_exception_logs)
     def move_decks_pointers(self, n: int):
@@ -3349,13 +3307,13 @@ class App(Tk):
         self.definition_text.fill_placeholder()
 
         if (audio_sources := self.dict_card_data.get(CardFields.audio_links)) is not None and audio_sources:
-            additional_info = ("" for _ in range(len(audio_sources)))
-            parser_results = [((f"dict {self.typed_word_parser_name}", ParserType.web), 
-                              ((audio_sources, additional_info), ""))]
             self.display_audio_on_frame(
                 word=self.word,
                 card_data=self.dict_card_data,
-                parser_results=parser_results,
+                generator_results=[GeneratorReturn(generator_type=ParserType.web,
+                                                   name=f"dict {self.card_generator.parser_info.name}",
+                                                   error_message="",
+                                                   result=(audio_sources, ["" for _ in range(len(audio_sources))]))],
                 show_errors=False,
                 audio_sf=self.audio_sf,
                 audio_inner_frame=self.audio_inner_frame,
@@ -3438,7 +3396,7 @@ class App(Tk):
                                    main_params=self.theme.toplevel_cfg,
                                    search_term=word,
                                    saving_dir=self.configurations["directories"]["media_dir"],
-                                   url_scrapper=self.image_parser.get,
+                                   url_scrapper=self.external_image_generator.get,
                                    init_urls=init_urls,
                                    local_images=init_local_images_paths,
                                    headers=self.headers,

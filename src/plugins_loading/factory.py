@@ -22,7 +22,7 @@ from .containers import (CardProcessorContainer, DeckSavingFormatContainer,
 from .exceptions import LoaderError, UnknownPluginName
 
 
-def parse_namespace(namespace, postfix: str = "") -> dict:
+def parse_namespace(namespace, postfix: str = "") -> dict[str, ModuleType]:
     def iter_namespace(ns_pkg):
         # Specifying the second argument (prefix) to iter_modules makes the
         # returned name an absolute name instead of a relative one. This allows
@@ -30,7 +30,7 @@ def parse_namespace(namespace, postfix: str = "") -> dict:
         # the name.
         return pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + ".")
 
-    res = {}
+    res: dict[str, ModuleType] = {}
     for finder, name, ispkg in iter_namespace(namespace):
         parser_trunc_name = name.split(sep=".")[-1]
         res[parser_trunc_name] = importlib.import_module(name + postfix)
@@ -43,7 +43,7 @@ PluginContainer = TypeVar("PluginContainer")
 class PluginLoader(Generic[PluginContainer]):
     plugin_type: str
     _loaded_plugin_data: dict[str, PluginContainer]
-    not_loaded: tuple[str]
+    not_loaded: list[str]
 
     _already_initialized: ClassVar[set[str]] = set()
 
@@ -59,7 +59,7 @@ class PluginLoader(Generic[PluginContainer]):
         object.__setattr__(self, "plugin_type", plugin_type)
 
         _loaded_plugin_data = {}
-        not_loaded = []
+        not_loaded: list[str] = []
         namespace_parsed_results = parse_namespace(module, postfix=".main") if HasConfigFile else parse_namespace(module)
         for name, module in namespace_parsed_results.items():
             try:
@@ -71,8 +71,8 @@ class PluginLoader(Generic[PluginContainer]):
         object.__setattr__(self, "not_loaded", tuple(not_loaded))
 
     @property
-    def loaded(self):
-        return tuple(self._loaded_plugin_data)
+    def loaded(self) -> list[str]:
+        return list(self._loaded_plugin_data.keys())
 
     def get(self, name: str) -> PluginContainer:
         if (value := self._loaded_plugin_data.get(name)) is not None:
@@ -186,7 +186,8 @@ class PluginFactory:
                 raise UnknownPluginName(f"Unknown sentence parser: {parser_info.name}")
             return BatchGeneratorWrapper(config=gen.config,
                                          generator_initializer=gen.get,
-                                         parser_info=parser_info)
+                                         parser_name=parser_info.name,
+                                         parser_type=ParserType.web)
         elif parser_info.parser_t == ParserType.local:
             raise NotImplementedError("Local sentence parsers are not implemented")
         elif parser_info.parser_t == ParserType.chain:
@@ -204,7 +205,8 @@ class PluginFactory:
                 raise UnknownPluginName(f"Unknown image parser: {parser_info.name}")
             return BatchGeneratorWrapper(config=gen.config,
                                          generator_initializer=gen.get,
-                                         parser_info=parser_info)
+                                         parser_name=parser_info.name,
+                                         parser_type=ParserType.web)
         elif parser_info.parser_t == ParserType.local:
             raise NotImplementedError("Local image parsers are not implemented")
         elif parser_info.parser_t == ParserType.chain:
@@ -222,13 +224,15 @@ class PluginFactory:
                 raise UnknownPluginName(f"Unknown web audio getter: {parser_info.name}")
             return BatchGeneratorWrapper(config=web_gen.config,
                                          generator_initializer=web_gen.get,
-                                         parser_info=parser_info)
+                                         parser_name=parser_info.name,
+                                         parser_type=ParserType.web)
         elif parser_info.parser_t == ParserType.local:
             if (loacl_gen := self.local_audio_getters.get(parser_info.name)) is None:
                 raise UnknownPluginName(f"Unknown local audio getter: {parser_info.name}")
             return BatchGeneratorWrapper(config=loacl_gen.config,
                                          generator_initializer=loacl_gen.get,
-                                         parser_info=parser_info)
+                                         parser_name=parser_info.name,
+                                         parser_type=ParserType.local)
         elif parser_info.parser_t == ParserType.chain:
             return AudioGettersChain(generator_getter=self.get_image_parser,
                                      chain_name=parser_info.name,

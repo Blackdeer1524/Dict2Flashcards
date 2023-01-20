@@ -90,7 +90,7 @@ class ImageSearch(Toplevel):
         self._init_local_img_paths: list[str] = [image_path for image_path in kwargs.get("local_images", []) if
                                                  os.path.isfile(image_path)]
         self._init_images = kwargs.get("init_images", [])
-        self._image_url_gen: Callable[[str, CardFormat, int], list[GeneratorReturn[list[str]]] | None] | None = kwargs.get("url_scrapper")
+        self._image_url_gen: Callable[[str, int], list[GeneratorReturn[list[str]]] | None] | None = kwargs.get("url_scrapper")
         self._scrapper_stop_flag = False
 
         self._button_bg = self.activebackground = "#FFFFFF"
@@ -113,7 +113,7 @@ class ImageSearch(Toplevel):
 
         self._pool: ThreadPoolExecutor = ThreadPoolExecutor()
 
-        self.saving_images: list[Image] = []
+        self.saving_images: list[Image.Image] = []
         self.images_source: list[str] = []
         self.working_state: list[bool] = []  # indices of picked buttons
         self.button_list: list[Button] = []
@@ -136,7 +136,7 @@ class ImageSearch(Toplevel):
                                            command=self._restart_search,
                                            **self._command_button_params)
         self._start_search_button.grid(row=0, column=1, sticky="news")
-        self._start_search_button["state"] = "normal" if self._url_scrapper else "disabled"
+        self._start_search_button["state"] = "normal" if self._image_url_gen else "disabled"
 
         self._sf = ScrolledFrame(self, scrollbars="both")
         self._sf.grid(row=1, column=0)
@@ -191,7 +191,7 @@ class ImageSearch(Toplevel):
         if self._image_url_gen is None:
             return
         
-        scrapped_images = self._image_url_gen(self._search_field.get(), {"word": ""}, batch_size)
+        scrapped_images = self._image_url_gen(self._search_field.get(), batch_size)
         if scrapped_images is None:
             return
         
@@ -213,7 +213,6 @@ class ImageSearch(Toplevel):
             self.working_state[-1] = True
             self.button_list[-1]["bg"] = self._choose_color
 
-        self._start_url_generator()
         if not self._scrapper_stop_flag:
             next(self._show_more_gen)
         self._resize_window()
@@ -271,7 +270,7 @@ class ImageSearch(Toplevel):
                                      current_frame_height))
 
     @staticmethod
-    def preprocess_image(img: Image, width: int = None, height: int = None) -> Image:
+    def preprocess_image(img: Image, width: int | None = None, height: int | None = None) -> Image:
         resize_is_needed = False
         new_width = img.width
         new_height = img.height

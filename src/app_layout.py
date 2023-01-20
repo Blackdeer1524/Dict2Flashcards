@@ -15,7 +15,7 @@ from tkinter import (BooleanVar, Button, Checkbutton, Frame, Label, LabelFrame,
 from tkinter.filedialog import askdirectory, askopenfilename
 from tkinter.font import Font
 from tkinter.ttk import Scrollbar, Treeview
-from typing import Callable, Literal
+from typing import Callable, Literal, Iterable
 
 from playsound import playsound
 from tkinterdnd2 import Tk
@@ -42,6 +42,7 @@ from .plugins_management.config_management import Config, LoadableConfig
 from .plugins_management.parsers_return_types import (
     AUDIO_DATA_T, AUDIO_SCRAPPER_RETURN_T, IMAGE_DATA_T,
     IMAGE_SCRAPPER_RETURN_T, SENTENCE_DATA_T, SENTENCE_SCRAPPER_RETURN_T)
+from .plugins_loading.chaining import ChainInfoJSONDecoder, ChainInfoJSONEncoder
 
 
 class App(Tk):
@@ -56,12 +57,25 @@ class App(Tk):
         if not os.path.exists(f"{WORDS_DIR}/custom.json"):
             with open(f"{WORDS_DIR}/custom.json", "w", encoding="UTF-8") as custom_file:
                 json.dump([], custom_file)
-
+        
         self.configurations, self.lang_pack, error_code = self.load_conf_file()
         if error_code:
             self.destroy()
             return
         self.configurations.save()
+
+        self.theme = loaded_plugins.get_theme(self.configurations["app"]["theme"])
+        self.configure(**self.theme.root_cfg)
+        self.Label = partial(Label, **self.theme.label_cfg)
+        self.Button = partial(Button, **self.theme.button_cfg)
+        self.Text = partial(Text, **self.theme.text_cfg)
+        self.Entry = partial(Entry, **self.theme.entry_cfg)
+        self.Toplevel = partial(Toplevel, **self.theme.toplevel_cfg)
+        self.Frame = partial(Frame, **self.theme.frame_cfg)
+        self.get_option_menu = partial(get_option_menu,
+                                       option_menu_cfg=self.theme.option_menu_cfg,
+                                       option_submenu_cfg=self.theme.option_submenus_cfg)
+        
         self.history = App.load_history_file()
         self.chaining_data = self.load_chaining_data()
         self.chaining_data.save()
@@ -76,18 +90,6 @@ class App(Tk):
 
         if not self.history.get(self.configurations["directories"]["last_open_file"]):
             self.history[self.configurations["directories"]["last_open_file"]] = 0
-
-        self.theme = loaded_plugins.get_theme(self.configurations["app"]["theme"])
-        self.configure(**self.theme.root_cfg)
-        self.Label = partial(Label, **self.theme.label_cfg)
-        self.Button = partial(Button, **self.theme.button_cfg)
-        self.Text = partial(Text, **self.theme.text_cfg)
-        self.Entry = partial(Entry, **self.theme.entry_cfg)
-        self.Toplevel = partial(Toplevel, **self.theme.toplevel_cfg)
-        self.Frame = partial(Frame, **self.theme.frame_cfg)
-        self.get_option_menu = partial(get_option_menu,
-                                       option_menu_cfg=self.theme.option_menu_cfg,
-                                       option_submenu_cfg=self.theme.option_submenus_cfg)
 
         wp_name = self.configurations["scrappers"]["word"]["name"]
         wp_type = self.configurations["scrappers"]["word"]["type"]
@@ -848,7 +850,7 @@ class App(Tk):
                 existing_chains_treeview.delete(*existing_chains_treeview.get_children())
                 for i, (name, chain_data) in enumerate(self.chaining_data[chaining_options[picked_value]].items()):
                     existing_chains_treeview.insert(parent="", index=i,
-                                                    values=(name, "->".join(chain_data["chain"])))
+                                                    values=(name, "->".join((item.full_name for item in chain_data["chain"]))))
 
             chain_type_label = self.Label(chain_type_window,
                                           text=self.lang_pack.chain_management_chain_type_label_text,
@@ -897,7 +899,7 @@ class App(Tk):
 
                 elif chosen_parser_type == "sentence_parsers":
                     self.sentence_parsers_option_menu.destroy()
-                    typed_sentence_parser_name = f"[{self.configurations['scrappers']['sentence']['type']}] {self.external_sentence_fetcher.data_generator.name}"
+                    typed_sentence_parser_name = self.external_sentence_fetcher.parser_info.full_name
                     self.sentence_parsers_option_menu = self.get_option_menu(
                         self,
                         init_text=typed_sentence_parser_name,
@@ -923,9 +925,7 @@ class App(Tk):
                     self.audio_getter_option_menu.destroy()
                     self.audio_getter_option_menu = self.get_option_menu(
                         self,
-                        init_text="default" if self.external_audio_generator is None
-                        else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                              self.external_audio_generator.data_generator.name),
+                        init_text="default" if self.external_audio_generator is None else self.external_audio_generator.parser_info.full_name,
                         values=["default"] +
                                [f"{ParserType.web.prefix()} {item}" for item in loaded_plugins.web_audio_getters.loaded] +
                                [f"{ParserType.local.prefix()} {item}" for item in loaded_plugins.local_audio_getters.loaded] +
@@ -993,14 +993,35 @@ class App(Tk):
 
             @error_handler(self.show_exception_logs)
             def build_chain(chain_name: str,
-                            initial_chain: list[str],
-                            edit_mode: bool = False):
+                            initial_chain: list[TypedParserName],
+                            edit_mode: bool = False) -> None:
                 pady = 2
 
                 chain_type = chaining_options[chain_type_option_menu["text"]]
 
                 ChoosingData = namedtuple("ChoosingData", ("name", "label", "select_button"))
-                ChainData = namedtuple("ChainData", ("name", "label", "up_button", "deselect_button", "down_button"))
+                
+                from typing import NamedTuple
+                class ChainData(NamedTuple):
+                    parser_info:      TypedParserName
+                    displaying_label: Label
+                    up_button:        Button
+                    deselect_button:  Button
+                    down_button:      Button
+
+                    def destroy(self) -> None:
+                        self.displaying_label.destroy()
+                        self.up_button.destroy()
+                        self.deselect_button.destroy()
+                        self.down_button.destroy()
+
+                    def grid_forget(self) -> None:
+                        self.displaying_label.grid_forget()
+                        self.up_button.grid_forget()
+                        self.deselect_button.grid_forget()
+                        self.down_button.grid_forget()
+
+                # ChainData = namedtuple("ChainData", ("name", "label", "up_button", "deselect_button", "down_button"))
 
                 chaining_window = self.Toplevel(chain_type_window)
                 chaining_window.title(self.lang_pack.chain_management_menu_label)
@@ -1032,7 +1053,7 @@ class App(Tk):
                 chain_data: list[ChainData] = []
 
                 if chain_type == "word_parsers":
-                    displaying_options = \
+                    displaying_options: Iterable[str] = \
                         itertools.chain(
                             (f"[{ParserType.web}] {name}" for name in loaded_plugins.web_word_parsers.loaded),
                             (f"[{ParserType.local}] {name}" for name in loaded_plugins.local_word_parsers.loaded))
@@ -1057,21 +1078,20 @@ class App(Tk):
                 built_chain_inner_frame.grid_columnconfigure(0, weight=1)
 
                 @error_handler(self.show_exception_logs)
-                def add_to_chain(placing_name: str):
+                def add_to_chain(placing_name: TypedParserName) -> None:
                     new_chain_ind = len(chain_data) * 3
-                    a = self.Label(built_chain_inner_frame, text=placing_name, justify='center',
+                    a = self.Label(built_chain_inner_frame, text=placing_name.full_name, justify='center',
                                    relief="ridge", borderwidth=2)
                     built_chain_main_frame.bind_scroll_wheel(a)
 
                     @error_handler(self.show_exception_logs)
                     def place_widget_to_chain(item: ChainData, next_3i: int):
-                        item.label.grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
+                        item.displaying_label.grid(row=next_3i, column=0, sticky="news", rowspan=3, pady=pady)
                         item.up_button.grid(row=next_3i, column=1, sticky="news", pady=(pady, 0))
                         if next_3i:
                             item.up_button["state"] = "normal"
                             item.up_button.configure(
-                                command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
-                                                                        direction=-1))
+                                command=lambda ind=next_3i: swap_places(current_ind=ind // 3, direction=-1))
                         else:
                             item.up_button["state"] = "disabled"
 
@@ -1083,18 +1103,15 @@ class App(Tk):
                             item.down_button["state"] = "disabled"
                         else:
                             item.down_button["state"] = "normal"
-                            item.down_button.configure(
-                                command=lambda ind=next_3i: swap_places(current_ind=ind // 3,
-                                                                        direction=1))
+                            item.down_button.configure(command=lambda ind=next_3i: swap_places(current_ind=ind // 3, direction=1))
 
                     @error_handler(self.show_exception_logs)
                     def swap_places(current_ind: int, direction: int):
                         current = chain_data[current_ind]
                         operand = chain_data[current_ind + direction]
 
-                        for i in range(1, len(chain_data[current_ind])):
-                            current[i].grid_forget()
-                            operand[i].grid_forget()
+                        current.grid_forget()
+                        operand.grid_forget()
 
                         old_3 = 3 * current_ind
                         new_3 = old_3 + direction * 3
@@ -1104,21 +1121,13 @@ class App(Tk):
 
                     @error_handler(self.show_exception_logs)
                     def remove_from_chain(ind: int):
-                        for i in range(1, len(chain_data[ind])):
-                            chain_data[ind][i].destroy()
-                        chain_data.pop(ind)
+                        chain_data.pop(ind).destroy()
                         for i in range(ind, len(chain_data)):
-                            chain_data[i].label.grid_forget()
-                            chain_data[i].label.grid(row=3 * i, column=0, sticky="news", pady=pady, rowspan=3)
-
-                            chain_data[i].up_button.grid_forget()
+                            chain_data[i].grid_forget()
+                            chain_data[i].displaying_label.grid(row=3 * i, column=0, sticky="news", pady=pady, rowspan=3)
                             chain_data[i].up_button.grid(row=3 * i, column=1, sticky="news", pady=(pady, 0))
-
-                            chain_data[i].deselect_button.grid_forget()
                             chain_data[i].deselect_button.grid(row=3 * i + 1, column=1, sticky="news", pady=0)
                             chain_data[i].deselect_button.configure(command=lambda ind=i: remove_from_chain(ind))
-
-                            chain_data[i].down_button.grid_forget()
                             chain_data[i].down_button.grid(row=3 * i + 2, column=1, sticky="news", pady=(0, pady))
 
                     up_button = self.Button(built_chain_inner_frame, text="∧")
@@ -1132,8 +1141,8 @@ class App(Tk):
                     if chain_data:
                         chain_data[-1].down_button["state"] = "normal"
 
-                    chain_data.append(ChainData(name=placing_name,
-                                                label=a,
+                    chain_data.append(ChainData(parser_info=placing_name,
+                                                displaying_label=a,
                                                 up_button=up_button,
                                                 deselect_button=deselect_button,
                                                 down_button=down_button))
@@ -1148,7 +1157,7 @@ class App(Tk):
                     a.grid(row=i, column=0, sticky="news", pady=pady)
                     choosing_main_frame.bind_scroll_wheel(a)
                     b = self.Button(choosing_inner_frame, text=">",
-                                    command=lambda name=parser_name: add_to_chain(name))
+                                    command=lambda name=parser_name: add_to_chain(TypedParserName.split_full_name(name)))
                     b.grid(row=i, column=1, sticky="news", pady=pady)
                     choosing_main_frame.bind_scroll_wheel(b)
                     choosing_widgets_data.append(ChoosingData(name=parser_name, label=a, select_button=b))
@@ -1170,7 +1179,7 @@ class App(Tk):
                                              message=self.lang_pack.chain_management_chain_already_exists_message)
                         return
 
-                    chain = [item.name for item in chain_data]
+                    chain = [item.parser_info for item in chain_data]
                     chosen_chain_config = {"config_name": "{}_{}.json".format(remove_special_chars(new_chain_name, "_"),
                                                                               abs(hash(time.time()))),
                                            "chain": chain}
@@ -1178,12 +1187,13 @@ class App(Tk):
 
                     if edit_mode:
                         if chain_type == "word_parsers":
-                            if chain_name == self.card_generator.name:
+                            if chain_name == self.card_generator.parser_info.name:
                                 self.card_generator = loaded_plugins.get_card_generator(
                                     parser_info=TypedParserName(parser_t=ParserType.chain,
                                                                 name=new_chain_name),
                                     chain_data=self.chaining_data["word_parsers"])
                                 self.configurations["scrappers"]["word"]["name"] = new_chain_name
+                                self.deck.update_card_generator(self.card_generator)
 
                         elif chain_type == "sentence_parsers":
                             if chain_name == self.external_sentence_fetcher.data_generator.name:
@@ -1229,10 +1239,13 @@ class App(Tk):
 
                         selected_item_index = existing_chains_treeview.focus()
                         existing_chains_treeview.set(selected_item_index, "#1", value=new_chain_name)
-                        existing_chains_treeview.set(selected_item_index, "#2", value="->".join(chain))
+                        existing_chains_treeview.set(selected_item_index, "#2", value="->".join((name.full_name for name in chain)))
                     else:
                         recreate_option_menus(chaining_options[chain_type_option_menu["text"]])
-                        existing_chains_treeview.insert("", "end", values=(new_chain_name, "->".join(chain)))
+                        existing_chains_treeview.insert(
+                            "", 
+                            "end", 
+                            values=(new_chain_name, "->".join((name.full_name for name in chain))))
 
                     chaining_window.destroy()
 
@@ -2175,7 +2188,10 @@ class App(Tk):
         chaining_data = LoadableConfig(validation_scheme=validation_scheme,
                                        docs="",
                                        config_location=chaining_data_file_dir,
-                                       _config_file_name=chaining_data_file_name)
+                                       _config_file_name=chaining_data_file_name,
+                                       custom_json_decoder=ChainInfoJSONDecoder,
+                                       custom_json_encoder=ChainInfoJSONEncoder,
+                                       )
         return chaining_data
 
     @error_handler(show_exception_logs)
@@ -2222,7 +2238,7 @@ class App(Tk):
     def display_audio_on_frame(self,
                                word: str,
                                card_data: dict,
-                               generator_results: list[GeneratorReturn[tuple[list[str], list[str]]]],
+                               generator_results: list[GeneratorReturn[tuple[list[str], list[str]]]] | None,
                                audio_sf,
                                audio_inner_frame,
                                show_errors: bool,
@@ -2260,9 +2276,12 @@ class App(Tk):
             if success:
                 playsound_in_another_thread(temp_audio_path)
 
-        error_messages: list[tuple[str, str]] = []        
+        error_messages: list[tuple[str, str]] = []    
+        if generator_results is None: 
+            generator_results = []
+
         for scrapper_result in generator_results:
-            getter_label = scrapper_result.parser_info.full_name
+            getter_label = f"{scrapper_result.parser_info.full_name}: {word}"
             if not scrapper_result.result:
                 continue
             
@@ -2322,7 +2341,7 @@ class App(Tk):
                 audio_sf.bind_scroll_wheel(info_label)
 
         if show_errors:
-            if generator_results:
+            if not generator_results:
                 messagebox.showerror(
                     title=self.lang_pack.error_title,
                     message=self.lang_pack.display_audio_getter_results_audio_not_found_message
@@ -3311,7 +3330,7 @@ class App(Tk):
                 word=self.word,
                 card_data=self.dict_card_data,
                 generator_results=[GeneratorReturn(generator_type=ParserType.web,
-                                                   name=f"dict {self.card_generator.parser_info.name}",
+                                                   name=f"dict::{TypedParserName.split_full_name(parser_name).name}",
                                                    error_message="",
                                                    result=(audio_sources, ["" for _ in range(len(audio_sources))]))],
                 show_errors=False,

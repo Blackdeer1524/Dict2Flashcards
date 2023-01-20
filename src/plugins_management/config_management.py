@@ -125,10 +125,14 @@ class LoadableConfig(LoadableConfigProtocol):
                  validation_scheme: Config.ValidationScheme,
                  docs: str,
                  config_location: str,
+                 custom_json_encoder: Type[json.JSONEncoder] | None = None,
+                 custom_json_decoder: Type[json.JSONDecoder] | None = None,
                  _config_file_name: str = "config.json"):
         super(LoadableConfig, self).__init__(validation_scheme=validation_scheme,
                                              docs=docs,
                                              initial_value={})
+        self.custom_json_encoder = custom_json_encoder
+        self.custom_json_decoder = custom_json_decoder
         self._conf_file_path = os.path.join(config_location, _config_file_name)
         self.load()
 
@@ -139,13 +143,13 @@ class LoadableConfig(LoadableConfigProtocol):
             return None
         try:
             with open(self._conf_file_path, "r", encoding=LoadableConfig.ENCODING) as conf_file:
-                self.data = json.load(conf_file)
+                self.data = json.load(conf_file, cls=self.custom_json_decoder)
         except (ValueError, TypeError):  # Catches JSON decoding exceptions
             self.restore_defaults()
             self.save()
             return None
         return self.validate_config(self.data, self.validation_scheme)
 
-    def save(self):
+    def save(self) -> None:
         with open(self._conf_file_path, "w", encoding=LoadableConfig.ENCODING) as conf_file:
-            json.dump(self.data, conf_file, indent=4)
+            json.dump(self.data, conf_file, indent=4, cls=self.custom_json_encoder)

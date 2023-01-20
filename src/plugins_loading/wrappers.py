@@ -130,7 +130,7 @@ class LocalCardGenerator(Generic[DICTIONARY_T], CardGeneratorProtocol):
 S = TypeVar("S")
 class WrappedBatchGeneratorProtocol(TypedParser, HasConfigFile, ABC, Generic[S]):
     @abstractmethod
-    def get(self, word: str, card_data: CardFormat) -> Generator[list[GeneratorReturn[S]], int, list[GeneratorReturn[S]]]:
+    def get(self, *arg, **kwargs) -> Generator[list[GeneratorReturn[S]], int, list[GeneratorReturn[S]]]:
         ...
 
 
@@ -138,10 +138,10 @@ BATCH_T =  TypeVar("BATCH_T")
 class BatchGeneratorWrapper(WrappedBatchGeneratorProtocol[BATCH_T]):
     """It is guaranteed that it will start"""
     _parser_type:          Literal[ParserType.web, ParserType.local]
-    generator_initializer: Callable[[str, CardFormat], 
-                                     Generator[tuple[BATCH_T, str], 
-                                               int, 
-                                               tuple[BATCH_T, str]]]
+    generator_initializer: Callable[..., 
+                                    Generator[tuple[BATCH_T, str], 
+                                              int, 
+                                              tuple[BATCH_T, str]]]
     _parser_info: TypedParserName
     _config: LoadableConfigProtocol
 
@@ -166,13 +166,11 @@ class BatchGeneratorWrapper(WrappedBatchGeneratorProtocol[BATCH_T]):
         self._config = config
         self.generator_initializer = generator_initializer
 
-    def get(self,
-            word: str,
-            card_data: CardFormat) -> Generator[list[GeneratorReturn[BATCH_T]], 
-                                                int, 
-                                                list[GeneratorReturn[BATCH_T]]]:
+    def get(self, *arg, **kwargs) -> Generator[list[GeneratorReturn[BATCH_T]], 
+                                               int, 
+                                               list[GeneratorReturn[BATCH_T]]]:
         batch_size = yield  # type: ignore
-        generator = self.generator_initializer(word, card_data)
+        generator = self.generator_initializer(*arg, **kwargs)
         try:
             next(generator)
         except StopIteration as e:
@@ -201,8 +199,8 @@ class ExternalDataGenerator(TypedParser, Generic[BATCH_V]):
     data_generator: WrappedBatchGeneratorProtocol
 
     parser_info:     TypedParserName = field(init=False)
-    _word:           str  = field(init=False, default="")
-    _card_data:      dict = field(init=False, default_factory=dict)
+    _args_params:    list = field(init=False, default_factory=list)
+    _kwargs_param:   dict = field(init=False, default_factory=dict)
     _update_status:  bool = field(init=False, default=False)
     _data_generator: Generator[list[GeneratorReturn[BATCH_V]], int, None] = field(init=False)
 
@@ -214,16 +212,16 @@ class ExternalDataGenerator(TypedParser, Generic[BATCH_V]):
         self._data_generator = self._get_data_generator()
         next(self._data_generator)
 
-    def force_update(self, word: str, card_data: dict):
-        self._word = word
-        self._card_data = card_data
+    def force_update(self, *args, **kwargs):
+        self._args_params = args
+        self._kwargs_param = kwargs
         self._update_status = True
         self._start()
 
     def _get_data_generator(self) -> Generator[list[GeneratorReturn[BATCH_V]], int, None]:
         batch_size = yield  # type: ignore
 
-        data_generator = self.data_generator.get(self._word, self._card_data)
+        data_generator = self.data_generator.get(*self._args_params, **self._kwargs_param)
         try:
             next(data_generator)
         except StopIteration as e:
@@ -240,9 +238,9 @@ class ExternalDataGenerator(TypedParser, Generic[BATCH_V]):
                 yield e.value
                 return
 
-    def get(self, word: str, card_data:dict, batch_size: int) -> Optional[list[GeneratorReturn[BATCH_V]]]:
-        if self._word != word or self._card_data != card_data:
-            self.force_update(word, card_data)
+    def get(self, batch_size: int, *args, **kwargs) -> Optional[list[GeneratorReturn[BATCH_V]]]:
+        if self._args_params != args or self._kwargs_param != kwargs:
+            self.force_update(*args, **kwargs)
 
         try:
             return self._data_generator.send(batch_size)

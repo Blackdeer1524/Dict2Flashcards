@@ -13,12 +13,11 @@ import requests
 from PIL import Image, ImageTk
 from requests.exceptions import ConnectTimeout, RequestException
 from tkinterdnd2 import DND_FILES, DND_TEXT
-from ..consts import CardFormat
 
 from ..consts.paths import SYSTEM
 from ..plugins_loading.containers import LanguagePackageContainer
 from .widgets import ScrolledFrame
-from ..plugins_loading.wrappers import GeneratorReturn
+from ..plugins_loading.wrappers import ExternalDataGenerator, GeneratorReturn
 
 
 if SYSTEM == "Linux":
@@ -90,7 +89,9 @@ class ImageSearch(Toplevel):
         self._init_local_img_paths: list[str] = [image_path for image_path in kwargs.get("local_images", []) if
                                                  os.path.isfile(image_path)]
         self._init_images = kwargs.get("init_images", [])
-        self._image_url_gen: Callable[[int, str], list[GeneratorReturn[list[str]]] | None] | None = kwargs.get("url_scrapper")
+        self._url_scrapper: ExternalDataGenerator[list[str]] | None = \
+            kwargs.get("url_scrapper")
+
         self._scrapper_stop_flag = False
 
         self._button_bg = self.activebackground = "#FFFFFF"
@@ -113,7 +114,7 @@ class ImageSearch(Toplevel):
 
         self._pool: ThreadPoolExecutor = ThreadPoolExecutor()
 
-        self.saving_images: list[Image.Image] = []
+        self.saving_images: list[Image] = []
         self.images_source: list[str] = []
         self.working_state: list[bool] = []  # indices of picked buttons
         self.button_list: list[Button] = []
@@ -136,7 +137,7 @@ class ImageSearch(Toplevel):
                                            command=self._restart_search,
                                            **self._command_button_params)
         self._start_search_button.grid(row=0, column=1, sticky="news")
-        self._start_search_button["state"] = "normal" if self._image_url_gen else "disabled"
+        self._start_search_button["state"] = "normal" if self._url_scrapper else "disabled"
 
         self._sf = ScrolledFrame(self, scrollbars="both")
         self._sf.grid(row=1, column=0)
@@ -187,21 +188,24 @@ class ImageSearch(Toplevel):
         self._command_widget_total_height = self._save_button.winfo_height() + self._search_field.winfo_height() + \
                                            2 * self._button_pady
 
+    def _start_url_generator(self) -> None:
+        if self._url_scrapper is None:
+            self._scrapper_stop_flag = False
+            return
+        self._url_scrapper.force_update(self.search_term)
+
     def _generate_urls(self, batch_size: int) -> None:
-        if self._image_url_gen is None:
-            self._scrapper_stop_flag = True
-            return
-        
-        scrapped_images = self._image_url_gen(batch_size, self._search_field.get())
-        if scrapped_images is None:
-            self._scrapper_stop_flag = True
-            return
-        
-        for scrapper_result in scrapped_images:
-            self._img_urls.extend(scrapper_result.result)
-            if scrapper_result.error_message:
-                messagebox.showerror(title=self.lang_pack.error_title,
-                                     message=scrapper_result.error_message)
+        if self._url_scrapper is not None and not self._scrapper_stop_flag:
+            generators_results = self._url_scrapper.get(batch_size, self.search_term)
+            if generators_results is None:
+                self._scrapper_stop_flag = True
+                return
+            for result in generators_results:
+                self._img_urls.extend(result.result)
+                if result.error_message:
+                    messagebox.showerror(
+                        title=result.parser_info.full_name,
+                        message=result.error_message)
 
     def start(self):
         if SYSTEM == "Linux":
@@ -215,9 +219,9 @@ class ImageSearch(Toplevel):
             self.working_state[-1] = True
             self.button_list[-1]["bg"] = self._choose_color
 
+        self._start_url_generator()
         if not self._scrapper_stop_flag:
             next(self._show_more_gen)
-        self._scrapper_stop_flag = False
         self._resize_window()
 
     def _restart_search(self):
@@ -227,6 +231,7 @@ class ImageSearch(Toplevel):
             return
 
         self._scrapper_stop_flag = False
+        self._start_url_generator()
         self._inner_frame = self._sf.display_widget(partial(Frame, **self._frame_params))
         self._img_urls.clear()
 
@@ -273,7 +278,7 @@ class ImageSearch(Toplevel):
                                      current_frame_height))
 
     @staticmethod
-    def preprocess_image(img: Image, width: int | None = None, height: int | None = None) -> Image:
+    def preprocess_image(img: Image, width: int = None, height: int = None) -> Image:
         resize_is_needed = False
         new_width = img.width
         new_height = img.height

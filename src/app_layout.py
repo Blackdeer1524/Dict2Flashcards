@@ -3364,7 +3364,7 @@ class App(Tk):
                                    main_params=self.theme.toplevel_cfg,
                                    search_term=word,
                                    saving_dir=self.configurations["directories"]["media_dir"],
-                                   url_scrapper=self.external_image_generator.get,
+                                   url_scrapper=self.external_image_generator,
                                    init_urls=init_urls,
                                    local_images=init_local_images_paths,
                                    headers=self.headers,

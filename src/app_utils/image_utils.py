@@ -90,7 +90,7 @@ class ImageSearch(Toplevel):
         self._init_local_img_paths: list[str] = [image_path for image_path in kwargs.get("local_images", []) if
                                                  os.path.isfile(image_path)]
         self._init_images = kwargs.get("init_images", [])
-        self._image_url_gen: Callable[[str, int], list[GeneratorReturn[list[str]]] | None] | None = kwargs.get("url_scrapper")
+        self._image_url_gen: Callable[[int, str], list[GeneratorReturn[list[str]]] | None] | None = kwargs.get("url_scrapper")
         self._scrapper_stop_flag = False
 
         self._button_bg = self.activebackground = "#FFFFFF"
@@ -189,10 +189,12 @@ class ImageSearch(Toplevel):
 
     def _generate_urls(self, batch_size: int) -> None:
         if self._image_url_gen is None:
+            self._scrapper_stop_flag = True
             return
         
-        scrapped_images = self._image_url_gen(self._search_field.get(), batch_size)
+        scrapped_images = self._image_url_gen(batch_size, self._search_field.get())
         if scrapped_images is None:
+            self._scrapper_stop_flag = True
             return
         
         for scrapper_result in scrapped_images:
@@ -215,6 +217,7 @@ class ImageSearch(Toplevel):
 
         if not self._scrapper_stop_flag:
             next(self._show_more_gen)
+        self._scrapper_stop_flag = False
         self._resize_window()
 
     def _restart_search(self):

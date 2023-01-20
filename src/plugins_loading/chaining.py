@@ -260,4 +260,4 @@ class ChainOfGenerators(WrappedBatchGeneratorProtocol[BATCH_T]):
 
 SentenceParsersChain = ChainOfGenerators[list[str]]
 ImageParsersChain    = ChainOfGenerators[list[str]]
-AudioGettersChain    = ChainOfGenerators[tuple[list[str], list[str]]]
+AudioGettersChain    = ChainOfGenerators[list[tuple[str, str]]]

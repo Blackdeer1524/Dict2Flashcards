@@ -218,7 +218,7 @@ class PluginFactory:
     def get_audio_getter(
             self,
             parser_info: TypedParserName,
-            chain_data: CHAIN_INFO_T) -> WrappedBatchGeneratorProtocol[tuple[list[str], list[str]]]:
+            chain_data: CHAIN_INFO_T) -> WrappedBatchGeneratorProtocol[list[tuple[str, str]]]:
         if parser_info.parser_t == ParserType.web:
             if (web_gen := self.web_audio_getters.get(parser_info.name)) is None:
                 raise UnknownPluginName(f"Unknown web audio getter: {parser_info.name}")
@@ -227,14 +227,14 @@ class PluginFactory:
                                          parser_name=parser_info.name,
                                          parser_type=ParserType.web)
         elif parser_info.parser_t == ParserType.local:
-            if (loacl_gen := self.local_audio_getters.get(parser_info.name)) is None:
+            if (local_gen := self.local_audio_getters.get(parser_info.name)) is None:
                 raise UnknownPluginName(f"Unknown local audio getter: {parser_info.name}")
-            return BatchGeneratorWrapper(config=loacl_gen.config,
-                                         generator_initializer=loacl_gen.get,
+            return BatchGeneratorWrapper(config=local_gen.config,
+                                         generator_initializer=local_gen.get,
                                          parser_name=parser_info.name,
                                          parser_type=ParserType.local)
         elif parser_info.parser_t == ParserType.chain:
-            return AudioGettersChain(generator_getter=self.get_image_parser,
+            return AudioGettersChain(generator_getter=self.get_audio_getter,
                                      chain_name=parser_info.name,
                                      chain_data=chain_data)
         raise ValueError(f"Unknown audio getter type: {parser_info.parser_t}")

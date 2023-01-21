@@ -42,7 +42,7 @@ error_verbosity:
             self.enum_name2config[enum_name] = config
             validation_scheme["parsers"][enum_name] = config.validation_scheme
             if id(config) not in seen_config_ids:
-                docs_list.append("{}:\n{}".format(name, config.docs.replace("\n", "\n" + " " * 4)))
+                docs_list.append("{}:\n{}".format(name.full_name, config.docs.replace("\n", "\n" + " " * 4)))
                 seen_config_ids.add(id(config))
             config.save()
 

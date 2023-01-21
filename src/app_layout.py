@@ -232,8 +232,8 @@ class App(Tk):
         self.image_parsers_option_menu = self.get_option_menu(
             self,
             init_text=typed_image_parser_name,
-            values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
-                   [f"[{ParserType.chain}] {name}" for name in self.chaining_data["image_parsers"]],
+            values=[ParserType.merge_into_full_name(ParserType.web, name) for name in loaded_plugins.web_image_parsers.loaded] +
+                   [ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data["image_parsers"]],
             command=lambda parser_name: self.change_image_parser(parser_name))
         self.image_parsers_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
                                            padx=0, pady=(0, self.text_pady))
@@ -396,8 +396,8 @@ class App(Tk):
         self.sentence_parsers_option_menu = self.get_option_menu(
             self,
             init_text=typed_sentence_parser_name,
-            values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
-                   [f"[{ParserType.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
+            values=[ParserType.merge_into_full_name(ParserType.web, name) for name in loaded_plugins.web_sent_parsers.loaded] +
+                   [ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data["sentence_parsers"]],
             command=lambda parser_name: self.change_sentence_parser(parser_name))
         self.sentence_parsers_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
                                               pady=(self.text_pady, 0))
@@ -887,7 +887,7 @@ class App(Tk):
                     self.word_parser_option_menu = self.get_option_menu(
                         self,
                         init_text=self.card_generator.parser_info.full_name,
-                        values=[ParserType.merge_into_full_name(ParserType.web, item) for item in loaded_plugins.web_word_parsers.loaded] +
+                        values=[ParserType.merge_into_full_name(ParserType.web, item)   for item in loaded_plugins.web_word_parsers.loaded] +
                                [ParserType.merge_into_full_name(ParserType.local, item) for item in loaded_plugins.local_word_parsers.loaded] +
                                [ParserType.merge_into_full_name(ParserType.chain, item) for item in self.chaining_data["word_parsers"]],
                         command=lambda typed_parser: self.change_word_parser(typed_parser))
@@ -900,8 +900,8 @@ class App(Tk):
                     self.sentence_parsers_option_menu = self.get_option_menu(
                         self,
                         init_text=typed_sentence_parser_name,
-                        values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
-                               [f"[{ParserType.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
+                        values=[ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_sent_parsers.loaded] +
+                               [ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data["sentence_parsers"]],
                         command=lambda parser_name: self.change_sentence_parser(parser_name))
                     self.sentence_parsers_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
                                                           pady=(self.text_pady, 0))
@@ -912,8 +912,8 @@ class App(Tk):
                     self.image_parsers_option_menu = self.get_option_menu(
                         self,
                         init_text=typed_image_parser_name,
-                        values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
-                               [f"[{ParserType.chain}] {name}" for name in self.chaining_data["image_parsers"]],
+                        values=[ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_image_parsers.loaded] +
+                               [ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data["image_parsers"]],
                         command=lambda parser_name: self.change_image_parser(parser_name))
                     self.image_parsers_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
                                                        padx=0, pady=(0, self.text_pady))
@@ -924,7 +924,7 @@ class App(Tk):
                         self,
                         init_text="default" if self.external_audio_generator is None else self.external_audio_generator.parser_info.full_name,
                         values=["default"] +
-                               [ParserType.merge_into_full_name(ParserType.web, item) for item in loaded_plugins.web_audio_getters.loaded] +
+                               [ParserType.merge_into_full_name(ParserType.web, item)   for item in loaded_plugins.web_audio_getters.loaded] +
                                [ParserType.merge_into_full_name(ParserType.local, item) for item in loaded_plugins.local_audio_getters.loaded] +
                                [ParserType.merge_into_full_name(ParserType.chain, item) for item in self.chaining_data["audio_getters"]],
                         command=lambda parser_name: self.change_audio_getter(parser_name))
@@ -1052,17 +1052,29 @@ class App(Tk):
                 if chain_type == "word_parsers":
                     displaying_options: Iterable[str] = \
                         itertools.chain(
-                            (f"[{ParserType.web}] {name}" for name in loaded_plugins.web_word_parsers.loaded),
-                            (f"[{ParserType.local}] {name}" for name in loaded_plugins.local_word_parsers.loaded))
+                            (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_word_parsers.loaded),
+                            (ParserType.merge_into_full_name(ParserType.local, name) for name in loaded_plugins.local_word_parsers.loaded),
+                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]),
+                            )
                 elif chain_type == "sentence_parsers":
-                    displaying_options = (f"[{ParserType.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded)
+                    displaying_options = \
+                        itertools.chain(
+                            (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_sent_parsers.loaded),
+                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]),
+                        )
                 elif chain_type == "image_parsers":
-                    displaying_options = (f"[{ParserType.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded)
+                    displaying_options = \
+                        itertools.chain(
+                            (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_image_parsers.loaded),
+                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type])
+                        )
                 elif chain_type == "audio_getters":
                     displaying_options = \
                         itertools.chain(
-                            (f"[{ParserType.web}] {name}" for name in loaded_plugins.web_audio_getters.loaded),
-                            (f"[{ParserType.local}] {name}" for name in loaded_plugins.local_audio_getters.loaded))
+                            (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_audio_getters.loaded),
+                            (ParserType.merge_into_full_name(ParserType.local, name) for name in loaded_plugins.local_audio_getters.loaded),
+                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]),
+                        )
                 else:
                     raise NotImplementedError(f"Unknown chain type: {chain_type}")
 
@@ -1659,8 +1671,8 @@ class App(Tk):
             self.image_parsers_option_menu = self.get_option_menu(
                 self,
                 init_text=typed_image_parser_name,
-                values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
-                       [f"[{ParserType.chain}] {name}" for name in self.chaining_data["image_parsers"]],
+                values=[ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_image_parsers.loaded] +
+                       [ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data["image_parsers"]],
                 command=lambda parser_name: self.change_image_parser(parser_name))
             self.image_parsers_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
                                                padx=0, pady=(0, self.text_pady))
@@ -1669,8 +1681,8 @@ class App(Tk):
         editor_image_parsers_option_menu = self.get_option_menu(
             item_editor_frame,
             init_text=typed_image_parser_name,
-            values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_image_parsers.loaded] +
-                   [f"[{ParserType.chain}] {name}" for name in self.chaining_data["image_parsers"]],
+            values=[ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_image_parsers.loaded] +
+                   [ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data["image_parsers"]],
             command=global_change_image_parser)
         editor_image_parsers_option_menu.grid(row=5, column=3, columnspan=4, sticky="news",
                                            padx=0, pady=0)
@@ -1724,7 +1736,7 @@ class App(Tk):
                 self,
                 init_text=typed_audio_getter,
                 values=["default"] +
-                       [ParserType.merge_into_full_name(ParserType.web, item) for item in loaded_plugins.web_audio_getters.loaded] +
+                       [ParserType.merge_into_full_name(ParserType.web, item)   for item in loaded_plugins.web_audio_getters.loaded] +
                        [ParserType.merge_into_full_name(ParserType.local, item) for item in loaded_plugins.local_audio_getters.loaded] +
                        [ParserType.merge_into_full_name(ParserType.chain, item) for item in self.chaining_data["audio_getters"]],
                 command=lambda parser_name: self.change_audio_getter(parser_name))
@@ -1735,7 +1747,7 @@ class App(Tk):
             item_editor_frame,
             init_text=typed_audio_getter,
             values=["default"] +
-                   [ParserType.merge_into_full_name(ParserType.web, item) for item in loaded_plugins.web_audio_getters.loaded] +
+                   [ParserType.merge_into_full_name(ParserType.web, item)   for item in loaded_plugins.web_audio_getters.loaded] +
                    [ParserType.merge_into_full_name(ParserType.local, item) for item in loaded_plugins.local_audio_getters.loaded] +
                    [ParserType.merge_into_full_name(ParserType.chain, item) for item in self.chaining_data["audio_getters"]],
             command=global_change_audio_getter)
@@ -1835,7 +1847,7 @@ class App(Tk):
             self.sentence_parsers_option_menu = self.get_option_menu(
                 self,
                 init_text=typed_sentence_parser_name,
-                values=[ParserType.merge_into_full_name(parser_type=ParserType.web, parser_name=name) for name in loaded_plugins.web_sent_parsers.loaded] +
+                values=[ParserType.merge_into_full_name(parser_type=ParserType.web, parser_name=name)   for name in loaded_plugins.web_sent_parsers.loaded] +
                        [ParserType.merge_into_full_name(parser_type=ParserType.chain, parser_name=name) for name in self.chaining_data["sentence_parsers"]],
                 command=lambda parser_name: self.change_sentence_parser(parser_name))
             self.sentence_parsers_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
@@ -1845,7 +1857,7 @@ class App(Tk):
         editor_sentence_parsers_option_menu = self.get_option_menu(
             item_editor_frame,
             init_text=typed_sentence_parser_name,
-            values=[ParserType.merge_into_full_name(parser_type=ParserType.web, parser_name=name) for name in loaded_plugins.web_sent_parsers.loaded] +
+            values=[ParserType.merge_into_full_name(parser_type=ParserType.web, parser_name=name)   for name in loaded_plugins.web_sent_parsers.loaded] +
                    [ParserType.merge_into_full_name(parser_type=ParserType.chain, parser_name=name) for name in self.chaining_data["sentence_parsers"]],
             command=global_change_sentence_parser)
         editor_sentence_parsers_option_menu.grid(row=9, column=3, columnspan=4, sticky="news",
@@ -2931,8 +2943,6 @@ class App(Tk):
 
         conf_window.bind("<Escape>", lambda event: conf_window.destroy())
         conf_window.bind("<Return>", lambda event: done())
-        spawn_window_in_center(self, conf_window,
-                               desired_window_width=self.winfo_width())
         conf_window.grab_set()
 
     @error_handler(show_exception_logs)

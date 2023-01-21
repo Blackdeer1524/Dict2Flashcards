@@ -15,8 +15,9 @@ from tkinter import (BooleanVar, Button, Checkbutton, Frame, Label, LabelFrame,
 from tkinter.filedialog import askdirectory, askopenfilename
 from tkinter.font import Font
 from tkinter.ttk import Scrollbar, Treeview
-from typing import Callable, Literal, Iterable
+from typing import Callable, Iterable, Literal
 
+import requests
 from playsound import playsound
 from tkinterdnd2 import Tk
 
@@ -35,6 +36,8 @@ from .app_utils.widgets import TextWithPlaceholder as Text
 from .app_utils.window_utils import get_option_menu, spawn_window_in_center
 from .consts import CardFields, ParserType, TypedParserName
 from .consts.paths import *
+from .plugins_loading.chaining import (ChainInfoJSONDecoder,
+                                       ChainInfoJSONEncoder)
 from .plugins_loading.containers import LanguagePackageContainer
 from .plugins_loading.factory import loaded_plugins
 from .plugins_loading.wrappers import ExternalDataGenerator, GeneratorReturn
@@ -42,7 +45,6 @@ from .plugins_management.config_management import Config, LoadableConfig
 from .plugins_management.parsers_return_types import (
     AUDIO_DATA_T, AUDIO_SCRAPPER_RETURN_T, IMAGE_DATA_T,
     IMAGE_SCRAPPER_RETURN_T, SENTENCE_DATA_T, SENTENCE_SCRAPPER_RETURN_T)
-from .plugins_loading.chaining import ChainInfoJSONDecoder, ChainInfoJSONEncoder
 
 
 class App(Tk):
@@ -416,7 +418,7 @@ class App(Tk):
         self.sentence_search_entry.grid(row=11, column=0, columnspan=8, sticky="news",
                                         padx=self.text_padx, pady=(0, 0))
 
-        self.sentence_texts = []
+        self.sentence_texts: list[Text] = []
 
         self.text_widgets_sf = ScrolledFrame(self, scrollbars="vertical",
                                              canvas_bg=self.theme.frame_cfg.get("bg"))
@@ -1698,9 +1700,7 @@ class App(Tk):
                                                      text=self.lang_pack.fetch_audio_data_button_text,
                                                      command=display_audio_getter_results_on_button_click)
 
-        typed_audio_getter = "default" if self.external_audio_generator is None \
-            else "[{}] {}".format(self.configurations["scrappers"]["audio"]["type"],
-                                  self.external_audio_generator.data_generator.name)
+        typed_audio_getter = "default" if self.external_audio_generator is None else self.external_audio_generator.parser_info.full_name
 
         if typed_audio_getter == "default":
             editor_fetch_audio_data_button["state"] = "disabled"
@@ -1782,39 +1782,30 @@ class App(Tk):
 
         @error_handler(self.show_exception_logs)
         def editor_fetch_external_sentences() -> None:
-            results: list[GeneratorReturn[list[str]]] = []
+            generators_results: list[GeneratorReturn[list[str]]] | None = None
 
             editor_fill_search_fields()
 
-            def schedule_sentence_fetcher():
-                nonlocal results, editor_card_data
-                parser_results = self.external_sentence_fetcher.get(
+            def schedule_sentence_fetcher() -> None:
+                nonlocal generators_results, editor_card_data
+                generators_results = self.external_sentence_fetcher.get(
                     word=editor_sentence_search_entry.get(),
                     card_data=editor_card_data,
                     batch_size=self.configurations["extern_sentence_placer"]["n_sentences_per_batch"])
-                if parser_results is None:
-                    return
-
-                sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-                if sentence_parser_type == ParserType.chain:
-                    results = parser_results
-                elif sentence_parser_type == ParserType.web:
-                    results.append((self.external_sentence_fetcher.data_generator.name, parser_results))
-                else:
-                    raise NotImplementedError(f"Unknown sentence parser type: {sentence_parser_type}")
 
             def wait_sentence_fetcher(thread: Thread):
                 if thread.is_alive():
                     self.after(100, lambda: wait_sentence_fetcher(thread))
                     return
 
-                nonlocal results
+                nonlocal generators_results
+                if generators_results is None: 
+                    return
 
-                for (typed_parser_name, (sent_batch, error_message)) in results:
-                    sentence_parser_type = self.configurations["scrappers"]["sentence"]["type"]
-                    for sentence in sent_batch:
+                for parser_result in generators_results:
+                    for sentence in parser_result.result:
                         self.add_sentence_field(
-                            source=f"{typed_parser_name}: {editor_sentence_search_entry.get()}",
+                            source=f"{parser_result.parser_info.full_name}: {editor_sentence_search_entry.get()}",
                             sentence=sentence,
                             text_widgets_frame=editor_text_widgets_frame,
                             text_widgets_sf=editor_text_widgets_sf,
@@ -1822,10 +1813,10 @@ class App(Tk):
                             choose_sentence_action=change_picked_sentence
                         )
 
-                    if error_message:
+                    if parser_result.error_message:
                         messagebox.showerror(
-                            title=f"[{sentence_parser_type}] {self.external_sentence_fetcher.data_generator.name}",
-                            message=error_message)
+                            title=parser_result.parser_info.full_name,
+                            message=parser_result.error_message)
 
             place_sentences_thread = Thread(target=schedule_sentence_fetcher)
             place_sentences_thread.start()
@@ -1840,22 +1831,22 @@ class App(Tk):
         def global_change_sentence_parser(parser_name):
             self.change_sentence_parser(parser_name)
             self.sentence_parsers_option_menu.destroy()
-            typed_sentence_parser_name = f"[{self.configurations['scrappers']['sentence']['type']}] {self.external_sentence_fetcher.data_generator.name}"
+            typed_sentence_parser_name = self.external_sentence_fetcher.parser_info.full_name
             self.sentence_parsers_option_menu = self.get_option_menu(
                 self,
                 init_text=typed_sentence_parser_name,
-                values=[f"[{ParserType.web}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
-                       [f"[{ParserType.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
+                values=[ParserType.merge_into_full_name(parser_type=ParserType.web, parser_name=name) for name in loaded_plugins.web_sent_parsers.loaded] +
+                       [ParserType.merge_into_full_name(parser_type=ParserType.chain, parser_name=name) for name in self.chaining_data["sentence_parsers"]],
                 command=lambda parser_name: self.change_sentence_parser(parser_name))
             self.sentence_parsers_option_menu.grid(row=10, column=3, columnspan=4, sticky="news",
                                                   pady=(self.text_pady, 0))
 
-        typed_sentence_parser_name = f"[{self.configurations['scrappers']['sentence']['type']}] {self.external_sentence_fetcher.data_generator.name}"
+        typed_sentence_parser_name = self.external_sentence_fetcher.parser_info.full_name
         editor_sentence_parsers_option_menu = self.get_option_menu(
             item_editor_frame,
             init_text=typed_sentence_parser_name,
-            values=[f"[{ParserType.chain}] {name}" for name in loaded_plugins.web_sent_parsers.loaded] +
-                   [f"[{ParserType.chain}] {name}" for name in self.chaining_data["sentence_parsers"]],
+            values=[ParserType.merge_into_full_name(parser_type=ParserType.web, parser_name=name) for name in loaded_plugins.web_sent_parsers.loaded] +
+                   [ParserType.merge_into_full_name(parser_type=ParserType.chain, parser_name=name) for name in self.chaining_data["sentence_parsers"]],
             command=global_change_sentence_parser)
         editor_sentence_parsers_option_menu.grid(row=9, column=3, columnspan=4, sticky="news",
                                               pady=(editor_text_pady, 0))
@@ -2024,8 +2015,8 @@ class App(Tk):
                     last_audio_getter_data = current_audio_getter_data
                     audio_getters_audios = []
 
-                for i, audio_frame in enumerate(labeled_frame.winfo_children()):
-                    if not current_audio_getter_data.name:  # chosen previously
+                for i, audio_frame in reversed(list(enumerate(labeled_frame.winfo_children()))):
+                    if not current_audio_getter_data.parser_info.name:  # chosen previously
                         if not audio_frame.boolvar.get():
                             full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA][SavedDataDeck.AUDIO_DATA][
                                 SavedDataDeck.AUDIO_SRCS].pop(i)
@@ -2052,7 +2043,7 @@ class App(Tk):
 
             selected_item_index = items_table.focus()
             if not selected_item_index:
-                return
+                return False
 
             if previously_selected_item:
                 save_progress(previously_selected_item)
@@ -2063,7 +2054,7 @@ class App(Tk):
             if full_saved_card_data is None:
                 str_selection_index = items_table.selection()[0]
                 items_table.delete(str_selection_index)
-                return
+                return False
 
             editor_card_data = full_saved_card_data[SavedDataDeck.CARD_DATA]
             # ====
@@ -2136,7 +2127,6 @@ class App(Tk):
                                                           error_message="",
                                                           name="",
                                                           result=([(audio_src, self.card_processor.get_card_audio_name(saving_path))])))
-                    # parser_results.append([("", ParserType(audio_srcs_type)), (([audio_src], [self.card_processor.get_card_audio_name(saving_path)]), "")])
 
                 self.display_audio_on_frame(
                     word=word_data,
@@ -3125,8 +3115,6 @@ class App(Tk):
         def invoke(action, **params):
             def request_anki(action, **params):
                 return {'action': action, 'params': params, 'version': 6}
-
-            import requests
 
             request_json = json.dumps(request_anki(action, **params)).encode('utf-8')
             try:

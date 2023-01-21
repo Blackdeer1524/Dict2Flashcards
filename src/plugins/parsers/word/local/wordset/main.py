@@ -42,7 +42,7 @@ def define(query: str, dictionary: list[tuple[str, WORD_DATA_STRUCTURE]]) -> tup
     word_query = re.compile(query)
     results: list[consts.CardFormat] = []
     for word, word_data in dictionary:
-        if not re.search(word_query, word):
+        if not word_query.fullmatch(word):
             continue
         results.extend(translate(word=word, word_data=word_data))
     return results, ""

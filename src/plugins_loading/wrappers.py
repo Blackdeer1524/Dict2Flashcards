@@ -11,7 +11,7 @@ from ..plugins_management.config_management import (HasConfigFile,
 from ..app_utils.cards import Card
 
 T = TypeVar("T")
-@dataclass(init=False, slots=True, frozen=True, eq=False, kw_only=True, order=False, repr=False, match_args=True, unsafe_hash=False)
+@dataclass(init=False, slots=True, frozen=True, eq=False, kw_only=True, order=False, match_args=True, unsafe_hash=False)
 class GeneratorReturn(Generic[T]):
     parser_info: TypedParserName
     result: T

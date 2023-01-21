@@ -2138,8 +2138,7 @@ class App(Tk):
                     parser_results.append(GeneratorReturn(generator_type=ParserType.web if audio_srcs_type == ParserType.web else ParserType.local,
                                                           error_message="",
                                                           name="",
-                                                          result=([(audio_src, self.card_processor.get_card_audio_name(saving_path))])))
-
+                                                          result=[(audio_src, self.card_processor.get_card_audio_name(saving_path))]))
                 self.display_audio_on_frame(
                     word=word_data,
                     card_data=editor_card_data,
@@ -3096,7 +3095,7 @@ class App(Tk):
                                     parser_t=generator_results.parser_info.parser_t, 
                                     name=generator_results.parser_info.name),
                                 fetching_word=self.word),
-                            audio_links=generator_results.result)
+                            audio_links=[link for (link, _) in generator_results.result])
 
         if (hierarchical_prefix := self.tag_prefix_field.get().strip()):
             additional[SavedDataDeck.HIERARCHICAL_PREFIX] = hierarchical_prefix
@@ -3277,7 +3276,7 @@ class App(Tk):
                 word=self.word,
                 card_data=self.dict_card_data,
                 generator_results=[GeneratorReturn(generator_type=ParserType.web,
-                                                   name=f"dict::{TypedParserName.split_full_name(parser_name).name}",
+                                                   name=f"dict! {TypedParserName.split_full_name(parser_name).name}",
                                                    error_message="",
                                                    result=[(audio_link, "") for audio_link in audio_sources])],
                 show_errors=False,

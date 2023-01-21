@@ -36,8 +36,7 @@ from .app_utils.widgets import TextWithPlaceholder as Text
 from .app_utils.window_utils import get_option_menu, spawn_window_in_center
 from .consts import CardFields, ParserType, TypedParserName
 from .consts.paths import *
-from .plugins_loading.chaining import (ChainInfoJSONDecoder,
-                                       ChainInfoJSONEncoder)
+from .plugins_loading.chaining import (ChainDataStorage, PossibleChainTypes, CHAIN_INFO_T)
 from .plugins_loading.containers import LanguagePackageContainer
 from .plugins_loading.factory import loaded_plugins
 from .plugins_loading.wrappers import ExternalDataGenerator, GeneratorReturn
@@ -937,6 +936,7 @@ class App(Tk):
             def remove_option(option: str):
                 chosen_parser_type = chaining_options[chain_type_option_menu["text"]]
                 self.chaining_data[chosen_parser_type].pop(option)
+                self.chaining_data.compute_chains_dependencies()
                 recreate_option_menus(chosen_parser_type)
 
             @error_handler(self.show_exception_logs)
@@ -955,6 +955,7 @@ class App(Tk):
                     build_chain(chain_name=chain_name,
                                 initial_chain=chain_data["chain"],
                                 edit_mode=True)
+                    self.chaining_data.compute_chains_dependencies()
 
                 @error_handler(self.show_exception_logs)
                 def remove_selected_chain():
@@ -962,8 +963,27 @@ class App(Tk):
                     if not selected_item_index:
                         return
                     chain_name, _ = existing_chains_treeview.item(selected_item_index)["values"]
-                    existing_chains_treeview.delete(selected_item_index)
-                    remove_option(str(chain_name))
+                    chosen_parser_type = chaining_options[chain_type_option_menu["text"]]
+                    conflicting_chains = self.chaining_data.get_dependent_chains(chosen_parser_type, chain_name)
+
+                    if not conflicting_chains or conflicting_chains and messagebox.askokcancel(
+                        title=self.lang_pack.on_closing_message_title, 
+                        message="There are other chains that depend on this chain: ({}). "
+                                "If you delete this chain, other also will be deleted. Continue?".format(", ".join(conflicting_chains))):
+                        rm_list = []
+                        for conflict in conflicting_chains:
+                            self.chaining_data[chosen_parser_type].pop(conflict)
+                            for each in existing_chains_treeview.get_children():
+                                row_chain, _ = existing_chains_treeview.item(each)['values']
+                                if row_chain == conflict:
+                                    rm_list.append(each)
+                                    break
+                        rm_list.sort(reverse=True)
+                        for rm in rm_list:
+                            existing_chains_treeview.delete(rm)
+
+                        remove_option(chain_name)
+                        existing_chains_treeview.delete(selected_item_index)    
 
                 m = Menu(self, tearoff=0)
                 m.add_command(label=self.lang_pack.chain_management_pop_up_menu_edit_label,
@@ -1048,44 +1068,36 @@ class App(Tk):
 
                 choosing_widgets_data: list[ChoosingData] = []
                 chain_data: list[ChainData] = []
-
-                if chain_type == "word_parsers":
+                
+                if chain_type == "word_parsers":    
                     displaying_options: Iterable[str] = \
                         itertools.chain(
                             (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_word_parsers.loaded),
                             (ParserType.merge_into_full_name(ParserType.local, name) for name in loaded_plugins.local_word_parsers.loaded),
-                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type] 
-                             if not edit_mode or edit_mode and name != chain_name and 
-                             chain_name not in [typed_name.name for typed_name in 
-                             self.chaining_data[chain_type][name]["chain"] if typed_name.parser_t == ParserType.chain]),
+                            (ParserType.merge_into_full_name(parser_type=ParserType.chain, parser_name=name) for name in 
+                             (self.chaining_data.get_non_dependent_chains(chain_type=chain_type, chain_name=chain_name) if edit_mode else self.chaining_data[chain_type]))
                             )
                 elif chain_type == "sentence_parsers":
                     displaying_options = \
                         itertools.chain(
                             (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_sent_parsers.loaded),
-                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]
-                             if not edit_mode or edit_mode and name != chain_name and 
-                             chain_name not in [typed_name.name for typed_name in 
-                             self.chaining_data[chain_type][name]["chain"] if typed_name.parser_t == ParserType.chain]),
+                            (ParserType.merge_into_full_name(parser_type=ParserType.chain, parser_name=name) for name in 
+                             (self.chaining_data.get_non_dependent_chains(chain_type=chain_type, chain_name=chain_name) if edit_mode else self.chaining_data[chain_type]))
                         )
                 elif chain_type == "image_parsers":
                     displaying_options = \
                         itertools.chain(
                             (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_image_parsers.loaded),
-                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]
-                             if not edit_mode or edit_mode and name != chain_name and 
-                             chain_name not in [typed_name.name for typed_name in 
-                             self.chaining_data[chain_type][name]["chain"] if typed_name.parser_t == ParserType.chain]),
+                            (ParserType.merge_into_full_name(parser_type=ParserType.chain, parser_name=name) for name in 
+                             (self.chaining_data.get_non_dependent_chains(chain_type=chain_type, chain_name=chain_name) if edit_mode else self.chaining_data[chain_type]))
                         )
                 elif chain_type == "audio_getters":
                     displaying_options = \
                         itertools.chain(
                             (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_audio_getters.loaded),
                             (ParserType.merge_into_full_name(ParserType.local, name) for name in loaded_plugins.local_audio_getters.loaded),
-                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]
-                             if not edit_mode or edit_mode and name != chain_name and 
-                             chain_name not in [typed_name.name for typed_name in 
-                             self.chaining_data[chain_type][name]["chain"] if typed_name.parser_t == ParserType.chain]),
+                            (ParserType.merge_into_full_name(parser_type=ParserType.chain, parser_name=name) for name in 
+                             (self.chaining_data.get_non_dependent_chains(chain_type=chain_type, chain_name=chain_name) if edit_mode else self.chaining_data[chain_type]))
                         )
                 else:
                     raise NotImplementedError(f"Unknown chain type: {chain_type}")
@@ -1267,7 +1279,7 @@ class App(Tk):
                             "", 
                             "end", 
                             values=(new_chain_name, "->".join((name.full_name for name in chain))))
-
+                    self.chaining_data.compute_chains_dependencies()
                     chaining_window.destroy()
 
                 save_chain_button = self.Button(
@@ -2178,25 +2190,8 @@ class App(Tk):
         items_table.bind("<<TreeviewSelect>>", display_card_in_editor)
 
     @error_handler(show_exception_logs)
-    def load_chaining_data(self) -> LoadableConfig:
-        validation_scheme = \
-            {
-                "word_parsers": ({}, [dict], []),
-                "sentence_parsers": ({}, [dict], []),
-                "image_parsers": ({}, [dict], []),
-                "audio_getters": ({}, [dict], [])
-            }
-        chaining_data_file_dir = os.path.dirname(CHAIN_DATA_FILE_PATH)
-        chaining_data_file_name = os.path.basename(CHAIN_DATA_FILE_PATH)
-
-        chaining_data = LoadableConfig(validation_scheme=validation_scheme,
-                                       docs="",
-                                       config_location=chaining_data_file_dir,
-                                       _config_file_name=chaining_data_file_name,
-                                       custom_json_decoder=ChainInfoJSONDecoder,
-                                       custom_json_encoder=ChainInfoJSONEncoder,
-                                       )
-        return chaining_data
+    def load_chaining_data(self) -> ChainDataStorage:
+        return ChainDataStorage()
 
     @error_handler(show_exception_logs)
     def display_audio_getter_results(self,

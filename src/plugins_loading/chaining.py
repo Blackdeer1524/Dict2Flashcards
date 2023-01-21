@@ -1,6 +1,6 @@
 from collections import Counter
-from typing import Callable, Generator, Optional, TypedDict, TypeVar, Sized
-from json import JSONDecoder, JSONEncoder
+from typing import Callable, Literal, Generator, Optional, TypedDict, TypeVar, Sized, Iterator
+import json
 
 from ..app_utils.cards import Card
 from ..consts import CardFormat, ParserType
@@ -9,6 +9,9 @@ from ..consts.paths import *
 from ..plugins_management.config_management import (LoadableConfig,
                                                     LoadableConfigProtocol)
 from .wrappers import WrappedBatchGeneratorProtocol, CardGeneratorProtocol, GeneratorReturn
+from ..consts.paths import CHAIN_DATA_FILE_PATH
+import itertools
+from dataclasses import dataclass
 
 
 class ChainConfig(LoadableConfig):
@@ -70,6 +73,178 @@ error_verbosity:
         super(ChainConfig, self).save()
 
 
+class ChainInfoJSONDecoder(json.JSONDecoder):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, dct: dict) -> dict:
+        if dct.get("chain") is not None:
+            dct["chain"] = [TypedParserName(parser_t=ParserType(parser_type), name=parser_name)
+                            for parser_type, parser_name in dct["chain"]]
+        return dct
+
+
+class ChainInfoJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, TypedParserName):
+            return [obj.parser_t, obj.name]
+        # Let the base class default method raise the TypeError
+        return json.JSONEncoder.default(self, obj)
+
+
+class ChainConfigurations(TypedDict):
+    chain:       list[TypedParserName]
+    config_name: str
+
+
+CHAIN_NAME_T  = str
+PARSER_NAME_T = str
+CHAIN_INFO_T  = dict[CHAIN_NAME_T, ChainConfigurations] 
+
+PossibleChainTypes = Literal[
+    "word_parsers",
+    "sentence_parsers",
+    "image_parsers",
+    "audio_getters"
+]
+
+ChainDataScheme = dict[PossibleChainTypes, CHAIN_INFO_T]
+VERTEX_T = str
+GRAPH_T = dict[VERTEX_T, list[VERTEX_T]]
+ChainsDependencies = dict[PossibleChainTypes, list[list[VERTEX_T]]]
+
+
+@dataclass(slots=True, frozen=True)
+class SingleChainDependeciesInfo:
+    graphs: list[list[VERTEX_T]]
+    forward: GRAPH_T
+    backward: GRAPH_T
+
+
+class ChainDependenciesData(TypedDict):
+    word_parsers:     SingleChainDependeciesInfo
+    sentence_parsers: SingleChainDependeciesInfo
+    image_parsers:    SingleChainDependeciesInfo
+    audio_getters:    SingleChainDependeciesInfo
+
+
+class ChainDataStorage(LoadableConfig):
+    data: ChainDataScheme
+    _chains_dependencies: ChainDependenciesData
+
+    def __init__(self) -> None:
+        validation_scheme = {
+            "word_parsers":     ({}, [dict], []),
+            "sentence_parsers": ({}, [dict], []),
+            "image_parsers":    ({}, [dict], []),
+            "audio_getters":    ({}, [dict], []),
+        }
+        chaining_data_file_dir = os.path.dirname(CHAIN_DATA_FILE_PATH)
+        chaining_data_file_name = os.path.basename(CHAIN_DATA_FILE_PATH)
+        super().__init__(validation_scheme=validation_scheme,
+                         docs="",
+                         config_location=chaining_data_file_dir,
+                         _config_file_name=chaining_data_file_name,
+                         custom_json_decoder=ChainInfoJSONDecoder,
+                         custom_json_encoder=ChainInfoJSONEncoder,
+                         )
+
+        self._chains_dependencies = {}
+        self.compute_chains_dependencies()
+
+    def compute_chains_dependencies(self) -> None:
+        def compute_for_single_type(chain_type: PossibleChainTypes) -> None:
+            forward = self._build_forward_graph(self[chain_type])
+            backward = self._build_backward_graph(forward)
+            graphs = self._split_on_non_intersecting_graphs(
+                sorted_vertecies=self._toposort(backward),
+                backward=backward
+            )
+            self._chains_dependencies[chain_type] = SingleChainDependeciesInfo(
+                graphs=graphs,
+                backward=backward,
+                forward=forward
+            )
+        compute_for_single_type(chain_type="word_parsers")
+        compute_for_single_type(chain_type="sentence_parsers")
+        compute_for_single_type(chain_type="image_parsers")
+        compute_for_single_type(chain_type="audio_getters")
+
+    def _build_forward_graph(self, chains_of_particular_type: CHAIN_INFO_T) -> GRAPH_T:
+        forward: GRAPH_T = {}
+        for current_chain_name in chains_of_particular_type.keys():
+            forward[current_chain_name] = []
+            for dependent_chain_name in chains_of_particular_type[current_chain_name]["chain"]:
+                if dependent_chain_name.parser_t == ParserType.chain:
+                    if forward.get(dependent_chain_name.name) is None:
+                        forward[dependent_chain_name.name] = []
+                    forward[current_chain_name].append(dependent_chain_name.name)
+        return forward
+
+    def _build_backward_graph(self, forward: GRAPH_T) -> GRAPH_T:
+        backward: GRAPH_T = {vertex: [] for vertex in forward.keys()}
+        for vertex in forward:
+            for next_vertex in forward[vertex]:
+                backward[next_vertex].append(vertex)
+        return backward
+    
+    def _toposort(self, backward: GRAPH_T) -> list[VERTEX_T]:    
+        def traverse(current_vertex: VERTEX_T, 
+                     seen_vertecies: set[VERTEX_T], 
+                     sorted_vertecies: list[VERTEX_T]) -> None:
+            if current_vertex in seen_vertecies:
+                return
+
+            for previous_vertex in backward[current_vertex]:
+                traverse(previous_vertex, seen_vertecies, sorted_vertecies)
+            
+            seen_vertecies.add(current_vertex)
+            sorted_vertecies.append(current_vertex)
+
+        seen_vertecies: set[VERTEX_T] = set()
+        sorted_vertecies: list[VERTEX_T] = []
+        for vertex in backward:
+            traverse(vertex, seen_vertecies, sorted_vertecies)
+        return sorted_vertecies
+
+    def _split_on_non_intersecting_graphs(self, 
+                                          sorted_vertecies: list[VERTEX_T], 
+                                          backward: GRAPH_T) -> list[list[VERTEX_T]]:
+        res: list[list[VERTEX_T]] = []
+        start = 0
+        for i in range(1, len(sorted_vertecies)):
+            current_vertex = sorted_vertecies[i]
+            if all(sorted_vertecies[j] not in backward[current_vertex] for j in range(i - 1, start - 1, -1)):
+                res.append(sorted_vertecies[start:i])
+                start = i
+        
+        res.append(sorted_vertecies[start:])
+        return res
+
+    def get_non_dependent_chains(self, chain_type: PossibleChainTypes, chain_name: str) -> Iterator[str]:
+        for i, chain_dependency_relations in enumerate(self._chains_dependencies[chain_type].graphs):
+            for j, chain in enumerate(chain_dependency_relations):
+                if chain == chain_name:
+                    return itertools.chain(*self._chains_dependencies[chain_type].graphs[:i],
+                                           chain_dependency_relations[j + 1:],
+                                           *self._chains_dependencies[chain_type].graphs[i + 1:])
+        return (_ for _ in range(0))
+
+    def get_dependent_chains(self, chain_type: PossibleChainTypes, chain_name: str) -> list[str]:
+        chains_of_requested_type = self._chains_dependencies[chain_type].backward
+        res: set[VERTEX_T] = set()
+
+        def traverse(start: VERTEX_T, seen_vertecies: set[VERTEX_T]) -> None:
+            if start in seen_vertecies:
+                return
+            seen_vertecies.add(start)
+            for next_chain in chains_of_requested_type[start]:
+                traverse(next_chain, seen_vertecies)
+        
+        for next_chain in chains_of_requested_type[chain_name]:
+            traverse(next_chain, res)
+        return list(res)
+
 def get_enumerated_names(names: list[TypedParserName]) -> list[str]:
     seen_names_count = Counter((name.full_name for name in names))
     seen_so_far = {key: value for key, value in seen_names_count.items()}
@@ -82,35 +257,6 @@ def get_enumerated_names(names: list[TypedParserName]) -> list[str]:
             seen_so_far[name] -= 1
             enum_names.append(f"{name} [{seen_names_count[name] - seen_so_far[name]}]")
     return enum_names
-
-
-class ChainConfigurations(TypedDict):
-    chain:       list[TypedParserName]
-    config_name: str
-
-
-CHAIN_NAME_T  = str
-PARSER_NAME_T = str
-CHAIN_INFO_T  = dict[CHAIN_NAME_T, ChainConfigurations] 
-
-
-class ChainInfoJSONDecoder(JSONDecoder):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(object_hook=self.object_hook, *args, **kwargs)
-
-    def object_hook(self, dct: dict) -> dict:
-        if dct.get("chain") is not None:
-            dct["chain"] = [TypedParserName(parser_t=ParserType(parser_type), name=parser_name)
-                            for parser_type, parser_name in dct["chain"]]
-        return dct
-
-
-class ChainInfoJSONEncoder(JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, TypedParserName):
-            return [obj.parser_t, obj.name]
-        # Let the base class default method raise the TypeError
-        return JSONEncoder.default(self, obj)
 
 
 class CardGeneratorsChain(CardGeneratorProtocol):

@@ -1054,26 +1054,38 @@ class App(Tk):
                         itertools.chain(
                             (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_word_parsers.loaded),
                             (ParserType.merge_into_full_name(ParserType.local, name) for name in loaded_plugins.local_word_parsers.loaded),
-                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]),
+                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type] 
+                             if not edit_mode or edit_mode and name != chain_name and 
+                             chain_name not in [typed_name.name for typed_name in 
+                             self.chaining_data[chain_type][name]["chain"] if typed_name.parser_t == ParserType.chain]),
                             )
                 elif chain_type == "sentence_parsers":
                     displaying_options = \
                         itertools.chain(
                             (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_sent_parsers.loaded),
-                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]),
+                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]
+                             if not edit_mode or edit_mode and name != chain_name and 
+                             chain_name not in [typed_name.name for typed_name in 
+                             self.chaining_data[chain_type][name]["chain"] if typed_name.parser_t == ParserType.chain]),
                         )
                 elif chain_type == "image_parsers":
                     displaying_options = \
                         itertools.chain(
                             (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_image_parsers.loaded),
-                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type])
+                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]
+                             if not edit_mode or edit_mode and name != chain_name and 
+                             chain_name not in [typed_name.name for typed_name in 
+                             self.chaining_data[chain_type][name]["chain"] if typed_name.parser_t == ParserType.chain]),
                         )
                 elif chain_type == "audio_getters":
                     displaying_options = \
                         itertools.chain(
                             (ParserType.merge_into_full_name(ParserType.web, name)   for name in loaded_plugins.web_audio_getters.loaded),
                             (ParserType.merge_into_full_name(ParserType.local, name) for name in loaded_plugins.local_audio_getters.loaded),
-                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]),
+                            (ParserType.merge_into_full_name(ParserType.chain, name) for name in self.chaining_data[chain_type]
+                             if not edit_mode or edit_mode and name != chain_name and 
+                             chain_name not in [typed_name.name for typed_name in 
+                             self.chaining_data[chain_type][name]["chain"] if typed_name.parser_t == ParserType.chain]),
                         )
                 else:
                     raise NotImplementedError(f"Unknown chain type: {chain_type}")
@@ -2834,34 +2846,29 @@ class App(Tk):
         conf_window = self.Toplevel(self)
         conf_window.title(f"{plugin_name} {self.lang_pack.configuration_window_conf_window_title}")
 
-        text_pane_win = PanedWindow(conf_window, **self.theme.frame_cfg)
+        text_pane_win = PanedWindow(conf_window, orient="horizontal", **self.theme.frame_cfg)
         text_pane_win.pack(side="top", expand=1, fill="both", anchor="n")
 
         conf_sf = ScrolledFrame(text_pane_win, scrollbars="both",
                                 canvas_bg=self.theme.frame_cfg.get("bg"))
         text_pane_win.add(conf_sf, stretch="always", sticky="news")
-        conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True)
+        conf_inner_frame = conf_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
 
         conf_text = self.Text(conf_inner_frame)
         conf_text.insert(1.0, json.dumps(plugin_config.data, indent=4))
         conf_text.pack(fill="both", expand=True)
         conf_sf.bind_scroll_wheel(conf_text)
 
-        docs_pane_win = PanedWindow(text_pane_win, orient="vertical",
-                                    showhandle=True, **self.theme.frame_cfg)
-
         docs_sf = ScrolledFrame(text_pane_win, scrollbars="both",
                                 canvas_bg=self.theme.frame_cfg.get("bg"))
-        docs_pane_win.add(docs_sf, stretch="always", sticky="news")
-        docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True)
+        text_pane_win.add(docs_sf, stretch="always", sticky="news")
+        docs_inner_frame = docs_sf.display_widget(self.Frame, fit_width=True, fit_height=True)
 
         conf_docs_text = self.Text(docs_inner_frame)
         conf_docs_text.insert(1.0, plugin_config.docs)
         conf_docs_text["state"] = "disabled"
         conf_docs_text.pack(fill="both", expand=True)
         docs_sf.bind_scroll_wheel(conf_docs_text)
-
-        text_pane_win.add(docs_pane_win, stretch="always")
 
         @error_handler(self.show_exception_logs)
         def restore_defaults():

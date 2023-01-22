@@ -42,7 +42,7 @@ def get(word, card_data: dict) -> parsers_return_types.AUDIO_SCRAPPER_RETURN_T:
     extension = ".mp3"
     filename_with_extension = filename_without_extension + extension
 
-    pos = card_data.get(consts.CardFields.dict_tags, {}).get("pos", "")
+    pos = card_data.get(consts.CardFields.dict_tags, {}).get("pos", [""])[0]
     clear_pos = app_utils.string_utils.remove_special_chars(pos.lower(), '-', _AUDIO_NAME_SPEC_CHARS)
 
     batch_size = yield

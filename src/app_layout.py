@@ -103,6 +103,8 @@ class App(Tk):
                          card_generator=self.card_generator)
 
         self.card_processor = loaded_plugins.get_card_processor(self.configurations["deck"]["card_processor"])
+        
+        self.current_card_parser_name = ""
         self.dict_card_data: dict = {}
 
         sentence_parser = loaded_plugins.get_sentence_parser(
@@ -3077,22 +3079,24 @@ class App(Tk):
                                        "first_available_audio_source",
                                        "all"]
         if not chosen_smth and (audio_autochoose_mode := self.configurations["app"]["audio_autochoose_mode"]) != "off":
-            if audio_autochoose_mode in ("all", "first_default_audio", "all_default_audios"):
-                dictionary_audio_links = self.dict_card_data.get(CardFields.audio_links, [])
-                add_audio_data_to_card(
-                    audio_getter_info=App.AudioGetterInfo(
-                        parser_info=TypedParserName(
-                            parser_t=ParserType.web, 
-                            name=self.card_generator.parser_info.name),
-                        fetching_word=self.word),
-                    audio_links=dictionary_audio_links[:1 if audio_autochoose_mode == "first_default_audio" else 9999])
-            if self.external_audio_generator is not None and audio_autochoose_mode in ("all", "first_available_audio", "first_available_audio_source"):
+            # if audio_autochoose_mode in ("all", "first_default_audio", "all_default_audios"):
+            dictionary_audio_links = self.dict_card_data.get(CardFields.audio_links, [])
+            add_audio_data_to_card(
+                audio_getter_info=App.AudioGetterInfo(
+                    parser_info=TypedParserName(
+                        parser_t=ParserType.web, 
+                        name=f"dict! {TypedParserName.split_full_name(self.current_card_parser_name).name}" if self.current_card_parser_name else ""),
+                    fetching_word=self.word),
+                audio_links=dictionary_audio_links[:1 if audio_autochoose_mode in ("first_default_audio", "first_available_audio") else 9999])
+                
+            already_found_first_source = dictionary_audio_links and audio_autochoose_mode in ("first_available_audio", "first_available_audio_source")
+            if self.external_audio_generator is not None and not already_found_first_source and (audio_autochoose_mode in ("all", "first_available_audio", "first_available_audio_source")):
                 self.external_audio_generator.force_update(word_for_audio_query, self.dict_card_data)
                 audio_data_pack = self.external_audio_generator.get(word=word_for_audio_query,
                                                                     card_data=self.dict_card_data,
                                                                     batch_size=1 if audio_autochoose_mode == "first_available_audio" else 9999)
                 if audio_data_pack is not None:
-                    for generator_results in audio_data_pack:
+                    for generator_results in audio_data_pack[:1 if audio_autochoose_mode in ("first_default_audio", "first_available_audio_source") else 9999]:
                         add_audio_data_to_card(
                             audio_getter_info=App.AudioGetterInfo(
                                 parser_info=TypedParserName(
@@ -3214,7 +3218,7 @@ class App(Tk):
         self.waiting_for_audio_display = False
         self.tried_to_display_audio_getters_on_refresh = False
 
-        parser_name, dict_card_data = self.deck.get_card()
+        self.current_card_parser_name, dict_card_data = self.deck.get_card()
         self.dict_card_data = dict_card_data.to_dict()
         self.card_processor.process_card(self.dict_card_data)
 
@@ -3232,7 +3236,7 @@ class App(Tk):
         self.text_widgets_frame.source_display_frame = None
 
         title = f"{self.lang_pack.main_window_cards_left}: {self.deck.get_n_cards_left()}"
-        self.title(f"{parser_name}. " + title if parser_name else title)
+        self.title(f"{self.current_card_parser_name}. " + title if self.current_card_parser_name else title)
 
         self.word_text.focus()
         self.word_text.clear()
@@ -3281,7 +3285,7 @@ class App(Tk):
                 word=self.word,
                 card_data=self.dict_card_data,
                 generator_results=[GeneratorReturn(generator_type=ParserType.web,
-                                                   name=f"dict! {TypedParserName.split_full_name(parser_name).name}",
+                                                   name=f"dict! {TypedParserName.split_full_name(self.current_card_parser_name).name}",
                                                    error_message="",
                                                    result=[(audio_link, "") for audio_link in audio_sources])],
                 show_errors=False,

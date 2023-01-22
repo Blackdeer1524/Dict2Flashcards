@@ -1722,7 +1722,7 @@ class App(Tk):
         editor_configure_image_parser_button.grid(row=5, column=7, sticky="news", padx=(0, editor_text_padx), pady=0)
 
         def display_audio_getter_results_on_button_click():
-            editor_self.fill_search_fields()
+            editor_fill_search_fields()
             self.waiting_for_audio_display = True
             self.display_audio_getter_results(
                 word=editor_audio_search_entry.get(),
@@ -1820,7 +1820,7 @@ class App(Tk):
         def editor_fetch_external_sentences() -> None:
             generators_results: list[GeneratorReturn[list[str]]] | None = None
 
-            editor_self.fill_search_fields()
+            editor_fill_search_fields()
 
             def schedule_sentence_fetcher() -> None:
                 nonlocal generators_results, editor_card_data
@@ -1980,7 +1980,7 @@ class App(Tk):
                             (editor_tag_prefix_field, None),
                             ]
 
-        editor_word_text.bind("<FocusOut>", lambda event: editor_self.fill_search_fields(), add=True)
+        editor_word_text.bind("<FocusOut>", lambda event: editor_fill_search_fields(), add=True)
         for widget, action in editor_new_order:
             widget.lift()
             widget.bind("<Tab>", partial(focus_next_window, focusout_action=action))

@@ -7,6 +7,8 @@ from ..plugins_loading.wrappers import CardGeneratorProtocol
 
 from .cards import Card
 from .storages import FrozenDict, FrozenDictJSONEncoder, PointerList
+from ..consts import ParserType
+
 
 class Deck(PointerList[tuple[str, Card], tuple[str, Card]]):
     __slots__ = "deck_path", "_card_generator", "_cards_left", \
@@ -67,6 +69,10 @@ class Deck(PointerList[tuple[str, Card], tuple[str, Card]]):
             except Exception as e:
                 res = []
                 error_message = str(e)
+
+            if self._card_generator.parser_info.parser_t == ParserType.chain:
+                for i in range(len(res)):
+                    object.__setattr__(res[i].parser_info, "name", f"{self._card_generator.parser_info.full_name}{res[i].parser_info.name}")
 
             parser_card_pairs = [(generator_result.parser_info.full_name, card) for generator_result in res for card in generator_result.result]
             continuation_flag = yield len(parser_card_pairs)

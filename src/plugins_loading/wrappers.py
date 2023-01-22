@@ -243,6 +243,12 @@ class ExternalDataGenerator(TypedParser, Generic[BATCH_V]):
             self.force_update(*args, **kwargs)
 
         try:
-            return self._data_generator.send(batch_size)
+            res = self._data_generator.send(batch_size)
+            if self.data_generator.parser_info.parser_t == ParserType.chain:
+                for i in range(len(res)):
+                    object.__setattr__(res[i].parser_info, 
+                                       "name", 
+                                       f"{self.data_generator.parser_info.full_name}{res[i].parser_info.name}")
+            return res
         except StopIteration:
             return None

@@ -2,7 +2,7 @@
 error_title = "Ошибка"
 
 # main window
-main_window_title_prefix = "Поиск предложений для Anki. Осталось"
+main_window_cards_left = "Осталось"
 
 # main menu
 create_file_menu_label = "Создать"

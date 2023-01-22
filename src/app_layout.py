@@ -3231,7 +3231,8 @@ class App(Tk):
         self.text_widgets_frame.last_getter_label = None
         self.text_widgets_frame.source_display_frame = None
 
-        self.title(f"{self.lang_pack.main_window_title_prefix}: {self.deck.get_n_cards_left()}")
+        title = f"{self.lang_pack.main_window_cards_left}: {self.deck.get_n_cards_left()}"
+        self.title(f"{parser_name}. " + title if parser_name else title)
 
         self.word_text.focus()
         self.word_text.clear()

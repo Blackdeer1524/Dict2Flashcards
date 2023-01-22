@@ -197,7 +197,7 @@ class LanguagePackageContainer(Named, LanguagePackageInterface):
         object.__setattr__(self, "error_title", source_module.error_title)
 
         # main window
-        object.__setattr__(self, "main_window_title_prefix", source_module.main_window_title_prefix)
+        object.__setattr__(self, "main_window_cards_left", source_module.main_window_cards_left)
 
         # main menu
         object.__setattr__(self, "create_file_menu_label", source_module.create_file_menu_label)

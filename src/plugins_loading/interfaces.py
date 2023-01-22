@@ -11,7 +11,7 @@ class LanguagePackageInterface(Protocol):
     error_title: str
 
     # main window
-    main_window_title_prefix: str
+    main_window_cards_left: str
 
     # main menu
     create_file_menu_label: str

@@ -252,7 +252,7 @@ class App(Tk):
             else self.external_audio_generator.parser_info.full_name
 
         def display_audio_getter_results_on_button_click():
-            fill_search_fields()
+            self.fill_search_fields()
             self.waiting_for_audio_display = True
             self.display_audio_getter_results(
                 word=self.audio_search_entry.get(),
@@ -347,7 +347,7 @@ class App(Tk):
         def fetch_external_sentences() -> None:
             results: list[GeneratorReturn[list[str]]] | None = None
 
-            fill_search_fields()
+            self.fill_search_fields()
 
             def schedule_sentence_fetcher():
                 nonlocal results
@@ -1325,19 +1325,12 @@ class App(Tk):
                 focusout_action()
             return "break"
 
-        def fill_search_fields():
-            word = self.word
-            if not self.audio_search_entry.get():
-                self.audio_search_entry.insert(0, word)
-            if not self.sentence_search_entry.get():
-                self.sentence_search_entry.insert(0, word)
-
         self.new_order = [(self.anki_button, None),
                           (self.browse_button, None),
                           (self.word_parser_option_menu, None),
                           (self.configure_word_parser_button, None),
 
-                          (self.word_text, fill_search_fields),
+                          (self.word_text, self.fill_search_fields),
 
                           (self.special_field, None),
 
@@ -1370,7 +1363,7 @@ class App(Tk):
                           (self.tag_prefix_field, None),
                           ]
 
-        self.word_text.bind("<FocusOut>", lambda event: fill_search_fields(), add=True)
+        self.word_text.bind("<FocusOut>", lambda event: self.fill_search_fields(), add=True)
         for widget, action in self.new_order:
             widget.lift()
             widget.bind("<Tab>", partial(focus_next_window, focusout_action=action))
@@ -1431,6 +1424,13 @@ class App(Tk):
         self.last_refresh_call_time = 0.0
 
         self.refresh()
+
+    def fill_search_fields(self):
+        word = self.word
+        if not self.audio_search_entry.get():
+            self.audio_search_entry.insert(0, word)
+        if not self.sentence_search_entry.get():
+            self.sentence_search_entry.insert(0, word)
 
     def show_window(self, title: str, text: str) -> Toplevel:
         text_window = self.Toplevel(self)
@@ -1722,7 +1722,7 @@ class App(Tk):
         editor_configure_image_parser_button.grid(row=5, column=7, sticky="news", padx=(0, editor_text_padx), pady=0)
 
         def display_audio_getter_results_on_button_click():
-            editor_fill_search_fields()
+            editor_self.fill_search_fields()
             self.waiting_for_audio_display = True
             self.display_audio_getter_results(
                 word=editor_audio_search_entry.get(),
@@ -1820,7 +1820,7 @@ class App(Tk):
         def editor_fetch_external_sentences() -> None:
             generators_results: list[GeneratorReturn[list[str]]] | None = None
 
-            editor_fill_search_fields()
+            editor_self.fill_search_fields()
 
             def schedule_sentence_fetcher() -> None:
                 nonlocal generators_results, editor_card_data
@@ -1980,7 +1980,7 @@ class App(Tk):
                             (editor_tag_prefix_field, None),
                             ]
 
-        editor_word_text.bind("<FocusOut>", lambda event: editor_fill_search_fields(), add=True)
+        editor_word_text.bind("<FocusOut>", lambda event: editor_self.fill_search_fields(), add=True)
         for widget, action in editor_new_order:
             widget.lift()
             widget.bind("<Tab>", partial(focus_next_window, focusout_action=action))
@@ -3010,6 +3010,8 @@ class App(Tk):
         if sentence_number >= len(self.sentence_texts):
             return
 
+        self.fill_search_fields()
+
         word_for_audio_query = self.audio_search_entry.get()
         self.dict_card_data[CardFields.word] = self.word
         self.dict_card_data[CardFields.definition] = self.definition
@@ -3107,7 +3109,7 @@ class App(Tk):
 
         self.saved_cards_data.append(status=CardStatus.ADD, card_data=self.dict_card_data)
         if not self.deck.get_n_cards_left():
-            self.deck.append(Card(self.dict_card_data))
+            self.deck.append(("Custom", Card(self.dict_card_data)))
         self.refresh()
 
     @error_handler(show_exception_logs)

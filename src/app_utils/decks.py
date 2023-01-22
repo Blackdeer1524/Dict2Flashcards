@@ -80,8 +80,8 @@ class Deck(PointerList[tuple[str, Card], tuple[str, Card]]):
 
             yield error_message
 
-    def append(self, card: Card) -> None:
-        self._data = self[:self._pointer_position] + [card] + self[self._pointer_position:]
+    def append(self, card_data: tuple[str, Card]) -> None:
+        self._data = self[:self._pointer_position] + [card_data] + self[self._pointer_position:]
         self.move(1)
 
     def get_card(self) -> tuple[str, Card]:

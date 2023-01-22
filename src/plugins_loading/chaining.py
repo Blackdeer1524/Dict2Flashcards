@@ -300,9 +300,9 @@ class CardGeneratorsChain(CardGeneratorProtocol):
             scheme_docs_list.append("{}\n{}".format(parser_data.full_name, generator.scheme_docs.replace("\n", "\n |\t")))
 
         self._config = ChainConfig(config_dir=str(CHAIN_WORD_PARSERS_DATA_DIR),
-                                          config_name=requested_chain_info["config_name"],
-                                          name_config_pairs=[(parser_name, config) for parser_name, config in
-                                                             zip(requested_chain_info["chain"], parser_configs)])
+                                   config_name=requested_chain_info["config_name"],
+                                   name_config_pairs=[(parser_name, config) for parser_name, config in
+                                                       zip(requested_chain_info["chain"], parser_configs)])
         self._scheme_docs = "\n".join(scheme_docs_list)
 
     def get(self,

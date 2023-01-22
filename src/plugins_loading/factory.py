@@ -10,7 +10,10 @@ from .wrappers import (BatchGeneratorWrapper, CardGeneratorProtocol,
                                          LocalCardGenerator, WebCardGenerator)
 from ..consts import TypedParserName
 from ..consts.parser_types import ParserType, TypedParserName
-from ..consts.paths import *
+from ..consts.paths import (LOCAL_DICTIONARIES_DIR, 
+                            CHAIN_AUDIO_GETTERS_DATA_DIR, 
+                            CHAIN_IMAGE_PARSERS_DATA_DIR, 
+                            CHAIN_SENTENCE_PARSERS_DATA_DIR)
 from .chaining import (CHAIN_INFO_T, AudioGettersChain, CardGeneratorsChain,
                        ImageParsersChain, SentenceParsersChain,
                        WrappedBatchGeneratorProtocol)
@@ -166,11 +169,11 @@ class PluginFactory:
             if (local_parser := self.local_word_parsers.get(parser_info.name)) is None:
                 raise UnknownPluginName(f"Unknown local word parser: {parser_info.name}")
             return LocalCardGenerator(name=local_parser.name,
-                                    local_dict_path=os.path.join(LOCAL_DICTIONARIES_DIR,
-                                                                f"{local_parser.local_dict_name}.json"),
-                                    word_definition_function=local_parser.define,
-                                    config=local_parser.config,
-                                    scheme_docs=local_parser.scheme_docs)
+                                      local_dict_path=os.path.join(LOCAL_DICTIONARIES_DIR, 
+                                                                   f"{local_parser.local_dict_name}.json"),
+                                      word_definition_function=local_parser.define,
+                                      config=local_parser.config,
+                                      scheme_docs=local_parser.scheme_docs)
         elif parser_info.parser_t == ParserType.chain:
             return CardGeneratorsChain(card_generator_getter=self.get_card_generator,
                                        chain_name=parser_info.name,
@@ -192,6 +195,7 @@ class PluginFactory:
             raise NotImplementedError("Local sentence parsers are not implemented")
         elif parser_info.parser_t == ParserType.chain:
             return SentenceParsersChain(generator_getter=self.get_sentence_parser,
+                                        config_dir=str(CHAIN_SENTENCE_PARSERS_DATA_DIR),
                                         chain_name=parser_info.name,
                                         chain_data=chain_data)
         raise ValueError(f"Unknown sentence parser type: {parser_info.parser_t}")
@@ -211,6 +215,7 @@ class PluginFactory:
             raise NotImplementedError("Local image parsers are not implemented")
         elif parser_info.parser_t == ParserType.chain:
             return ImageParsersChain(generator_getter=self.get_image_parser,
+                                     config_dir=str(CHAIN_IMAGE_PARSERS_DATA_DIR),
                                      chain_name=parser_info.name,
                                      chain_data=chain_data)
         raise ValueError(f"Unknown image parser type: {parser_info.parser_t}")
@@ -235,6 +240,7 @@ class PluginFactory:
                                          parser_type=ParserType.local)
         elif parser_info.parser_t == ParserType.chain:
             return AudioGettersChain(generator_getter=self.get_audio_getter,
+                                     config_dir=str(CHAIN_AUDIO_GETTERS_DATA_DIR),
                                      chain_name=parser_info.name,
                                      chain_data=chain_data)
         raise ValueError(f"Unknown audio getter type: {parser_info.parser_t}")

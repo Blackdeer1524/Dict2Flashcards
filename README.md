@@ -144,8 +144,8 @@ They are already available for plugins to use.
  * `Generator[AudioData, int, AudioData]`
  * Generator that yields and returns `AudioData` and `accompanied error message`. Accepts `required number of audio URLs` 
 #### [AudioData](#AudioGenerator)
- * `tuple[tuple[list[str], list[str]], str]`
- * ((`list of audio URLs`, `list of additional information for corresponding URL`), `error message`)
+ * `tuple[list[tuple[str, str]], str]`
+ * list of `(audio_url, additional_info)` accompanied with `error message`
 ---
 ### [CardFormat](#plugins-return-types)
 

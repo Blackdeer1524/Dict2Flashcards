@@ -80,7 +80,7 @@ class Deck(PointerList[tuple[str, Card], tuple[str, Card]]):
                 continue
             
             self._data = self[:self._pointer_position] + parser_card_pairs + self[self._pointer_position:]
-            if res:
+            if parser_card_pairs:
                 self._pointer_position = self._pointer_position - 1
                 self._cards_left += len(parser_card_pairs)    
 

@@ -324,7 +324,7 @@ class CardGeneratorsChain(CardGeneratorProtocol):
                     hierarchical_name = f"::{enum_name}"
                 object.__setattr__(parser_result.parser_info, "name",  hierarchical_name)
             res.extend(current_generator_results)
-            if self.config["query_type"] == "first_found" and res:
+            if self.config["query_type"] == "first_found" and res[0].result:
                 break
         return res
 

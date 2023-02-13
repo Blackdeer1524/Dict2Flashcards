@@ -371,6 +371,7 @@ class LanguagePackageContainer(Named, LanguagePackageInterface):
         object.__setattr__(self, "find_dialog_find_button_text", source_module.find_dialog_find_button_text)
 
         # statistics dialog
+        object.__setattr__(self, "statistics_dialog_copied_text", source_module.statistics_dialog_copied_text)
         object.__setattr__(self, "statistics_dialog_statistics_window_title",
                            source_module.statistics_dialog_statistics_window_title)
         object.__setattr__(self, "statistics_dialog_added_label", source_module.statistics_dialog_added_label)

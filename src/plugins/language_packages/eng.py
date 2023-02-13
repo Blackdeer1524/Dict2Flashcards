@@ -409,6 +409,7 @@ statistics_dialog_cards_left_label = "Left"
 statistics_dialog_current_file_label = "File"
 statistics_dialog_saving_dir_label = "Saving directory"
 statistics_dialog_media_dir_label = "downloaded media storage"
+statistics_dialog_copied_text = "Copied!"
 
 # anki dialog
 anki_dialog_anki_window_title = "Anki settings"

@@ -2779,38 +2779,49 @@ class App(Tk):
     @error_handler(show_exception_logs)
     def statistics_dialog(self):
         statistics_window = self.Toplevel(self)
-        statistics_window.withdraw()
-
         statistics_window.title(self.lang_pack.statistics_dialog_statistics_window_title)
         statistics_window.columnconfigure(1, weight=1)
-        text_list = ((self.lang_pack.statistics_dialog_added_label,
-                      self.lang_pack.statistics_dialog_buried_label,
-                      self.lang_pack.statistics_dialog_skipped_label,
-                      self.lang_pack.statistics_dialog_cards_left_label,
-                      self.lang_pack.statistics_dialog_current_file_label,
-                      self.lang_pack.statistics_dialog_saving_dir_label,
-                      self.lang_pack.statistics_dialog_media_dir_label),
-                     (self.saved_cards_data.get_card_status_stats(CardStatus.ADD),
-                      self.saved_cards_data.get_card_status_stats(CardStatus.BURY),
-                      self.saved_cards_data.get_card_status_stats(CardStatus.SKIP),
-                      self.deck.get_n_cards_left(),
-                      self.deck.deck_path,
-                      self.configurations["directories"]["last_save_dir"],
-                      self.configurations["directories"]["media_dir"]))
+        text_list = (
+            (self.lang_pack.statistics_dialog_added_label,        self.saved_cards_data.get_card_status_stats(CardStatus.ADD)), 
+            (self.lang_pack.statistics_dialog_buried_label,       self.saved_cards_data.get_card_status_stats(CardStatus.BURY)), 
+            (self.lang_pack.statistics_dialog_skipped_label,      self.saved_cards_data.get_card_status_stats(CardStatus.SKIP)), 
+            (self.lang_pack.statistics_dialog_cards_left_label,   self.deck.get_n_cards_left()), 
+            (self.lang_pack.statistics_dialog_current_file_label, self.deck.deck_path), 
+            (self.lang_pack.statistics_dialog_saving_dir_label,   self.configurations["directories"]["last_save_dir"]), 
+            (self.lang_pack.statistics_dialog_media_dir_label,    self.configurations["directories"]["media_dir"]), 
+        )
 
-        for row_index in range(len(text_list[0])):
+        statistics_window.rowconfigure(4, weight=1)
+        statistics_window.rowconfigure(5, weight=1)
+        statistics_window.rowconfigure(6, weight=1)
+        statistics_window.maxsize(self.winfo_screenwidth() // 2 , self.winfo_screenheight())
+        statistics_window.withdraw()
+
+        def copy_label_text(label: Label):
+            self.clipboard_clear()
+            self.clipboard_append(label["text"])
+            placeholder = label["text"]
+            label["text"] = self.lang_pack.statistics_dialog_copied_text
+            self.after(1000, lambda: label.configure(text=placeholder))
+
+        for row_index in range(len(text_list)):
             info = self.Label(
                 statistics_window,
-                text=text_list[0][row_index],
+                text=text_list[row_index][0],
                 anchor="center",
                 relief="ridge")
             info.grid(column=0, row=row_index, sticky="news")
+            
+            data_text = self.Label(
+                statistics_window,
+                text=text_list[row_index][1],
+                anchor="center", 
+                relief="ridge")
 
-            data_text = self.Text(statistics_window, height=1)
-            data_text.tag_configure('tag-center', justify='center')
-            data_text.insert(1.0, str(text_list[1][row_index]), 'tag-center')
-            data_text["state"] = "disabled"
+            data_text.bind("<Button-1>", lambda e, label=data_text: copy_label_text(label))
             data_text.grid(column=1, row=row_index, sticky="news")
+            data_text.update()
+            data_text.config(wraplength=data_text.winfo_width(), width=data_text.winfo_width())
 
         statistics_window.bind("<Escape>", lambda _: statistics_window.destroy())
         statistics_window.deiconify()

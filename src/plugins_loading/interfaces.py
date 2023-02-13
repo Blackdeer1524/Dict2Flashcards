@@ -145,6 +145,7 @@ class LanguagePackageInterface(Protocol):
     find_dialog_find_button_text: str
 
     # statistics dialog
+    statistics_dialog_copied_text: str
     statistics_dialog_statistics_window_title: str
     statistics_dialog_added_label: str
     statistics_dialog_buried_label: str

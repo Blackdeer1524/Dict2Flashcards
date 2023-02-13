@@ -396,6 +396,7 @@ statistics_dialog_cards_left_label = "Осталось"
 statistics_dialog_current_file_label = "Файл"
 statistics_dialog_saving_dir_label = "Директория сохранения"
 statistics_dialog_media_dir_label = "Медиа"
+statistics_dialog_copied_text = "Скопировано!"
 
 # anki dialog
 anki_dialog_anki_window_title = "Настройки Anki"

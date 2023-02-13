@@ -17,9 +17,40 @@ tags: {
 """
 
 _CONFIG_DOCS = """
-audio_region
+audio region
     Audio region 
+    type: string
     valid values: either of ["uk", "us"] 
+
+bilingual variation
+    Type of bilingual dictionary. "" specifies monolingual dictionary
+    type: string
+    valid values: either of [
+        "",
+        "dutch",
+        "french",
+        "german",
+        "indonesian",
+        "italian",
+        "japanese",
+        "norwegian",
+        "polish",
+        "portuguese",
+        "spanish",
+        "arabic",
+        "catalan",
+        "chinese-simplified",
+        "chinese-traditional",
+        "czech",
+        "danish",
+        "korean",
+        "malay",
+        "russian",
+        "thai",
+        "turkish",
+        "ukrainian",
+        "vietnamese",
+    ] 
 
 timeout
     Request timeout in seconds
@@ -28,8 +59,34 @@ timeout
 """
 
 _CONF_VALIDATION_SCHEME = \
-    {
-        "audio_region": ("us", [str], ["us", "uk"]),
+    {   
+        "bilingual variation": ("", [str], [
+                "",
+                "dutch",
+                "french",
+                "german",
+                "indonesian",
+                "italian",
+                "japanese",
+                "norwegian",
+                "polish",
+                "portuguese",
+                "spanish",
+                "arabic",
+                "catalan",
+                "chinese-simplified",
+                "chinese-traditional",
+                "czech",
+                "danish",
+                "korean",
+                "malay",
+                "russian",
+                "thai",
+                "turkish",
+                "ukrainian",
+                "vietnamese",
+        ]),
+        "audio region": ("us", [str], ["us", "uk"]),
         "timeout": (1, [int, float], [])
     }
 
@@ -40,7 +97,7 @@ config = config_management.LoadableConfig(
 
 
 def translate(definitons_data: RESULT_FORMAT) -> list[consts.CardFormat]:
-    audio_region_field = f"{config['audio_region'].upper()}_audio_links"
+    audio_region_field = f"{config['audio region'].upper()}_audio_links"
     word_list = []
 
     for word, pos_lists in definitons_data.items():
@@ -48,9 +105,10 @@ def translate(definitons_data: RESULT_FORMAT) -> list[consts.CardFormat]:
             pos = pos_data["POS"]
             pos_fields = pos_data["data"]
 
-            for definition, examples, domain, level, \
+            for definition, definition_translation, examples, domain, level, \
                 region, usage, image, alt_terms, irreg_forms, region_audio_links \
                     in zip(pos_fields["definitions"],
+                        pos_fields["definitions_translations"],
                         pos_fields["examples"],
                         pos_fields["domains"],
                         pos_fields["levels"],
@@ -64,7 +122,7 @@ def translate(definitons_data: RESULT_FORMAT) -> list[consts.CardFormat]:
                 current_word_dict: consts.CardFormat = {
                     "word": word.strip(),
                     "special": irreg_forms + alt_terms,
-                    "definition": definition,
+                    "definition": f"{definition_translation}\n{definition}" if definition_translation else definition,
                     "examples": examples,
                     "audio_links": region_audio_links,
                     "image_links": [image] if image else [],
@@ -86,5 +144,6 @@ def define(word: str) -> tuple[list[consts.CardFormat], str]:
     definitions, error = _define(word=app_utils.string_utils.remove_special_chars(word, 
                                                                                   " ", 
                                                                                   '№!"#%\'()*,./:;<>?@[\\]^_`{|}~'),  # $ & + - =
+                                 bilingual_vairation=config["bilingual variation"],
                                  timeout=config["timeout"])
     return translate(definitions), error

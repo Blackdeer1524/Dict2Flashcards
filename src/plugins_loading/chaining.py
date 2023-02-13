@@ -23,17 +23,17 @@ class ChainConfig(LoadableConfig):
         validation_scheme = {}
         docs_list = []
 
-        validation_scheme["query_type"] = ("all", [str], ["first_found", "all"])
-        validation_scheme["error_verbosity"] = ("silent", [str], ["silent", "if_found", "all"])
+        validation_scheme["query type"]      = ("all", [str], ["first found", "all"])
+        validation_scheme["error verbosity"] = ("silent", [str], ["silent", "if found", "all"])
         docs_list.append("""
-query_type:
+query type:
     How to get data from sources
-    first_found: get only first available
+    first found: get only first available
     all: get data from all sources
 
-error_verbosity:
+error verbosity:
     silent: doesn't save any errors
-    if_found: saves errors ONLY IF found something
+    if found: saves errors ONLY IF found something
     all: saves all errors
 """)
 
@@ -314,9 +314,9 @@ class CardGeneratorsChain(CardGeneratorProtocol):
             current_generator_results = generator.get(query, additional_filter)
         
             for i, parser_result in enumerate(current_generator_results):
-                if self.config["error_verbosity"] == "silent":
+                if self.config["error verbosity"] == "silent":
                     object.__setattr__(parser_result, "error_message", "")
-                elif self.config["error_verbosity"] == "if_found" and not parser_result.result and parser_result.error_message:
+                elif self.config["error verbosity"] == "if found" and not parser_result.result and parser_result.error_message:
                     current_generator_results.pop(i)
                 if generator.parser_info.parser_t == ParserType.chain:
                     hierarchical_name = f"::{enum_name}{parser_result.parser_info.name}"
@@ -324,7 +324,7 @@ class CardGeneratorsChain(CardGeneratorProtocol):
                     hierarchical_name = f"::{enum_name}"
                 object.__setattr__(parser_result.parser_info, "name",  hierarchical_name)
             res.extend(current_generator_results)
-            if self.config["query_type"] == "first_found" and res[0].result:
+            if self.config["query type"] == "first_found" and res[0].result:
                 break
         return res
 
@@ -352,10 +352,6 @@ class ChainOfGenerators(WrappedBatchGeneratorProtocol[BATCH_T]):
         self._parser_info = TypedParserName(parser_t=ParserType.chain, name=chain_name)
 
         self.enum_name2batch_generator: dict[str, WrappedBatchGeneratorProtocol] = {}
-                                            #  Callable[[str, CardFormat], 
-                                            #           Generator[list[GeneratorReturn[BATCH_T]], 
-                                            #                     int, 
-                                            #                     list[GeneratorReturn[BATCH_T]]]]] = {}
         parser_configs = []
         for parser_name, enum_name in zip(requested_chain_info["chain"], 
                                           get_enumerated_names(requested_chain_info["chain"])):
@@ -372,6 +368,7 @@ class ChainOfGenerators(WrappedBatchGeneratorProtocol[BATCH_T]):
         
         res: list[GeneratorReturn[BATCH_T]] = []
         total_length = 0
+        yielded_once_flag = False
         for i, (enum_name, batch_generator) in enumerate(self.enum_name2batch_generator.items()):
             self._config.update_config(enum_name)
             generator = batch_generator.get(word, card_data)
@@ -404,9 +401,11 @@ class ChainOfGenerators(WrappedBatchGeneratorProtocol[BATCH_T]):
                 if i == len(self.enum_name2batch_generator) - 1:
                     return res
                 batch_size = yield res
+                yielded_once_flag = True
                 total_length = 0
                 res = []
-
+            if yielded_once_flag and self.config["query type"] == "first found":
+                break
         return res
 
 SentenceParsersChain = ChainOfGenerators[list[str]]

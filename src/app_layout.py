@@ -952,6 +952,7 @@ class App(Tk):
                     if not selected_item_index:
                         return
                     chain_name, _ = existing_chains_treeview.item(selected_item_index)["values"]
+                    chain_name = str(chain_name)
                     chain_data = self.chaining_data[chaining_options[chain_type_option_menu["text"]]][chain_name]
 
                     build_chain(chain_name=chain_name,
@@ -965,6 +966,7 @@ class App(Tk):
                     if not selected_item_index:
                         return
                     chain_name, _ = existing_chains_treeview.item(selected_item_index)["values"]
+                    chain_name = str(chain_name)
                     chosen_parser_type = chaining_options[chain_type_option_menu["text"]]
                     conflicting_chains = self.chaining_data.get_dependent_chains(chosen_parser_type, chain_name)
 
@@ -1231,7 +1233,7 @@ class App(Tk):
                                 self.deck.update_card_generator(self.card_generator)
 
                         elif chain_type == "sentence_parsers":
-                            if chain_name == self.external_sentence_fetcher.data_generator.name:
+                            if chain_name == self.external_sentence_fetcher.data_generator.parser_info.name:
                                 sentence_parser = loaded_plugins.get_sentence_parser(
                                     parser_info=TypedParserName(parser_t=ParserType.chain,
                                                                 name=new_chain_name),
@@ -1251,30 +1253,27 @@ class App(Tk):
 
                         elif chain_type == "audio_getters":
                             if self.external_audio_generator is not None and \
-                                    chain_name == self.external_audio_generator.data_generator.name:
-                                old_get_all_val = self.external_audio_generator.data_generator.config["get_all"]
-                                old_error_verbosity_val = self.external_audio_generator.data_generator.config[
-                                    "error_verbosity"]
+                                    chain_name == self.external_audio_generator.data_generator.parser_info.name:
+                                self.configurations["scrappers"]["audio"]["name"] = new_chain_name
                                 self.external_audio_generator = ExternalDataGenerator(
                                     data_generator=loaded_plugins.get_audio_getter(
                                         parser_info=TypedParserName(parser_t=ParserType.chain,
                                                                     name=new_chain_name),
                                         chain_data=self.chaining_data["audio_getters"]))
-                                self.external_audio_generator.data_generator.config["get_all"] = old_get_all_val
-                                self.external_audio_generator.data_generator.config[
-                                    "error_verbosity"] = old_error_verbosity_val
-                                self.configurations["scrappers"]["audio"]["name"] = new_chain_name
                         else:
                             raise NotImplementedError(f"Unknown chosen parser type: {chain_type}")
 
                         if chain_name != new_chain_name:
-                            remove_option(str(chain_name))
+                            self.chaining_data.rename_chain(chain_type, chain_name, new_chain_name)
+                            remove_option(chain_name)
                         else:
                             recreate_option_menus(chain_type)
 
-                        selected_item_index = existing_chains_treeview.focus()
-                        existing_chains_treeview.set(selected_item_index, "#1", value=new_chain_name)
-                        existing_chains_treeview.set(selected_item_index, "#2", value="->".join((name.full_name for name in chain)))
+                        existing_chains_treeview.delete(*existing_chains_treeview.get_children())
+                        for i, (name, data) in enumerate(self.chaining_data[chain_type].items()):
+                            existing_chains_treeview.insert(parent="", index=i,
+                                                            values=(name, "->".join((item.full_name for item in data["chain"]))))
+
                     else:
                         recreate_option_menus(chaining_options[chain_type_option_menu["text"]])
                         existing_chains_treeview.insert(
@@ -1616,9 +1615,6 @@ class App(Tk):
             definition = main_card_data.get(CardFields.definition, "").replace("\n", " ")
             sentence = main_card_data.get(CardFields.sentences, [""])[0].replace("\n", " ")
             items_table.insert("", "end", values=(word, definition, sentence, i))
-
-        # for i in range(1000):
-        #     items_table.insert("", "end", values=(i+1, i+2, i+3, i+3, i+3, i+3, i+3))
 
         item_editor_frame = self.Frame(added_cards_browser_window)
         main_paned_window.add(item_editor_frame, stretch="never")

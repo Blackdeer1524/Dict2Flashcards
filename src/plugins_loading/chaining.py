@@ -116,16 +116,12 @@ ChainsDependencies = dict[PossibleChainTypes, list[list[VERTEX_T]]]
 
 @dataclass(slots=True, frozen=True)
 class SingleChainDependeciesInfo:
-    graphs: list[list[VERTEX_T]]
-    forward: GRAPH_T
-    backward: GRAPH_T
+    graphs:   list[list[VERTEX_T]]
+    forward:  GRAPH_T  # depending  -> list[dependencies] 
+    backward: GRAPH_T  # dependency -> list[depending] 
 
 
-class ChainDependenciesData(TypedDict):
-    word_parsers:     SingleChainDependeciesInfo
-    sentence_parsers: SingleChainDependeciesInfo
-    image_parsers:    SingleChainDependeciesInfo
-    audio_getters:    SingleChainDependeciesInfo
+ChainDependenciesData = dict[PossibleChainTypes, SingleChainDependeciesInfo]
 
 
 class ChainDataStorage(LoadableConfig):
@@ -245,6 +241,30 @@ class ChainDataStorage(LoadableConfig):
             traverse(next_chain, res)
         return list(res)
 
+    def rename_chain(self, chain_type: PossibleChainTypes, old_name: str, new_name: str):
+        chain_type_configurations = self[chain_type]
+        chain_type_data = self._chains_dependencies[chain_type]
+        for vertex in chain_type_data.backward[old_name]:
+            for i in range(len(chain_type_configurations[vertex]["chain"])):
+                if chain_type_configurations[vertex]["chain"][i].name == old_name:
+                    object.__setattr__(chain_type_configurations[vertex]["chain"][i], "name", new_name)
+
+            chain_type_data.forward[vertex][chain_type_data.forward[vertex].index(old_name)] = new_name
+        chain_type_data.backward[new_name] = chain_type_data.backward[old_name]
+        chain_type_data.backward.pop(old_name)
+        chain_type_data.forward[new_name] = chain_type_data.forward[old_name]
+        chain_type_data.forward.pop(old_name)
+
+        graphs = self._split_on_non_intersecting_graphs(
+            sorted_vertecies=self._toposort(chain_type_data.backward),
+            backward=chain_type_data.backward
+        )
+        self._chains_dependencies[chain_type] = SingleChainDependeciesInfo(
+            graphs=graphs,
+            backward=chain_type_data.backward,
+            forward=chain_type_data.forward
+        )
+
 def get_enumerated_names(names: list[TypedParserName]) -> list[str]:
     seen_names_count = Counter((name.full_name for name in names))
     seen_so_far = {key: value for key, value in seen_names_count.items()}
@@ -324,7 +344,7 @@ class CardGeneratorsChain(CardGeneratorProtocol):
                     hierarchical_name = f"::{enum_name}"
                 object.__setattr__(parser_result.parser_info, "name",  hierarchical_name)
             res.extend(current_generator_results)
-            if self.config["query type"] == "first_found" and res[0].result:
+            if self.config["query type"] == "first found" and res[0].result:
                 break
         return res
 

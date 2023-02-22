@@ -360,7 +360,10 @@ def define(word: str,
     else:
         link = f"{LINK_PREFIX}/dictionary/english/{word}"
     # will raise error if request_headers are None
-    page = requests.get(link, headers=request_headers, timeout=timeout)
+    try:
+        page = requests.get(link, headers=request_headers, timeout=timeout)
+    except: 
+        return {}, "Timeout"
 
     word_info: RESULT_FORMAT = {}
 

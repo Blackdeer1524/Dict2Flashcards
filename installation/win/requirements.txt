@@ -16,3 +16,4 @@ requests==2.28.0
 soupsieve==2.3.2.post1
 tkinterdnd2==0.3.0
 urllib3==1.26.9
+typing_extensions==4.4.0

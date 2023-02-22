@@ -2791,14 +2791,13 @@ class App(Tk):
         statistics_window.rowconfigure(5, weight=1)
         statistics_window.rowconfigure(6, weight=1)
         statistics_window.maxsize(self.winfo_screenwidth() // 2 , self.winfo_screenheight())
-        statistics_window.withdraw()
 
         def copy_label_text(label: Label):
             self.clipboard_clear()
             self.clipboard_append(label["text"])
             placeholder = label["text"]
-            label["text"] = self.lang_pack.statistics_dialog_copied_text
-            self.after(1000, lambda: label.configure(text=placeholder))
+            label["text"] = self.lang_pack.statistics_dialog_copied_text                
+            self.after(1000, lambda: label.configure(text=placeholder) if label.winfo_exists() else None)
 
         for row_index in range(len(text_list)):
             info = self.Label(
@@ -2820,7 +2819,6 @@ class App(Tk):
             data_text.config(wraplength=data_text.winfo_width(), width=data_text.winfo_width())
 
         statistics_window.bind("<Escape>", lambda _: statistics_window.destroy())
-        statistics_window.deiconify()
         statistics_window.resizable(False, False)
         statistics_window.grab_set()
 

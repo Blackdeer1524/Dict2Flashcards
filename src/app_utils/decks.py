@@ -84,7 +84,7 @@ class Deck(PointerList[tuple[str, Card], tuple[str, Card]]):
                 self._pointer_position = self._pointer_position - 1
                 self._cards_left += len(parser_card_pairs)    
 
-            yield error_message
+            # yield error_message
 
     def append(self, card_data: tuple[str, Card]) -> None:
         self._data = self[:self._pointer_position] + [card_data] + self[self._pointer_position:]

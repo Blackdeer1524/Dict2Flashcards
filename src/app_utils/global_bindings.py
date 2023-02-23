@@ -1,15 +1,33 @@
 from ..consts.paths import SYSTEM
+from typing import Callable
+from abc import ABC, abstractmethod
+
 
 __all__ = "Binder"
 
 
+class BinderProto(ABC):
+    @abstractmethod
+    def bind(*key_seq: str, action: Callable[[], None]) -> None:
+        ...
+
+    @abstractmethod
+    def start(self) -> None:
+        ...
+    
+    @abstractmethod
+    def stop(self) -> None:
+        ...
+
+
 if SYSTEM == "Windows":
     from global_hotkeys import (register_hotkeys, start_checking_hotkeys,
-                                stop_checking_hotkeys)
+                                stop_checking_hotkeys, clear_hotkeys)
 
-    class Binder:
+    class Binder(BinderProto):
         def __init__(self):
-            self.bindings = []
+            self.bindings: list[tuple[list[str], None, Callable[[], None]]] = []
+            self.start()
 
         def bind(self, *key_seq, action):
             self.bindings.append(([i.lower() for i in key_seq], None, action))
@@ -19,19 +37,25 @@ if SYSTEM == "Windows":
             start_checking_hotkeys()
 
         def stop(self):
+            clear_hotkeys()
             stop_checking_hotkeys()
 else:
     from bindglobal import BindGlobal
 
-    class Binder:
+    class Binder(BinderProto):
         def __init__(self):
-            self.bg = BindGlobal()
+            self.binds: list[tuple[str, Callable[[], None]]] = []
+            self.start()
 
         def bind(self, *key_seq, action):
-            self.bg.gbind("<{}>".format("-".join(key_seq)), lambda _: action())
+            seq = "<{}>".format("-".join(key_seq))
+            self.binds.append((seq, action))
+            self.bg.gbind(seq, lambda _: action())
 
         def start(self):
-            pass
+            self.bg = BindGlobal()
+            for seq, action in self.binds:
+                self.bg.gbind(seq, lambda _: action())
 
         def stop(self):
             self.bg.stop()

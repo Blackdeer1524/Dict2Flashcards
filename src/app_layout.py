@@ -1370,28 +1370,82 @@ class App(Tk):
             widget.bind("<Tab>", partial(focus_next_window, focusout_action=action))
             widget.bind("<Shift-Tab>", partial(focus_prev_window, focusout_action=action))
 
-        self.bind("<Escape>", lambda event: self.on_closing())
-        self.bind("<Control-Key-0>", lambda event: self.geometry("+0+0"))
-        self.bind("<Control-z>", lambda event: self.move_decks_pointers(-1))
-        self.bind("<Control-q>", lambda event: self.bury_command())
-        self.bind("<Control-d>", lambda event: self.move_decks_pointers(1))
-        self.bind("<Control-Shift_L><D>", lambda event: self.move_decks_pointers(self.deck.get_n_cards_left()))
-        self.bind("<Control-s>", lambda event: self.save_button())
-        self.bind("<Control-Shift_L><A>", lambda event: self.add_word_dialog())
-        self.bind("<Control-f>", lambda event: self.find_dialog())
-        self.bind("<Control-e>", lambda event: self.statistics_dialog())
-        self.bind("<Control-b>", lambda event: self.added_cards_browser())
+        def bind_hotkeys():
+            self.bind("<Escape>",             lambda event: self.on_closing())
+            self.bind("<Control-Key-0>",      lambda event: self.geometry("+0+0"))
+            self.bind("<Control-z>",          lambda event: self.move_decks_pointers(-1))
+            self.bind("<Control-q>",          lambda event: self.bury_command())
+            self.bind("<Control-d>",          lambda event: self.move_decks_pointers(1))
+            self.bind("<Control-Shift_L><D>", lambda event: self.move_decks_pointers(self.deck.get_n_cards_left()))
+            self.bind("<Control-s>",          lambda event: self.save_button())
+            self.bind("<Control-Shift_L><A>", lambda event: self.add_word_dialog())
+            self.bind("<Control-f>",          lambda event: self.find_dialog())
+            self.bind("<Control-e>",          lambda event: self.statistics_dialog())
+            self.bind("<Control-b>",          lambda event: self.added_cards_browser())
 
-        for i in range(0, 9):
-            self.bind(f"<Control-Key-{i + 1}>", lambda event, index=i: self.choose_sentence(index))
+            for i in range(0, 9):
+                self.bind(f"<Control-Key-{i + 1}>", lambda event, index=i: self.choose_sentence(index))
+        
+        def unbind_hotkeys():
+            self.unbind("<Escape>",            )
+            self.unbind("<Control-Key-0>",     )
+            self.unbind("<Control-z>",         )
+            self.unbind("<Control-q>",         )
+            self.unbind("<Control-d>",         )
+            self.unbind("<Control-Shift_L><D>",)
+            self.unbind("<Control-s>",         )
+            self.unbind("<Control-Shift_L><A>",)
+            self.unbind("<Control-f>",         )
+            self.unbind("<Control-e>",         )
+            self.unbind("<Control-b>",         )
 
-        self.gb = Binder()
-        self.gb.bind("Control", "c", "space",
-                     action=lambda: self.define_word(
-                         word_query=remove_special_chars(text=self.clipboard_get(),
-                                                         special_chars="№!\"#$%'()*+,./:;<=>?@[\\]^_`{|}~").strip(),
-                         additional_query="")
-                     )  # &- are not removed
+            for i in range(0, 9):
+                self.bind(f"<Control-Key-{i + 1}>")
+
+        bind_hotkeys()
+
+        def define_word_with_window_lock():
+            def disableChildren(parent):
+                for child in parent.winfo_children():
+                    wtype = child.winfo_class()
+                    if wtype not in ('Frame','Labelframe','TFrame','TLabelframe'):
+                        child.configure(state='disable')
+                    else:
+                        disableChildren(child)
+
+            def enableChildren(parent):
+                for child in parent.winfo_children():
+                    wtype = child.winfo_class()
+                    if wtype not in ('Frame','Labelframe','TFrame','TLabelframe'):
+                        child.configure(state='normal')
+                    else:
+                        enableChildren(child)
+
+
+            self.global_binder.stop()
+            unbind_hotkeys()
+            
+            self.skip_all_button["state"] = "disabled"
+            self.skip_button["state"] = "disabled"
+            self.bury_button["state"] = "disabled"
+            self.prev_button["state"] = "disabled"
+            disableChildren(self.text_widgets_frame)
+            
+            self.define_word(word_query=self.clipboard_get(),
+                             additional_query="")
+            
+            self.skip_all_button["state"] = "normal"
+            self.skip_button["state"] = "normal"
+            self.bury_button["state"] = "normal"
+            self.prev_button["state"] = "normal"
+            enableChildren(self.text_widgets_frame)
+
+            self.global_binder.start()
+            bind_hotkeys()
+
+        self.global_binder = Binder()
+        self.global_binder.bind("Control", "c", "space",
+                     action=define_word_with_window_lock) 
 
         @error_handler(self.show_exception_logs)
         def paste_in_sentence_field():
@@ -1405,8 +1459,8 @@ class App(Tk):
                 choose_sentence_action=self.choose_sentence
             )
 
-        self.gb.bind("Control", "c", "Alt", action=paste_in_sentence_field)
-        self.gb.start()
+        self.global_binder.bind("Control", "c", "Alt", action=paste_in_sentence_field)
+        self.global_binder.start()
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.geometry(self.configurations["app"]["main_window_geometry"])
@@ -2612,7 +2666,6 @@ class App(Tk):
                     self.show_window(title=self.lang_pack.error_title,
                                      text=str(error_message))
 
-                next(self.deck.card2deck_gen)
                 if not n_definitions_pending:
                     messagebox.showerror(title=self.lang_pack.error_title,
                                          message=self.lang_pack.define_word_word_not_found_message)
@@ -2827,7 +2880,7 @@ class App(Tk):
         if messagebox.askokcancel(title=self.lang_pack.on_closing_message_title,
                                   message=self.lang_pack.on_closing_message):
             self.save_files()
-            self.gb.stop()
+            self.global_binder.stop()
             self.download_audio(closing=True)
 
     @error_handler(show_exception_logs)

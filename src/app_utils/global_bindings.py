@@ -27,7 +27,6 @@ if SYSTEM == "Windows":
     class Binder(BinderProto):
         def __init__(self):
             self.bindings: list[tuple[list[str], None, Callable[[], None]]] = []
-            self.start()
 
         def bind(self, *key_seq, action):
             self.bindings.append(([i.lower() for i in key_seq], None, action))
@@ -45,17 +44,15 @@ else:
     class Binder(BinderProto):
         def __init__(self):
             self.binds: list[tuple[str, Callable[[], None]]] = []
-            self.start()
 
         def bind(self, *key_seq, action):
             seq = "<{}>".format("-".join(key_seq))
             self.binds.append((seq, action))
-            self.bg.gbind(seq, lambda _: action())
 
         def start(self):
             self.bg = BindGlobal()
             for seq, action in self.binds:
-                self.bg.gbind(seq, lambda _: action())
+                self.bg.gbind(seq, lambda _, t=action: t())
 
         def stop(self):
             self.bg.stop()

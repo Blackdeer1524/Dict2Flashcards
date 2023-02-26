@@ -100,17 +100,18 @@ card_insertion_limit_exceed_message = "Found too many cards. Are you sure you wa
 # help
 buttons_hotkeys_help_message = """
 Buttons:
-* <-: returns to a previous card
+* <: returns to a previous card
 * Bury: moves current card to a separate file which 
 is located in the saving directory. Name of
 this file would be the same as the saved cards file name +
 _buried postfix 
-* ->: skips current card
+* >: skips current card
+* >>>: skips all remaining cards
 
 Hotkeys (local):
 * Ctrl + 0: Moves app to upper left corner of the screen
-* Ctrl + 1..9: picks corresponding sentence
-* Ctrl + d: skips current card
+* Ctrl + 1..9: creates a card with the chosen sentence
+* Ctrl + d: skips current card if no sentences were chosen or creates card(s) with chosen sentences
 * Ctrl + Shift + d: skips all remaining cards
 * Ctrl + z: returns to a previous card
 * Ctrl + q: moves current card to a separate file

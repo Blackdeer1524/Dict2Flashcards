@@ -424,8 +424,12 @@ class App(Tk):
                                              canvas_bg=self.theme.frame_cfg.get("bg"))
         
         self.grid_rowconfigure(12, weight=1)
-        self.text_widgets_sf.grid(row=12, column=0, columnspan=8, sticky="news",
-                                  padx=self.text_padx, pady=(0, self.text_pady))
+        self.text_widgets_sf.grid(row=12, column=0, columnspan=7, sticky="news",
+                                  padx=(self.text_padx, 0), pady=(0, self.text_pady))
+        self.save_and_refresh_button = self.Button(text="=>",
+                                                   command=self.save_and_refresh)
+        self.save_and_refresh_button.grid(row=12, column=7, sticky="news",
+                                          padx=(0, self.text_padx), pady=(0, self.text_pady))
 
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
@@ -1447,6 +1451,7 @@ class App(Tk):
             self.skip_button["state"] = "disabled"
             self.bury_button["state"] = "disabled"
             self.prev_button["state"] = "disabled"
+            self.save_and_refresh_button["state"] = "disabled"
             disableChildren(self.text_widgets_frame)
             
             self.define_word(word_query=self.clipboard_get(),
@@ -1456,6 +1461,7 @@ class App(Tk):
             self.skip_button["state"] = "normal"
             self.bury_button["state"] = "normal"
             self.prev_button["state"] = "normal"
+            self.save_and_refresh_button["state"] = "normal"
             enableChildren(self.text_widgets_frame)
 
             self.global_binder.start()

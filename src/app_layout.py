@@ -335,7 +335,7 @@ class App(Tk):
 
         self.skip_button = self.Button(a,
                                        text=">",
-                                       command=lambda: self.move_decks_pointers(1),
+                                       command=self.save_and_refresh,
                                        font=Font(weight="bold"))
         self.skip_button.grid(row=0, column=2, sticky="news")
 
@@ -424,12 +424,8 @@ class App(Tk):
                                              canvas_bg=self.theme.frame_cfg.get("bg"))
         
         self.grid_rowconfigure(12, weight=1)
-        self.save_and_refresh_button: Button
-        self.text_widgets_sf.grid(row=12, column=0, columnspan=7, sticky="news",
-                                    padx=(self.text_padx, 0), pady=(0, self.text_pady))
-        self.save_and_refresh_button = self.Button(text="=>", command=self.save_and_refresh)
-        self.save_and_refresh_button.grid(row=12, column=7, columnspan=1, sticky="news",
-                                            padx=(0, self.text_padx), pady=(0, self.text_pady))
+        self.text_widgets_sf.grid(row=12, column=0, columnspan=8, sticky="news",
+                                  padx=self.text_padx, pady=(0, self.text_pady))
 
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
@@ -1890,13 +1886,19 @@ class App(Tk):
             if not selected_item:
                 return
 
+            text_widget = editor_sentence_texts[sentence_number]
             picked_sentence = editor_sentence_texts[sentence_number].get(1.0, "end").rstrip()
             if editor_chosen_sentences.get(sentence_number) is None:
                 editor_chosen_sentences[sentence_number] = picked_sentence
                 pressed_button["background"] = "red"
+                text_widget["state"] = "disabled"
+                text_widget["fg"] = text_widget.placeholder_fg_color
             else:
                 editor_chosen_sentences.pop(sentence_number)
                 pressed_button["background"] = self.theme.button_cfg.get("background", "SystemButtonFace")
+                text_widget["state"] = "normal"
+                text_widget["fg"] = text_widget.default_fg_color
+
 
         @error_handler(self.show_exception_logs)
         def editor_fetch_external_sentences() -> None:
@@ -1985,7 +1987,7 @@ class App(Tk):
         editor_sentence_search_entry.grid(row=10, column=0, columnspan=8, sticky="news",
                                           padx=editor_text_padx, pady=(0, 0))
 
-        editor_sentence_texts = []
+        editor_sentence_texts: list[Text] = []
 
         editor_text_widgets_sf = ScrolledFrame(item_editor_frame, scrollbars="vertical",
                                                canvas_bg=self.theme.frame_cfg.get("bg"))
@@ -2225,6 +2227,10 @@ class App(Tk):
                         choose_sentence_action=edit_picked_sentence)
                 editor_chosen_sentences[index] = sentence
                 b["background"] = "red"
+                
+                sentence_text_widget = editor_sentence_texts[index]
+                sentence_text_widget["state"] = "disabled"
+                sentence_text_widget["fg"] = sentence_text_widget.placeholder_fg_color
 
             @error_handler(self.show_exception_logs)
             def fill_additional_dict_data(widget: Text, text: str):
@@ -3106,6 +3112,13 @@ class App(Tk):
         self.external_sentence_fetcher = ExternalDataGenerator(data_generator=sentence_parser)
 
     def save_and_refresh(self):
+        if not self.chosen_sentences:
+            self.refresh()
+            return
+
+        self.dict_card_data[CardFields.word] = self.word
+        self.dict_card_data[CardFields.definition] = self.definition
+
         additional = self.dict_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {})
         additional[SavedDataDeck.AUDIO_DATA] = {}
         additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS] = []
@@ -3213,16 +3226,17 @@ class App(Tk):
         if not picked_sentence:
             picked_sentence = self.dict_card_data[CardFields.word]
         
+        text_widget = self.sentence_texts[sentence_number]
         if self.chosen_sentences.get(sentence_number) is None:
             self.chosen_sentences[sentence_number] = picked_sentence
             pressed_button["background"] = "red"
+            text_widget["state"] = "disabled"
+            text_widget["fg"] = text_widget.placeholder_fg_color
         else:
             self.chosen_sentences.pop(sentence_number)
             pressed_button["background"] = self.theme.button_cfg.get("background", "SystemButtonFace")
-
-    @error_handler(show_exception_logs)
-    def skip_command(self):
-        self.move_decks_pointers(1)
+            text_widget["state"] = "normal"
+            text_widget["fg"] = text_widget.default_fg_color
 
     @error_handler(show_exception_logs)
     def move_decks_pointers(self, n: int):

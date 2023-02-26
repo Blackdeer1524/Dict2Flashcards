@@ -15,6 +15,14 @@ class TextWithPlaceholder(Text):
         self._placeholder_set_status = False
         self.fill_placeholder()
 
+    @property
+    def placeholder_fg_color(self):
+        return self._placeholder_fg_color
+
+    @property
+    def default_fg_color(self):
+        return self._default_fg_color
+
     def insert(self, index, chars, *args):
         if chars:
             self.remove_placeholder()
@@ -31,14 +39,14 @@ class TextWithPlaceholder(Text):
         self.remove_placeholder()
 
     def fill_placeholder(self, *args):
-        if not self.get(1.0, "end").strip() and not self._is_under_focus:
+        if self["state"] == "normal" and not self.get(1.0, "end").strip() and not self._is_under_focus:
             self.clear()
             self.insert(1.0, self._placeholder)
             self._placeholder_set_status = True
             self['foreground'] = self._placeholder_fg_color
 
     def remove_placeholder(self):
-        if self._placeholder_set_status:
+        if self["state"] == "normal" and self._placeholder_set_status:
             self._placeholder_set_status = False
             self.clear()
             self['foreground'] = self._default_fg_color
@@ -76,14 +84,14 @@ class EntryWithPlaceholder(Entry):
         self.remove_placeholder()
 
     def fill_placeholder(self, *args):
-        if not self.get().strip() and not self._is_under_focus:
+        if self["state"] == "normal" and not self.get().strip() and not self._is_under_focus:
             self.clear()
             self.insert(0, self._placeholder)
             self._placeholder_set_status = True
             self['foreground'] = self._placeholder_fg_color
 
     def remove_placeholder(self):
-        if self._placeholder_set_status:
+        if self["state"] == "normal" and self._placeholder_set_status:
             self._placeholder_set_status = False
             self.clear()
             self['foreground'] = self._default_fg_color

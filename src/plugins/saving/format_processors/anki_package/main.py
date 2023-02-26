@@ -150,11 +150,12 @@ def save(deck: app_utils.decks.SavedDataDeck,
             sentence_example = config["merge separator"].join(card_data.get(consts.CardFields.sentences, [""]))
             note = genanki.Note(
                 model=MERGING_RESULTING_MODEL,
-                fields=[sentence_example, 
-                        saving_word, 
-                        definition, 
-                        images if images else "‎",  # I have no idea why, but if images is empty, then this won't work
-                        audios
+                # I have no idea why, but if any of the fields is empty, then card won't be added, 
+                fields=[sentence_example if sentence_example else " ",  
+                        saving_word      if saving_word      else " ",  
+                        definition       if definition       else " ",  
+                        images           if images           else " ",  
+                        audios           if audios           else " ",  
                         ],
                 tags=tags
                 )  

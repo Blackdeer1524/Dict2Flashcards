@@ -1,7 +1,14 @@
 import json
 from typing import Callable
+import os
 
-from .. import app_utils
+from .. import app_utils, config_management
+
+
+config = config_management.LoadableConfig(
+    config_location=os.path.dirname(__file__),
+    validation_scheme={},
+    docs="")
 
 
 def save(deck: app_utils.decks.SavedDataDeck,

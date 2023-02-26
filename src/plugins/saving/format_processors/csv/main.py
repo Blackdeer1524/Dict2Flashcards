@@ -1,8 +1,14 @@
 import csv
 from typing import Callable
+import os
 
-from .. import app_utils, consts
+from .. import app_utils, consts, config_management
 
+
+config = config_management.LoadableConfig(
+    config_location=os.path.dirname(__file__),
+    validation_scheme={},
+    docs="")
 
 def save(deck: app_utils.decks.SavedDataDeck,
          saving_card_status: app_utils.decks.CardStatus,

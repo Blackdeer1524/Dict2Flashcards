@@ -1,7 +1,14 @@
 import json
 from typing import Callable
+import os
 
-from .. import app_utils
+from .. import app_utils, config_management
+
+
+config = config_management.LoadableConfig(
+    config_location=os.path.dirname(__file__),
+    validation_scheme={},
+    docs="")
 
 
 def save(deck: app_utils.decks.SavedDataDeck,
@@ -13,4 +20,4 @@ def save(deck: app_utils.decks.SavedDataDeck,
 
     if saving_object:
         with open(saving_path + ".json", "w", encoding="utf-8") as deck_file:
-            json.dump(saving_object, deck_file, cls=app_utils.cards.FrozenDictJSONEncoder)
+            json.dump(saving_object, deck_file, cls=app_utils.storages.FrozenDictJSONEncoder)

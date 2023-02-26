@@ -36,6 +36,7 @@ class LanguagePackageInterface(Protocol):
     setting_web_audio_downloader_configuration_label_text: str
     settings_extern_audio_placer_configuration_label_text: str
     settings_extern_sentence_placer_configuration_label: str
+    settings_format_processor_configuration_label: str
     settings_card_processor_label_text: str
     settings_format_processor_label_text: str
     settings_audio_autopick_label_text: str
@@ -315,6 +316,8 @@ class CardProcessorInterface(Protocol):
 
 @runtime_checkable
 class DeckSavingFormatInterface(Protocol):
+    config: LoadableConfig
+
     @staticmethod
     def save(deck: SavedDataDeck,
              saving_card_status: CardStatus,

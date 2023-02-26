@@ -27,6 +27,7 @@ settings_image_search_configuration_label_text = "Поиск изображен�
 setting_web_audio_downloader_configuration_label_text = "Скачивание вэб аудио"
 settings_extern_audio_placer_configuration_label_text = "Подача внешних аудио"
 settings_extern_sentence_placer_configuration_label = "Подача внешних предложений"
+settings_format_processor_configuration_label = "Обработчик формата"
 settings_card_processor_label_text = "Формат карточки"
 settings_format_processor_label_text = "Формат итогового файла"
 settings_audio_autopick_label_text = "Автовыбор аудио"

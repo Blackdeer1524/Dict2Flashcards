@@ -131,9 +131,9 @@ class PluginFactory:
                                                                      module=plugins.saving.card_processors,
                                                                      HasConfigFile=False,
                                                                      container_type=CardProcessorContainer))
-        object.__setattr__(self, "deck_saving_formats", PluginLoader(plugin_type="deck plugins.saving format",
+        object.__setattr__(self, "deck_saving_formats", PluginLoader(plugin_type="deck saving format",
                                                                      module=plugins.saving.format_processors,
-                                                                     HasConfigFile=False,
+                                                                     HasConfigFile=True,
                                                                      container_type=DeckSavingFormatContainer))
         object.__setattr__(self, "local_audio_getters", PluginLoader(plugin_type="local audio getter",
                                                                      module=plugins.parsers.audio.local,

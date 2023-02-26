@@ -154,12 +154,14 @@ class CardProcessorContainer(Named):
 class DeckSavingFormatContainer(Named):
     name: str
     save: Callable[[SavedDataDeck, CardStatus, str, Callable[[str], str], Callable[[str], str]], None]
+    config: LoadableConfig
 
     def __init__(self, name: str, source_module: DeckSavingFormatInterface):
         if not isinstance(source_module, DeckSavingFormatInterface):
             raise WrongPluginProtocol(f"{source_module} should have DeckSavingFormatInterface protocol!")
 
         object.__setattr__(self, "name", name)
+        object.__setattr__(self, "config", source_module.config)
         object.__setattr__(self, "save", source_module.save)
 
 
@@ -230,6 +232,8 @@ class LanguagePackageContainer(Named, LanguagePackageInterface):
                            source_module.settings_card_processor_label_text)
         object.__setattr__(self, "settings_format_processor_label_text",
                            source_module.settings_format_processor_label_text)
+        object.__setattr__(self, "settings_format_processor_configuration_label",
+                           source_module.settings_format_processor_configuration_label)
         object.__setattr__(self, "settings_audio_autopick_label_text",
                            source_module.settings_audio_autopick_label_text)
         object.__setattr__(self, "settings_audio_autopick_off",

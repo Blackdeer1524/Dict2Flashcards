@@ -370,13 +370,12 @@ class App(Tk):
                 for generator_result in results:
                     for sentence in generator_result.result:
                         self.add_sentence_field(
-                            source=f"{generator_result.parser_info.full_name}: {self.sentence_search_entry.get()}",
-                            sentence=sentence,
-                            text_widgets_frame=self.text_widgets_frame,
-                            text_widgets_sf=self.text_widgets_sf,
-                            sentence_text_widgets_list=self.sentence_texts,
-                            choose_sentence_action=self.choose_sentence
-                        )
+                                source=f"{generator_result.parser_info.full_name}: {self.sentence_search_entry.get()}",
+                                sentence=sentence,
+                                text_widgets_frame=self.text_widgets_frame,
+                                text_widgets_sf=self.text_widgets_sf,
+                                sentence_text_widgets_list=self.sentence_texts,
+                                choose_sentence_action=self.choose_sentence)
 
                     if generator_result.error_message:
                         messagebox.showerror(
@@ -423,9 +422,14 @@ class App(Tk):
 
         self.text_widgets_sf = ScrolledFrame(self, scrollbars="vertical",
                                              canvas_bg=self.theme.frame_cfg.get("bg"))
-        self.text_widgets_sf.grid(row=12, column=0, columnspan=8, sticky="news",
-                                  padx=self.text_padx, pady=(0, self.text_pady))
+        
         self.grid_rowconfigure(12, weight=1)
+        self.save_and_refresh_button: Button
+        self.text_widgets_sf.grid(row=12, column=0, columnspan=7, sticky="news",
+                                    padx=(self.text_padx, 0), pady=(0, self.text_pady))
+        self.save_and_refresh_button = self.Button(text="=>", command=self.save_and_refresh)
+        self.save_and_refresh_button.grid(row=12, column=7, columnspan=1, sticky="news",
+                                            padx=(0, self.text_padx), pady=(0, self.text_pady))
 
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
@@ -467,7 +471,7 @@ class App(Tk):
                                                      values=loaded_plugins.themes.loaded,
                                                      command=lambda theme_name:
                                                      change_theme(theme_name))
-            theme_option_menu.grid(row=0, column=1, sticky="news")
+            theme_option_menu.grid(row=0, column=1, columnspan=2, sticky="news")
 
             @error_handler(self.show_exception_logs)
             def change_language(name: str):
@@ -482,7 +486,7 @@ class App(Tk):
                                                         values=loaded_plugins.language_packages.loaded,
                                                         command=lambda language:
                                                         change_language(language))
-            language_option_menu.grid(row=1, column=1, sticky="news")
+            language_option_menu.grid(row=1, column=1, columnspan=2, sticky="news")
 
             image_search_configuration_label = self.Label(settings_window,
                                                           text=self.lang_pack
@@ -559,7 +563,7 @@ class App(Tk):
                                                                 saving_action=lambda config:
                                                                 save_image_search_conf(config))
                                                             )
-            image_search_configuration_button.grid(row=2, column=1, sticky="news")
+            image_search_configuration_button.grid(row=2, column=1, columnspan=2, sticky="news")
 
             web_audio_downloader_configuration_label = self.Label(
                 settings_window,
@@ -603,7 +607,7 @@ class App(Tk):
                     saving_action=lambda config:
                     save_web_audio_downloader_conf(config))
             )
-            web_audio_downloader_configuration_button.grid(row=3, column=1, sticky="news")
+            web_audio_downloader_configuration_button.grid(row=3, column=1, columnspan=2, sticky="news")
 
             extern_audio_placer_configuration_label = self.Label(
                 settings_window,
@@ -642,7 +646,7 @@ class App(Tk):
                     saving_action=lambda config:
                     save_extern_audio_placer_conf(config))
             )
-            extern_audio_placer_configuration_button.grid(row=4, column=1, sticky="news")
+            extern_audio_placer_configuration_button.grid(row=4, column=1, columnspan=2, sticky="news")
 
             extern_sentence_placer_configuration_label = self.Label(
                 settings_window,
@@ -681,7 +685,7 @@ class App(Tk):
                     saving_action=lambda config:
                     save_extern_sentence_placer_conf(config))
             )
-            extern_sentence_placer_configuration_button.grid(row=5, column=1, sticky="news")
+            extern_sentence_placer_configuration_button.grid(row=5, column=1, columnspan=2, sticky="news")
 
             card_processor_label = self.Label(settings_window,
                                               text=self.lang_pack.settings_card_processor_label_text)
@@ -696,7 +700,7 @@ class App(Tk):
                                                          init_text=self.card_processor.name,
                                                          values=loaded_plugins.card_processors.loaded,
                                                          command=lambda processor: choose_card_processor(processor))
-            card_processor_option.grid(row=6, column=1, sticky="news")
+            card_processor_option.grid(row=6, column=1, columnspan=2, sticky="news")
 
             format_processor_label = self.Label(settings_window,
                                                 text=self.lang_pack.settings_format_processor_label_text)
@@ -712,6 +716,17 @@ class App(Tk):
                                                            values=loaded_plugins.deck_saving_formats.loaded,
                                                            command=lambda format: choose_format_processor(format))
             format_processor_option.grid(row=7, column=1, sticky="news")
+
+            format_processor_configuration_button = self.Button(
+                settings_window,
+                text="</>",
+                command=lambda: self.call_configuration_window(
+                    plugin_name=self.lang_pack.settings_format_processor_configuration_label,
+                    plugin_config=self.deck_saver.config,
+                    plugin_load_function=lambda conf: None,
+                    saving_action=lambda config: self.deck_saver.config.save())
+            )
+            format_processor_configuration_button.grid(row=7, column=2, sticky="news")
 
             audio_autopick_label = self.Label(settings_window,
                                               text=self.lang_pack.settings_audio_autopick_label_text)
@@ -762,7 +777,7 @@ class App(Tk):
                         self.lang_pack.settings_audio_autopick_all],
                 command=save_audio_autochoose_option
             )
-            audio_autochoose_option_menu.grid(row=8, column=1, sticky="news")
+            audio_autochoose_option_menu.grid(row=8, column=1, columnspan=2, sticky="news")
 
             @error_handler(self.show_exception_logs)
             def anki_dialog():
@@ -802,7 +817,7 @@ class App(Tk):
             configure_anki_button = self.Button(settings_window,
                                                 text=self.lang_pack.settings_configure_anki_button_text,
                                                 command=anki_dialog)
-            configure_anki_button.grid(row=9, column=0, columnspan=2, sticky="news")
+            configure_anki_button.grid(row=9, column=0, columnspan=3, sticky="news")
 
             spawn_window_in_center(self, settings_window, desired_window_width=self.winfo_width())
             settings_window.resizable(False, False)
@@ -1370,6 +1385,7 @@ class App(Tk):
             widget.bind("<Tab>", partial(focus_next_window, focusout_action=action))
             widget.bind("<Shift-Tab>", partial(focus_prev_window, focusout_action=action))
 
+        self.chosen_sentences: dict[int, str] = {}
         def bind_hotkeys():
             self.bind("<Escape>",             lambda event: self.on_closing())
             self.bind("<Control-Key-0>",      lambda event: self.geometry("+0+0"))
@@ -1383,8 +1399,14 @@ class App(Tk):
             self.bind("<Control-e>",          lambda event: self.statistics_dialog())
             self.bind("<Control-b>",          lambda event: self.added_cards_browser())
 
+            def quick_sentence_select(sentence_number: int) -> None:
+                picked_sentence = self.get_sentence(sentence_number)
+                self.chosen_sentences = {sentence_number: picked_sentence}
+                self.dict_card_data[CardFields.sentences] = [picked_sentence]
+                self.save_and_refresh()
+
             for i in range(0, 9):
-                self.bind(f"<Control-Key-{i + 1}>", lambda event, index=i: self.choose_sentence(index))
+                self.bind(f"<Control-Key-{i + 1}>", lambda event, index=i: quick_sentence_select(index))
         
         def unbind_hotkeys():
             self.unbind("<Escape>",            )
@@ -1565,8 +1587,7 @@ class App(Tk):
             },
             "extern_audio_placer": {
                 "n_audios_per_batch": (5, [int], [])
-            }
-            ,
+            },
             "web_audio_downloader": {
                 "timeout": (1, [int], []),
                 "request_delay": (3000, [int], [])
@@ -1628,7 +1649,8 @@ class App(Tk):
             added_cards_browser_window.destroy()
 
         added_cards_browser_window.bind("<Escape>", lambda event: close_added_cards_browser())
-
+        added_cards_browser_window.protocol("WM_DELETE_WINDOW", close_added_cards_browser)
+        
         main_paned_window = PanedWindow(added_cards_browser_window, showhandle=True, orient="horizontal")
         main_paned_window.pack(fill="both", expand=True, padx=5, pady=5)
 
@@ -1860,13 +1882,27 @@ class App(Tk):
         editor_audio_inner_frame.last_getter_label = None
         editor_audio_inner_frame.source_display_frame = None
 
-        def change_picked_sentence(index: int):
+        editor_chosen_sentences: dict[int, str] = {}
+
+        def edit_picked_sentence(pressed_button: Button, sentence_number: int):
+            nonlocal editor_chosen_sentences
             selected_item = items_table.selection()
             if not selected_item:
                 return
 
-            editor_card_data._data[CardFields.sentences][0] = editor_sentence_texts[index].get(1.0, "end").rstrip()
-            items_table.set(selected_item[0], "#3", editor_card_data[CardFields.sentences][0].replace("\n", " "))
+            picked_sentence = editor_sentence_texts[sentence_number].get(1.0, "end").rstrip()
+            if editor_chosen_sentences.get(sentence_number) is None:
+                editor_chosen_sentences[sentence_number] = picked_sentence
+                pressed_button["background"] = "red"
+            else:
+                editor_chosen_sentences.pop(sentence_number)
+                pressed_button["background"] = self.theme.button_cfg.get("background", "SystemButtonFace")
+
+            # editor_card_data._data[CardFields.sentences] = []
+            # for sentence in editor_chosen_sentences.values():
+                # editor_card_data._data[CardFields.sentences].append(sentence)
+
+            # items_table.set(selected_item[0], "#3", " | ".join((i.replace("\n", " ") for i in editor_chosen_sentences.values())))
 
         @error_handler(self.show_exception_logs)
         def editor_fetch_external_sentences() -> None:
@@ -1893,13 +1929,12 @@ class App(Tk):
                 for parser_result in generators_results:
                     for sentence in parser_result.result:
                         self.add_sentence_field(
-                            source=f"{parser_result.parser_info.full_name}: {editor_sentence_search_entry.get()}",
-                            sentence=sentence,
-                            text_widgets_frame=editor_text_widgets_frame,
-                            text_widgets_sf=editor_text_widgets_sf,
-                            sentence_text_widgets_list=editor_sentence_texts,
-                            choose_sentence_action=change_picked_sentence
-                        )
+                                source=f"{parser_result.parser_info.full_name}: {editor_sentence_search_entry.get()}",
+                                sentence=sentence,
+                                text_widgets_frame=editor_text_widgets_frame,
+                                text_widgets_sf=editor_text_widgets_sf,
+                                sentence_text_widgets_list=editor_sentence_texts,
+                                choose_sentence_action=edit_picked_sentence)
 
                     if parser_result.error_message:
                         messagebox.showerror(
@@ -1961,7 +1996,7 @@ class App(Tk):
         editor_text_widgets_sf = ScrolledFrame(item_editor_frame, scrollbars="vertical",
                                                canvas_bg=self.theme.frame_cfg.get("bg"))
         editor_text_widgets_sf.grid(row=11, column=0, columnspan=8, sticky="news",
-                                    padx=editor_text_padx, pady=(0, editor_text_pady))
+                                    padx=(editor_text_padx, 0), pady=(0, editor_text_pady))
         item_editor_frame.grid_rowconfigure(11, weight=1)
 
         editor_text_widgets_frame = editor_text_widgets_sf.display_widget(self.Frame, fit_width=True)
@@ -2042,6 +2077,8 @@ class App(Tk):
 
         @error_handler(self.show_exception_logs)
         def save_progress(selection_index: str) -> None:
+            nonlocal editor_chosen_sentences
+
             if not full_saved_card_data:
                 return
 
@@ -2063,6 +2100,12 @@ class App(Tk):
                 if hierarchical_prefix:
                     full_saved_card_data[SavedDataDeck.ADDITIONAL_DATA]._data[
                         SavedDataDeck.HIERARCHICAL_PREFIX] = hierarchical_prefix
+
+            editor_card_data._data[CardFields.sentences] = []
+            for sentence in editor_chosen_sentences.values():
+                editor_card_data._data[CardFields.sentences].append(sentence)
+
+            items_table.set(selection_index, "#3", " | ".join((i.replace("\n", " ") for i in editor_chosen_sentences.values())))
 
             @error_handler(self.show_exception_logs)
             def add_audio_data_to_card(audio_getter_info: App.AudioGetterInfo, audio_links: list[str]):
@@ -2127,7 +2170,8 @@ class App(Tk):
                 full_saved_card_data, \
                 editor_card_data, \
                 editor_audio_inner_frame, \
-                editor_text_widgets_frame
+                editor_text_widgets_frame, \
+                editor_chosen_sentences
 
             selected_item_index = items_table.focus()
             if not selected_item_index:
@@ -2176,15 +2220,17 @@ class App(Tk):
             self.external_sentence_fetcher.force_update(word_data, editor_card_data)
             dict_sentences = editor_card_data.get(CardFields.sentences, [""])
 
-            for sentence in dict_sentences:
-                self.add_sentence_field(
-                    source="",
-                    sentence=sentence,
-                    text_widgets_frame=editor_text_widgets_frame,
-                    text_widgets_sf=editor_text_widgets_sf,
-                    sentence_text_widgets_list=editor_sentence_texts,
-                    choose_sentence_action=change_picked_sentence
-                )
+            editor_chosen_sentences = {}
+            for index, sentence in enumerate(dict_sentences):
+                b = self.add_sentence_field(
+                        source="",
+                        sentence=sentence,
+                        text_widgets_frame=editor_text_widgets_frame,
+                        text_widgets_sf=editor_text_widgets_sf,
+                        sentence_text_widgets_list=editor_sentence_texts,
+                        choose_sentence_action=edit_picked_sentence)
+                editor_chosen_sentences[index] = sentence
+                b["background"] = "red"
 
             @error_handler(self.show_exception_logs)
             def fill_additional_dict_data(widget: Text, text: str):
@@ -3065,22 +3111,7 @@ class App(Tk):
         )
         self.external_sentence_fetcher = ExternalDataGenerator(data_generator=sentence_parser)
 
-    @error_handler(show_exception_logs)
-    def choose_sentence(self, sentence_number: int):
-        if sentence_number >= len(self.sentence_texts):
-            return
-
-        self.fill_search_fields()
-
-        word_for_audio_query = self.audio_search_entry.get()
-        self.dict_card_data[CardFields.word] = self.word
-        self.dict_card_data[CardFields.definition] = self.definition
-
-        picked_sentence = self.get_sentence(sentence_number)
-        if not picked_sentence:
-            picked_sentence = self.dict_card_data[CardFields.word]
-        self.dict_card_data[CardFields.sentences] = [picked_sentence]
-
+    def save_and_refresh(self):
         additional = self.dict_card_data.get(SavedDataDeck.ADDITIONAL_DATA, {})
         additional[SavedDataDeck.AUDIO_DATA] = {}
         additional[SavedDataDeck.AUDIO_DATA][SavedDataDeck.AUDIO_SRCS] = []
@@ -3147,6 +3178,7 @@ class App(Tk):
                     fetching_word=self.word),
                 audio_links=dictionary_audio_links[:1 if audio_autochoose_mode in ("first_default_audio", "first_available_audio") else 9999])
                 
+            word_for_audio_query = self.audio_search_entry.get()
             already_found_first_source = dictionary_audio_links and audio_autochoose_mode in ("first_available_audio", "first_available_audio_source")
             if self.external_audio_generator is not None and not already_found_first_source and (audio_autochoose_mode in ("all", "first_available_audio", "first_available_audio_source")):
                 self.external_audio_generator.force_update(word_for_audio_query, self.dict_card_data)
@@ -3169,10 +3201,30 @@ class App(Tk):
         if additional:
             self.dict_card_data[SavedDataDeck.ADDITIONAL_DATA] = additional
 
+        self.dict_card_data[CardFields.sentences] = list(self.chosen_sentences.values())
+
         self.saved_cards_data.append(status=CardStatus.ADD, card_data=self.dict_card_data)
         if not self.deck.get_n_cards_left():
             self.deck.append(("Custom", Card(self.dict_card_data)))
         self.refresh()
+
+    @error_handler(show_exception_logs)
+    def choose_sentence(self, pressed_button: Button, sentence_number: int):
+        self.fill_search_fields()
+
+        self.dict_card_data[CardFields.word] = self.word
+        self.dict_card_data[CardFields.definition] = self.definition
+
+        picked_sentence = self.get_sentence(sentence_number)
+        if not picked_sentence:
+            picked_sentence = self.dict_card_data[CardFields.word]
+        
+        if self.chosen_sentences.get(sentence_number) is None:
+            self.chosen_sentences[sentence_number] = picked_sentence
+            pressed_button["background"] = "red"
+        else:
+            self.chosen_sentences.pop(sentence_number)
+            pressed_button["background"] = self.theme.button_cfg.get("background", "SystemButtonFace")
 
     @error_handler(show_exception_logs)
     def skip_command(self):
@@ -3231,7 +3283,7 @@ class App(Tk):
                            text_widgets_frame,
                            text_widgets_sf,
                            sentence_text_widgets_list,
-                           choose_sentence_action: Callable[[int], None]):
+                           choose_sentence_action: Callable[[Button, int], None]) -> Button:
         OPTIMAL_TEXT_HEIGHT = 80
 
         next_index = len(sentence_text_widgets_list) + 1
@@ -3263,12 +3315,13 @@ class App(Tk):
 
         choose_button = self.Button(choose_frame,
                                     text=f"{next_index}",
-                                    command=lambda x=len(sentence_text_widgets_list): choose_sentence_action(x),
                                     width=3)
+        choose_button["command"] = lambda button=choose_button, index=len(sentence_text_widgets_list): choose_sentence_action(button, index)
         choose_button.grid(row=0, column=1, sticky="ns")
         text_widgets_sf.bind_scroll_wheel(choose_button)
 
         sentence_text_widgets_list.append(sentence_text)
+        return choose_button
 
     @error_handler(show_exception_logs)
     def refresh(self) -> bool:
@@ -3277,6 +3330,7 @@ class App(Tk):
         self.tried_to_display_audio_getters_on_refresh = False
 
         self.current_card_parser_name, dict_card_data = self.deck.get_card()
+        self.chosen_sentences = {}
         self.dict_card_data = dict_card_data.to_dict()
         self.card_processor.process_card(self.dict_card_data)
 
@@ -3310,7 +3364,10 @@ class App(Tk):
             self.sentence_search_entry.fill_placeholder()
 
         self.external_sentence_fetcher.force_update(word_data, self.dict_card_data)
-        dict_sentences = self.dict_card_data.get(CardFields.sentences, [])
+        if self.dict_card_data.get(CardFields.sentences) is None: 
+            self.dict_card_data[CardFields.sentences] = []
+
+        dict_sentences = self.dict_card_data[CardFields.sentences]
         dict_sentences.append("")
         for sentence in dict_sentences:
             self.add_sentence_field(

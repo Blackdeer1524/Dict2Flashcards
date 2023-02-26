@@ -1898,12 +1898,6 @@ class App(Tk):
                 editor_chosen_sentences.pop(sentence_number)
                 pressed_button["background"] = self.theme.button_cfg.get("background", "SystemButtonFace")
 
-            # editor_card_data._data[CardFields.sentences] = []
-            # for sentence in editor_chosen_sentences.values():
-                # editor_card_data._data[CardFields.sentences].append(sentence)
-
-            # items_table.set(selected_item[0], "#3", " | ".join((i.replace("\n", " ") for i in editor_chosen_sentences.values())))
-
         @error_handler(self.show_exception_logs)
         def editor_fetch_external_sentences() -> None:
             generators_results: list[GeneratorReturn[list[str]]] | None = None

@@ -18,7 +18,7 @@ merge picked sentences in one card:
     
 merge separator:
     Separator used in sentence merging
-    default: " |\n"
+    default: " |<br>"
     type: str
 """
 

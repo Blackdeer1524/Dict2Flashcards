@@ -87,7 +87,7 @@ MERGING_RESULTING_MODEL = genanki.Model(
       'name': 'Recognition',
       'qfmt': '{{rand-alg:Sentence}}',
       'afmt': """\
-{{FrontSide}}
+{{Sentence}}
 <hr id="answer">
 <div class="accent">
     {{Word}}
@@ -99,25 +99,6 @@ MERGING_RESULTING_MODEL = genanki.Model(
 Tags{{#Tags}}|{{/Tags}}{{Tags}}
 """},],
     css=MODEL_CSS)
-
-# MERGING_RESULTING_MODEL = genanki.Model(
-#     1607392319,
-#     'Simple Model',
-#     fields=[
-#         {'name': 'Question'},
-#         {'name': 'Answer'},
-#         {'name': 'Answer2'},
-#         {'name': 'Answer3'},
-#         {'name': 'Answer4'},
-#     ],
-#     templates=[
-#         {
-#         'name': 'Card 1',
-#         'qfmt': '{{rand-alg:Question}}',
-#         'afmt': '{{FrontSide}}<hr id="answer">{{Answer}}',
-#         },
-#     ])
-
 
 
 def save(deck: app_utils.decks.SavedDataDeck,

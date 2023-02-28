@@ -1388,7 +1388,8 @@ class App(Tk):
 
         self.chosen_sentences: dict[int, str] = {}
         def bind_hotkeys():
-            self.bind("<Control-Return>",     lambda event: self.save_and_refresh())
+            self.bind("<Control-quoteleft>",  lambda event: self.save_and_refresh())
+            self.bind("<Control-Return>",  lambda event: self.save_and_refresh())
             self.bind("<Escape>",             lambda event: self.on_closing())
             self.bind("<Control-Key-0>",      lambda event: self.geometry("+0+0"))
             self.bind("<Control-z>",          lambda event: self.move_decks_pointers(-1))
@@ -1405,17 +1406,19 @@ class App(Tk):
                 self.bind(f"<Control-Key-{i + 1}>", lambda event, index=i: self.choose_sentence(self.choosing_buttons[min(index, len(self.choosing_buttons) - 1)], index))
         
         def unbind_hotkeys():
-            self.unbind("<Escape>",            )
-            self.unbind("<Control-Key-0>",     )
-            self.unbind("<Control-z>",         )
-            self.unbind("<Control-q>",         )
-            self.unbind("<Control-d>",         )
-            self.unbind("<Control-Shift_L><D>",)
-            self.unbind("<Control-s>",         )
-            self.unbind("<Control-Shift_L><A>",)
-            self.unbind("<Control-f>",         )
-            self.unbind("<Control-e>",         )
-            self.unbind("<Control-b>",         )
+            self.bind("<Control-quoteleft>")
+            self.unbind("<Control-Return>")
+            self.unbind("<Escape>")
+            self.unbind("<Control-Key-0>")
+            self.unbind("<Control-z>")
+            self.unbind("<Control-q>")
+            self.unbind("<Control-d>")
+            self.unbind("<Control-Shift_L><D>")
+            self.unbind("<Control-s>")
+            self.unbind("<Control-Shift_L><A>")
+            self.unbind("<Control-f>")
+            self.unbind("<Control-e>")
+            self.unbind("<Control-b>")
 
             for i in range(0, 9):
                 self.bind(f"<Control-Key-{i + 1}>")

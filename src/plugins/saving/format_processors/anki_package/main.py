@@ -7,7 +7,7 @@ from .. import app_utils, config_management, consts, parsers_return_types
 
 _CONF_VALIDATION_SCHEME = {
     "merge picked sentences in one card": (False, [bool], []), 
-    "merge separator": (" |\n\n", [str], [])
+    "merge separator": (" |<br><br>", [str], [])
 }
 
 

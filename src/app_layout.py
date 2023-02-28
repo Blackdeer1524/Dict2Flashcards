@@ -335,7 +335,7 @@ class App(Tk):
 
         self.skip_button = self.Button(a,
                                        text=">",
-                                       command=self.save_and_refresh,
+                                       command=lambda: self.move_decks_pointers(1),
                                        font=Font(weight="bold"))
         self.skip_button.grid(row=0, column=2, sticky="news")
 
@@ -419,6 +419,7 @@ class App(Tk):
                                         padx=self.text_padx, pady=(0, 0))
 
         self.sentence_texts: list[Text] = []
+        self.choosing_buttons: list[Button] = []
 
         self.text_widgets_sf = ScrolledFrame(self, scrollbars="vertical",
                                              canvas_bg=self.theme.frame_cfg.get("bg"))
@@ -1387,6 +1388,7 @@ class App(Tk):
 
         self.chosen_sentences: dict[int, str] = {}
         def bind_hotkeys():
+            self.bind("<Control-Return>",     lambda event: self.save_and_refresh())
             self.bind("<Escape>",             lambda event: self.on_closing())
             self.bind("<Control-Key-0>",      lambda event: self.geometry("+0+0"))
             self.bind("<Control-z>",          lambda event: self.move_decks_pointers(-1))
@@ -1399,14 +1401,8 @@ class App(Tk):
             self.bind("<Control-e>",          lambda event: self.statistics_dialog())
             self.bind("<Control-b>",          lambda event: self.added_cards_browser())
 
-            def quick_sentence_select(sentence_number: int) -> None:
-                picked_sentence = self.get_sentence(sentence_number)
-                self.chosen_sentences = {sentence_number: picked_sentence}
-                self.dict_card_data[CardFields.sentences] = [picked_sentence]
-                self.save_and_refresh()
-
             for i in range(0, 9):
-                self.bind(f"<Control-Key-{i + 1}>", lambda event, index=i: quick_sentence_select(index))
+                self.bind(f"<Control-Key-{i + 1}>", lambda event, index=i: self.choose_sentence(self.choosing_buttons[min(index, len(self.choosing_buttons) - 1)], index))
         
         def unbind_hotkeys():
             self.unbind("<Escape>",            )
@@ -3223,6 +3219,9 @@ class App(Tk):
 
     @error_handler(show_exception_logs)
     def choose_sentence(self, pressed_button: Button, sentence_number: int):
+        if sentence_number >= len(self.sentence_texts):
+            return
+ 
         self.fill_search_fields()
 
         self.dict_card_data[CardFields.word] = self.word
@@ -3355,6 +3354,7 @@ class App(Tk):
         self.audio_inner_frame.source_display_frame = None
 
         self.sentence_texts.clear()
+        self.choosing_buttons.clear()
         self.text_widgets_frame.destroy()
         self.text_widgets_frame = self.text_widgets_sf.display_widget(self.Frame, fit_width=True)
         self.text_widgets_sf.bind_scroll_wheel(self.text_widgets_frame)
@@ -3384,13 +3384,14 @@ class App(Tk):
         dict_sentences = self.dict_card_data[CardFields.sentences]
         dict_sentences.append("")
         for sentence in dict_sentences:
-            self.add_sentence_field(
-                source="",
-                sentence=sentence,
-                text_widgets_frame=self.text_widgets_frame,
-                text_widgets_sf=self.text_widgets_sf,
-                sentence_text_widgets_list=self.sentence_texts,
-                choose_sentence_action=self.choose_sentence
+            self.choosing_buttons.append(
+                self.add_sentence_field(
+                    source="",
+                    sentence=sentence,
+                    text_widgets_frame=self.text_widgets_frame,
+                    text_widgets_sf=self.text_widgets_sf,
+                    sentence_text_widgets_list=self.sentence_texts,
+                    choose_sentence_action=self.choose_sentence)
             )
 
         @error_handler(self.show_exception_logs)

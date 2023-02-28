@@ -100,26 +100,27 @@ card_insertion_limit_exceed_message = "Found too many cards. Are you sure you wa
 # help
 buttons_hotkeys_help_message = """
 Buttons:
-* <: returns to a previous card
+* <:    returns to a previous card
 * Bury: moves current card to a separate file which 
-is located in the saving directory. Name of
-this file would be the same as the saved cards file name +
-_buried postfix 
-* >: skips current card
+        is located in the saving directory. Name of
+        this file would be the same as the saved cards file name +
+        "_buried" postfix 
+* >:   skips current card
 * >>>: skips all remaining cards
 
 Hotkeys (local):
-* Ctrl + 0: Moves app to upper left corner of the screen
-* Ctrl + 1..9: creates a card with the chosen sentence
-* Ctrl + d: skips current card if no sentences were chosen or creates card(s) with chosen sentences
+* Ctrl + Enter:     skips current card if no sentences were chosen or creates card(s) with chosen sentences 
+* Ctrl + 0:         moves app to upper left corner of the screen
+* Ctrl + 1..9:      chooses n-th sentence
+* Ctrl + d:         skips current card
 * Ctrl + Shift + d: skips all remaining cards
-* Ctrl + z: returns to a previous card
-* Ctrl + q: moves current card to a separate file
+* Ctrl + z:         returns to a previous card
+* Ctrl + q:         moves current card to a separate file
 * Ctrl + Shift + a: calls <add word> window
-* Ctrl + e: calls <statistics> window
-* Ctrl + b: invoke added cards browser
-* Ctrl + f: calls <find> window
-* Ctrl + v: pastes image in image browser
+* Ctrl + e:         calls <statistics> window
+* Ctrl + b:         invoke added cards browser
+* Ctrl + f:         calls <find> window
+* Ctrl + v:         pastes image in image browser
 
 Hotkeys (global):
 * Ctrl + c + Space: adds currently highlighted word to deck

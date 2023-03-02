@@ -3217,7 +3217,7 @@ class App(Tk):
 
         self.saved_cards_data.append(status=CardStatus.ADD, card_data=self.dict_card_data)
         if not self.deck.get_n_cards_left():
-            self.deck.append(("Custom", Card(self.dict_card_data)))
+            self.deck.append((ParserType.custom.prefix(), Card(self.dict_card_data)))
         self.refresh()
 
     @error_handler(show_exception_logs)

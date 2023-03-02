@@ -7,6 +7,7 @@ class ParserType(StrEnum):
     web = auto()
     local = auto()
     chain = auto()
+    custom = auto()
 
     def prefix(self):
         return f"[{self}]"
@@ -19,6 +20,7 @@ class ParserType(StrEnum):
 _WEB_PREFIX = ParserType.web.prefix()
 _LOCAL_PREFIX = ParserType.local.prefix()
 _CHAIN_PREFIX = ParserType.chain.prefix()
+_CUSTOM_PREFIX = ParserType.custom.prefix()
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,4 +41,6 @@ class TypedParserName():
             return TypedParserName(parser_t=ParserType.local, name=full_name[len(_LOCAL_PREFIX) + 1:])
         elif full_name.startswith(_CHAIN_PREFIX):
             return TypedParserName(parser_t=ParserType.chain, name=full_name[len(_CHAIN_PREFIX) + 1:])
+        elif full_name.startswith(_CUSTOM_PREFIX):
+            return TypedParserName(parser_t=ParserType.custom, name=full_name[len(_CUSTOM_PREFIX) + 1:])
         raise ValueError(f"Failed to split full name {full_name}: unknown parser type")

@@ -1389,7 +1389,7 @@ class App(Tk):
         self.chosen_sentences: dict[int, str] = {}
         def bind_hotkeys():
             self.bind("<Control-quoteleft>",  lambda event: self.save_and_refresh())
-            self.bind("<Control-Return>",  lambda event: self.save_and_refresh())
+            self.bind("<Control-Return>",     lambda event: self.save_and_refresh())
             self.bind("<Escape>",             lambda event: self.on_closing())
             self.bind("<Control-Key-0>",      lambda event: self.geometry("+0+0"))
             self.bind("<Control-z>",          lambda event: self.move_decks_pointers(-1))
@@ -1406,7 +1406,7 @@ class App(Tk):
                 self.bind(f"<Control-Key-{i + 1}>", lambda event, index=i: self.choose_sentence(self.choosing_buttons[min(index, len(self.choosing_buttons) - 1)], index))
         
         def unbind_hotkeys():
-            self.bind("<Control-quoteleft>")
+            self.unbind("<Control-quoteleft>")
             self.unbind("<Control-Return>")
             self.unbind("<Escape>")
             self.unbind("<Control-Key-0>")
@@ -1421,7 +1421,7 @@ class App(Tk):
             self.unbind("<Control-b>")
 
             for i in range(0, 9):
-                self.bind(f"<Control-Key-{i + 1}>")
+                self.unbind(f"<Control-Key-{i + 1}>")
 
         bind_hotkeys()
 
@@ -1442,9 +1442,12 @@ class App(Tk):
                     else:
                         enableChildren(child)
 
-
             self.global_binder.stop()
             unbind_hotkeys()
+            
+            last = main_menu.index("end")
+            for i in range(last+1):
+                main_menu.entryconfigure(i, state="disabled")
             
             self.skip_all_button["state"] = "disabled"
             self.skip_button["state"] = "disabled"
@@ -1462,6 +1465,9 @@ class App(Tk):
             self.prev_button["state"] = "normal"
             self.save_and_refresh_button["state"] = "normal"
             enableChildren(self.text_widgets_frame)
+
+            for i in range(last+1):
+                main_menu.entryconfigure(i, state="normal")
 
             self.global_binder.start()
             bind_hotkeys()
@@ -3214,7 +3220,7 @@ class App(Tk):
             self.dict_card_data[SavedDataDeck.ADDITIONAL_DATA] = additional
 
         self.dict_card_data[CardFields.sentences] = list(self.chosen_sentences.values())
-
+        
         self.saved_cards_data.append(status=CardStatus.ADD, card_data=self.dict_card_data)
         if not self.deck.get_n_cards_left():
             self.deck.append((ParserType.custom.prefix(), Card(self.dict_card_data)))

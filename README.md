@@ -11,27 +11,27 @@ Sentence-mining app written in Python using Tkinter.
 * [Query language documentation](#query-language-documentation)
 
 # [Demonstration](#structure)
-![](/app_demonstration/start_to_finish_demo.gif)
+![](./app_demonstration/start_to_finish_demo.gif)
 
 ### [Drag & Drop](#download-images-from-web) 
 #### [Image from browser](#drag--drop) 
-![](/app_demonstration/drag_image_from_browser.gif)
+![](./app_demonstration/drag_image_from_browser.gif)
 #### [Local image](#drag--drop) 
-![](/app_demonstration/drag_local_image.gif)
+![](./app_demonstration/drag_local_image.gif)
 #### [Image link from any text field](#drag--drop) 
-![](/app_demonstration/drag_image_link.gif)
+![](./app_demonstration/drag_image_link.gif)
 
 ### [Paste from clipboard](#download-images-from-web) 
 Hotkey: **Ctrl + V**
-![](/app_demonstration/paste_image_from_clipboard.gif)
+![](./app_demonstration/paste_image_from_clipboard.gif)
 
 ## [Bury card to watch them later](#demonstration)
-![](/app_demonstration/bury_and_reopen.gif)
+![](./app_demonstration/bury_and_reopen.gif)
 
 ## [Query language](#demonstration)
-![](/app_demonstration/add_with_query_lang.gif)
+![](./app_demonstration/add_with_query_lang.gif)
 
-![](/app_demonstration/search_in_deck_with_query_lang.gif)
+![](./app_demonstration/search_in_deck_with_query_lang.gif)
 
 [Query language docs](#query-language-documentation)
 
@@ -77,11 +77,11 @@ To launch this app, open command line in the directory where `main.pyw` is locat
 ## [Global](#hotkeys)
 * Ctrl + c + Space: adds currently highlighted word to deck
 
-![](/app_demonstration/add_word_global_hotkey.gif)
+![](./app_demonstration/add_word_global_hotkey.gif)
 
 * Ctrl + c + Alt: adds currently highlighted text to the first sentence field
 
-![](/app_demonstration/add_highlighted_sentence_global_hotkey.gif)
+![](./app_demonstration/add_highlighted_sentence_global_hotkey.gif)
 
 # [Resulting file](#structure)
 By default, resulting file is an Anki package that is located at the saving directory that you chose.
@@ -163,7 +163,7 @@ class CardFormat(TypedDict):
     tags:        NotRequired[TagsScheme]
 ```
 
-![](/app_demonstration/card_fields_usage.png)
+![](./app_demonstration/card_fields_usage.png)
 
 
 Every plugin has to have **config** variable of **LoadableConfig** class 

@@ -9,9 +9,7 @@ from .. import config_management, parsers_return_types
 
 PLUGIN_NAME = os.path.split(os.path.dirname(__file__))[-1]
 
-_CONF_VALIDATION_SCHEME = {
-    "timeout": (1, [int, float], [])
-}
+_CONF_VALIDATION_SCHEME = {"timeout": (1, [int, float], [])}
 
 _CONF_DOCS = """
 timeout:
@@ -20,16 +18,19 @@ timeout:
     default value: 1
 """
 
-config = config_management.LoadableConfig(config_location=os.path.dirname(__file__),
-                                          validation_scheme=_CONF_VALIDATION_SCHEME,
-                                          docs=_CONF_DOCS)
+config = config_management.LoadableConfig(
+    config_location=os.path.dirname(__file__),
+    validation_scheme=_CONF_VALIDATION_SCHEME,
+    docs=_CONF_DOCS,
+)
 
 
 def get(word: str) -> parsers_return_types.IMAGE_SCRAPPER_RETURN_T:
     link = f"https://www.google.com/search?tbm=isch&q={word}"
-    user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) ApplewebKit/537.36 (KHTML, like Gecko) " \
-                 "Chrome/70.0.3538.67 Safari/537.36"
-    headers = {'User-Agent': user_agent}
+    user_agent = (
+        "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/112.0"
+    )
+    headers = {"User-Agent": user_agent}
     try:
         r = requests.get(link, headers=headers, timeout=config["timeout"])
         r.raise_for_status()
@@ -45,7 +46,7 @@ def get(word: str) -> parsers_return_types.IMAGE_SCRAPPER_RETURN_T:
     batch_size = yield
     if not results:
         regex = re.escape("AF_initDataCallback({")
-        regex += r'[^<]*?data:[^<]*?' + r'(\[[^<]+\])'
+        regex += r"[^<]*?data:[^<]*?" + r"(\[[^<]+\])"
 
         for txt in re.findall(regex, html):
             data = json.loads(txt)

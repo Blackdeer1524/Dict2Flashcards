@@ -25,10 +25,10 @@ config = config_management.LoadableConfig(
 )
 
 
-def get(word: str) -> parsers_return_types.IMAGE_SCRAPPER_RETURN_T:
+def get(word: str):  # -> parsers_return_types.IMAGE_SCRAPPER_RETURN_T:
     link = f"https://www.google.com/search?tbm=isch&q={word}"
     user_agent = (
-        "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/112.0"
+        "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/114.0"
     )
     headers = {"User-Agent": user_agent}
     try:
@@ -47,6 +47,8 @@ def get(word: str) -> parsers_return_types.IMAGE_SCRAPPER_RETURN_T:
     if not results:
         regex = re.escape("AF_initDataCallback({")
         regex += r"[^<]*?data:[^<]*?" + r"(\[[^<]+\])"
+
+        re.compile(r"[^<]*?data:[^<]*?")
 
         for txt in re.findall(regex, html):
             data = json.loads(txt)
